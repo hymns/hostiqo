@@ -7,7 +7,7 @@
 @section('content')
     <!-- Statistics Cards -->
     <div class="row mb-4">
-        <div class="col-md-3">
+        <div class="col-sm-6 col-lg-3">
             <div class="card stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -23,7 +23,7 @@
             </div>
         </div>
         
-        <div class="col-md-3">
+        <div class="col-sm-6 col-lg-3">
             <div class="card stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -39,7 +39,7 @@
             </div>
         </div>
         
-        <div class="col-md-3">
+        <div class="col-sm-6 col-lg-3">
             <div class="card stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -55,7 +55,7 @@
             </div>
         </div>
         
-        <div class="col-md-3">
+        <div class="col-sm-6 col-lg-3">
             <div class="card stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -74,7 +74,7 @@
 
     <div class="row">
         <!-- Webhooks List -->
-        <div class="col-lg-6">
+        <div class="col-lg-6 mb-3 mb-lg-0">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>Configured Webhooks</span>
@@ -140,7 +140,7 @@
         </div>
 
         <!-- Recent Deployments -->
-        <div class="col-lg-6">
+        <div class="col-lg-6 mb-3 mb-lg-0">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>Recent Deployments</span>

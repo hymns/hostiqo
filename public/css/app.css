@@ -168,3 +168,185 @@ pre {
 .copy-btn:hover {
     opacity: 1;
 }
+
+/* Mobile Navigation Toggle */
+.mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 1100;
+    background: #0d6efd;
+    border: none;
+    color: white;
+    width: 45px;
+    height: 45px;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.mobile-menu-toggle:hover {
+    background: #0a58ca;
+}
+
+/* Mobile Overlay */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+/* Responsive Design - Tablets and Below */
+@media (max-width: 992px) {
+    .sidebar {
+        width: 250px; /* Fixed width on mobile */
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    
+    .sidebar-overlay.active {
+        display: block;
+    }
+    
+    .mobile-menu-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Hide user info on mobile */
+    .user-info {
+        display: none;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        padding: 5rem 1.5rem 1.5rem;
+    }
+    
+    .card-header {
+        padding: 0.875rem 1rem;
+        font-size: 0.95rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    /* Stack stat cards on mobile */
+    .stat-card {
+        margin-bottom: 1rem;
+    }
+    
+    .stat-card:hover {
+        transform: none;
+    }
+    
+    /* Adjust page header for mobile */
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .d-flex.justify-content-between > div:last-child {
+        width: 100%;
+    }
+    
+    .d-flex.justify-content-between .btn-group,
+    .d-flex.justify-content-between .d-flex.gap-2 {
+        flex-wrap: wrap;
+        gap: 0.5rem !important;
+    }
+}
+
+/* Mobile Specific - Phones */
+@media (max-width: 576px) {
+    .main-content {
+        padding: 4.5rem 1rem 1rem;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+    }
+    
+    h3 {
+        font-size: 1.75rem;
+    }
+    
+    /* Stat cards - larger text on mobile */
+    .stat-card .text-muted {
+        font-size: 0.85rem;
+    }
+    
+    .stat-card h3 {
+        font-size: 2rem;
+    }
+    
+    .stat-card .text-primary {
+        font-size: 2rem !important;
+    }
+    
+    /* Card headers */
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.75rem;
+    }
+    
+    .card-header .btn {
+        width: 100%;
+    }
+    
+    /* Buttons */
+    .btn {
+        font-size: 0.875rem;
+        padding: 0.5rem 0.875rem;
+    }
+    
+    .btn-sm {
+        font-size: 0.8rem;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    /* Tables */
+    .table {
+        font-size: 0.875rem;
+    }
+    
+    .table td,
+    .table th {
+        padding: 0.5rem;
+    }
+    
+    /* Hide certain table columns on very small screens */
+    .table .d-none-mobile {
+        display: none;
+    }
+    
+    /* Badge sizing */
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.35em 0.65em;
+    }
+    
+    /* Form inputs */
+    .form-control,
+    .form-select {
+        font-size: 1rem;
+    }
+    
+    /* Code blocks */
+    pre {
+        font-size: 0.75rem;
+        padding: 0.75rem;
+    }
+}

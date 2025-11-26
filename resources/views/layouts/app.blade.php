@@ -16,8 +16,16 @@
     @stack('styles')
 </head>
 <body>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu">
+        <i class="bi bi-list" style="font-size: 1.5rem;"></i>
+    </button>
+
+    <!-- Sidebar Overlay (for mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- Sidebar -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="brand">
             <i class="bi bi-git"></i> GitWebhook
         </div>
@@ -121,6 +129,46 @@
         function confirmDelete(message) {
             return confirm(message || 'Are you sure you want to delete this item?');
         }
+        
+        // Mobile menu toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuToggle = document.getElementById('mobileMenuToggle');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            function toggleMenu() {
+                sidebar.classList.toggle('active');
+                overlay.classList.toggle('active');
+            }
+            
+            function closeMenu() {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+            }
+            
+            // Toggle menu on button click
+            menuToggle.addEventListener('click', toggleMenu);
+            
+            // Close menu when clicking overlay
+            overlay.addEventListener('click', closeMenu);
+            
+            // Close menu when clicking a nav link (on mobile)
+            const navLinks = sidebar.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 992) {
+                        closeMenu();
+                    }
+                });
+            });
+            
+            // Close menu on window resize to desktop
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 992) {
+                    closeMenu();
+                }
+            });
+        });
     </script>
     
     @stack('scripts')
