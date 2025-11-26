@@ -67,9 +67,6 @@ The sidebar displays:
 
 ## 👤 Creating New Users
 
-### Via Registration Page
-Users can register at: `http://localhost:8000/register`
-
 ### Via Database Seeder
 Create your own seeder:
 
@@ -103,29 +100,9 @@ User::create([
 
 ## 🛠️ Customization
 
-### Change Password Requirements
-
-Edit `app/Http/Controllers/Auth/RegisterController.php`:
-
-```php
-'password' => ['required', 'confirmed', Password::min(10)->letters()->numbers()],
-```
-
-### Disable Registration
-
-Remove registration routes from `routes/web.php`:
-
-```php
-// Comment out these lines
-// Route::get('register', [RegisterController::class, 'showRegistrationForm'])->name('register');
-// Route::post('register', [RegisterController::class, 'register']);
-```
-
-And remove the registration link from `resources/views/auth/login.blade.php`.
-
 ### Change Default Redirect
 
-Edit controllers to change redirect after login/register:
+Edit controllers to change redirect after login:
 
 ```php
 return redirect()->intended(route('your-route'));
@@ -181,12 +158,10 @@ $user->save();
 
 ```
 app/Http/Controllers/Auth/
-├── LoginController.php       # Login logic
-└── RegisterController.php    # Registration logic
+└── LoginController.php       # Login logic
 
 resources/views/auth/
-├── login.blade.php           # Login page
-└── register.blade.php        # Registration page
+└── login.blade.php           # Login page
 
 database/seeders/
 └── UserSeeder.php            # Default users seeder
@@ -197,8 +172,6 @@ database/seeders/
 **Public Routes:**
 - `GET /login` - Show login form
 - `POST /login` - Process login
-- `GET /register` - Show registration form
-- `POST /register` - Process registration
 
 **Protected Routes:**
 - `POST /logout` - Logout (requires auth)
