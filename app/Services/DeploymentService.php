@@ -155,8 +155,12 @@ class DeploymentService
             // Run pre-deploy script
             if ($webhook->pre_deploy_script) {
                 $output[] = "\nRunning pre-deploy script...";
+                
+                // Trim each line to remove trailing spaces that cause "command not found" errors
+                $cleanedScript = implode("\n", array_map('trim', explode("\n", $webhook->pre_deploy_script)));
+                
                 $command = $this->prepareCommandAsUser([
-                    'bash', '-c', $webhook->pre_deploy_script
+                    'bash', '-c', $cleanedScript
                 ], $deployUser);
 
                 $result = Process::path($localPath)
@@ -173,8 +177,12 @@ class DeploymentService
             // Run post-deploy script
             if ($webhook->post_deploy_script) {
                 $output[] = "\nRunning post-deploy script...";
+                
+                // Trim each line to remove trailing spaces that cause "command not found" errors
+                $cleanedScript = implode("\n", array_map('trim', explode("\n", $webhook->post_deploy_script)));
+                
                 $command = $this->prepareCommandAsUser([
-                    'bash', '-c', $webhook->post_deploy_script
+                    'bash', '-c', $cleanedScript
                 ], $deployUser);
 
                 $result = Process::path($localPath)
