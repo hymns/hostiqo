@@ -22,7 +22,7 @@ class DeploymentService
     {
         $deployment = Deployment::create([
             'webhook_id' => $webhook->id,
-            'status' => 'running',
+            'status' => 'processing',
             'commit_hash' => $payload['commit_hash'] ?? null,
             'commit_message' => $payload['commit_message'] ?? null,
             'author' => $payload['author'] ?? null,
@@ -33,7 +33,7 @@ class DeploymentService
             $output = $this->executeDeployment($webhook);
 
             $deployment->update([
-                'status' => 'success',
+                'status' => 'completed',
                 'output' => $output,
                 'completed_at' => now(),
             ]);

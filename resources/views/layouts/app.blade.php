@@ -34,10 +34,16 @@
                 <i class="bi bi-speedometer2 me-2"></i> Dashboard
             </a>
             <a class="nav-link {{ request()->routeIs('webhooks.*') ? 'active' : '' }}" href="{{ route('webhooks.index') }}">
-                <i class="bi bi-webhook me-2"></i> Webhooks
+                <i class="bi bi-hdd-network me-2"></i> Webhooks
             </a>
             <a class="nav-link {{ request()->routeIs('deployments.*') ? 'active' : '' }}" href="{{ route('deployments.index') }}">
-                <i class="bi bi-arrow-repeat me-2"></i> Deployments
+                <i class="bi bi-cloud-haze2 me-2"></i> Deployments
+            </a>
+            <a class="nav-link {{ request()->routeIs('databases.*') ? 'active' : '' }}" href="{{ route('databases.index') }}">
+                <i class="bi bi-database me-2"></i> Databases
+            </a>
+            <a class="nav-link {{ request()->routeIs('queues.*') ? 'active' : '' }}" href="{{ route('queues.index') }}">
+                <i class="bi bi-calendar2-check me-2"></i> Queues
             </a>
         </nav>
         

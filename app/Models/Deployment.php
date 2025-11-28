@@ -54,8 +54,8 @@ class Deployment extends Model
     {
         return match ($this->status) {
             'pending' => 'warning',
-            'running' => 'info',
-            'success' => 'success',
+            'processing' => 'info',
+            'completed' => 'success',
             'failed' => 'danger',
             default => 'secondary',
         };
@@ -68,8 +68,8 @@ class Deployment extends Model
     {
         return match ($this->status) {
             'pending' => 'bi-clock-history',
-            'running' => 'bi-arrow-repeat',
-            'success' => 'bi-check-circle-fill',
+            'processing' => 'bi-arrow-repeat',
+            'completed' => 'bi-check-circle-fill',
             'failed' => 'bi-x-circle-fill',
             default => 'bi-question-circle',
         };
@@ -96,11 +96,11 @@ class Deployment extends Model
     }
 
     /**
-     * Scope a query to only include successful deployments.
+     * Scope a query to only include completed deployments.
      */
-    public function scopeSuccessful($query)
+    public function scopeCompleted($query)
     {
-        return $query->where('status', 'success');
+        return $query->where('status', 'completed');
     }
 
     /**
@@ -109,5 +109,21 @@ class Deployment extends Model
     public function scopeFailed($query)
     {
         return $query->where('status', 'failed');
+    }
+    
+    /**
+     * Scope a query to only include pending deployments.
+     */
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+    
+    /**
+     * Scope a query to only include processing deployments.
+     */
+    public function scopeProcessing($query)
+    {
+        return $query->where('status', 'processing');
     }
 }
