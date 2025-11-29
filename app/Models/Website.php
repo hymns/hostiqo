@@ -21,13 +21,22 @@ class Website extends Model
         'is_active',
         'nginx_status',
         'ssl_status',
+        'ssl_issuer',
+        'ssl_issued_at',
+        'ssl_expires_at',
+        'ssl_last_checked_at',
+        'ssl_auto_renew',
         'pm2_status',
     ];
 
     protected $casts = [
         'ssl_enabled' => 'boolean',
         'is_active' => 'boolean',
+        'ssl_auto_renew' => 'boolean',
         'php_settings' => 'array',
+        'ssl_issued_at' => 'datetime',
+        'ssl_expires_at' => 'datetime',
+        'ssl_last_checked_at' => 'datetime',
     ];
 
     /**
@@ -116,5 +125,53 @@ class Website extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Get days until SSL certificate expires
+     */
+    public function getSslDaysUntilExpiryAttribute(): ?int
+    {
+        if (!$this->ssl_expires_at) {
+            return null;
+        }
+
+        return (int) now()->diffInDays($this->ssl_expires_at, false);
+    }
+
+    /**
+     * Check if SSL certificate is expiring soon (within 30 days)
+     */
+    public function getSslExpiringSoonAttribute(): bool
+    {
+        $days = $this->ssl_days_until_expiry;
+        
+        return $days !== null && $days <= 30 && $days > 0;
+    }
+
+    /**
+     * Check if SSL certificate is expired
+     */
+    public function getSslExpiredAttribute(): bool
+    {
+        $days = $this->ssl_days_until_expiry;
+        
+        return $days !== null && $days < 0;
+    }
+
+    /**
+     * Get SSL expiry status badge color
+     */
+    public function getSslExpiryBadgeAttribute(): string
+    {
+        if ($this->ssl_expired) {
+            return 'danger';
+        }
+
+        if ($this->ssl_expiring_soon) {
+            return 'warning';
+        }
+
+        return 'success';
     }
 }

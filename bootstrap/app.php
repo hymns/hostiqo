@@ -1,5 +1,7 @@
 <?php
 
+use App\Jobs\CheckSslCertificates;
+use App\Jobs\RenewSslCertificates;
 use App\Jobs\SystemMonitorJob;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -26,6 +28,18 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->name('system-monitor')
                 ->withoutOverlapping();
         }
+
+        // SSL certificate renewal - runs daily at 2:30 AM
+        $schedule->job(new RenewSslCertificates())
+            ->dailyAt('02:30')
+            ->name('ssl-renewal')
+            ->withoutOverlapping();
+
+        // SSL certificate check - runs daily at 3:00 AM (after renewal)
+        $schedule->job(new CheckSslCertificates())
+            ->dailyAt('03:00')
+            ->name('ssl-check')
+            ->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -38,7 +38,7 @@ This document covers all the system requirements and prerequisites needed to run
 |----------|---------|---------|
 | MySQL/PostgreSQL | MySQL 8.0+ or PostgreSQL 12+ | Database server |
 | Nginx | 1.18+ | Web server and reverse proxy |
-| PHP | 7.4, 8.0, 8.1, 8.2, 8.3 | Multiple PHP versions for virtual hosts |
+| PHP | 7.4, 8.0, 8.1, 8.2, 8.3, 8.4 | Multiple PHP versions for virtual hosts |
 | PHP-FPM | Same as PHP versions | FastCGI Process Manager |
 | Node.js | 16.x, 18.x, 20.x, 21.x | Multiple Node versions for applications |
 | Redis | 6.0+ | Queue backend and caching |
@@ -477,7 +477,8 @@ www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart nginx
 
 # Certbot - SSL Certificate Management
 www-data ALL=(ALL) NOPASSWD: /usr/bin/certbot --nginx -d * --non-interactive --agree-tos --email *
-www-data ALL=(ALL) NOPASSWD: /usr/bin/certbot renew
+www-data ALL=(ALL) NOPASSWD: /usr/bin/certbot renew *
+www-data ALL=(ALL) NOPASSWD: /usr/bin/certbot certificates
 
 # PHP-FPM Pool Management
 www-data ALL=(ALL) NOPASSWD: /usr/sbin/php-fpm* -t
@@ -528,12 +529,13 @@ sudo chmod 0440 /etc/sudoers.d/git-webhook-manager
 
 **Security Note**: These permissions allow the web server to:
 1. Manage Nginx configurations for virtual hosts
-2. Manage PHP-FPM pools for PHP projects
-3. Create and manage webroot directories in `/var/www/`
-4. Manage PM2 ecosystem configurations for Node.js projects
-5. Control PM2 processes (start, stop, restart Node.js applications)
-6. Execute git deployments as specified deployment users
-7. Run deployment scripts (pre/post deploy hooks)
+2. Request and renew SSL certificates via Let's Encrypt (certbot)
+3. Manage PHP-FPM pools for PHP projects
+4. Create and manage webroot directories in `/var/www/`
+5. Manage PM2 ecosystem configurations for Node.js projects
+6. Control PM2 processes (start, stop, restart Node.js applications)
+7. Execute git deployments as specified deployment users
+8. Run deployment scripts (pre/post deploy hooks)
 
 Ensure your application has proper authentication and authorization to prevent unauthorized access.
 

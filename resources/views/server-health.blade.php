@@ -95,6 +95,20 @@
             </div>
         </div>
 
+        <!-- Database Connection Monitoring Chart -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Database Connections (Last {{ config('monitoring.chart_hours', 6) }} Hours)</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="dbConnectionsChart" height="80"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- I/O Monitoring Charts -->
         <div class="row mb-4">
             <div class="col-12">
@@ -353,6 +367,67 @@ document.addEventListener('DOMContentLoaded', function() {
                     ticks: {
                         callback: function(value) {
                             return value.toFixed(1) + ' MB/s';
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+
+    // Database Connections Chart
+    const dbCtx = document.getElementById('dbConnectionsChart').getContext('2d');
+    
+    const dbConnectionsData = metrics.map(m => m.db_connections || 0);
+    
+    new Chart(dbCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Database Connections',
+                    data: dbConnectionsData,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y + ' connections';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        callback: function(value) {
+                            return Math.floor(value) + ' conn';
                         }
                     }
                 },

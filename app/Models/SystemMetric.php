@@ -18,6 +18,7 @@ class SystemMetric extends Model
         'disk_write_bytes',
         'network_rx_bytes',
         'network_tx_bytes',
+        'db_connections',
         'recorded_at',
     ];
 
@@ -33,6 +34,7 @@ class SystemMetric extends Model
         'disk_write_bytes' => 'integer',
         'network_rx_bytes' => 'integer',
         'network_tx_bytes' => 'integer',
+        'db_connections' => 'integer',
         'recorded_at' => 'datetime',
     ];
 

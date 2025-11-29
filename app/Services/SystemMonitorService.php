@@ -24,6 +24,7 @@ class SystemMonitorService
             'disk_write_bytes' => $this->getDiskWriteBytes(),
             'network_rx_bytes' => $this->getNetworkRxBytes(),
             'network_tx_bytes' => $this->getNetworkTxBytes(),
+            'db_connections' => $this->getDbConnections(),
             'recorded_at' => now(),
         ];
     }
@@ -404,8 +405,10 @@ class SystemMonitorService
                     foreach (explode("\n", $output) as $line) {
                         // Match en* interfaces and extract Obytes
                         if (preg_match('/^en\d+\s+\d+\s+<Link.*?\s+(\d+)\s+\d+\s+(\d+)\s+(\d+)\s+\d+\s+(\d+)/', $line, $matches)) {
-                            // matches[5] is Obytes
-                            $totalTx += (int) $matches[5];
+                            // matches[4] is Obytes (0-indexed, 4th capture group)
+                            if (isset($matches[4])) {
+                                $totalTx += (int) $matches[4];
+                            }
                         }
                     }
                     return $totalTx;
@@ -429,6 +432,39 @@ class SystemMonitorService
             }
         } catch (\Exception $e) {
             logger()->error('Failed to get network TX bytes: ' . $e->getMessage());
+        }
+
+        return 0;
+    }
+
+    /**
+     * Get database connection count.
+     */
+    protected function getDbConnections(): int
+    {
+        try {
+            // Get connection count from Laravel's DB facade
+            $connection = \Illuminate\Support\Facades\DB::connection();
+            $driver = $connection->getDriverName();
+            
+            if ($driver === 'sqlite') {
+                // SQLite doesn't have connection pooling, always 1 connection per process
+                return 1;
+            } elseif ($driver === 'mysql') {
+                // MySQL - count active connections
+                $result = $connection->select('SHOW STATUS WHERE Variable_name = "Threads_connected"');
+                if (!empty($result)) {
+                    return (int) $result[0]->Value;
+                }
+            } elseif ($driver === 'pgsql') {
+                // PostgreSQL - count active connections
+                $result = $connection->select('SELECT count(*) as count FROM pg_stat_activity WHERE state = \'active\'');
+                if (!empty($result)) {
+                    return (int) $result[0]->count;
+                }
+            }
+        } catch (\Exception $e) {
+            logger()->error('Failed to get DB connections: ' . $e->getMessage());
         }
 
         return 0;

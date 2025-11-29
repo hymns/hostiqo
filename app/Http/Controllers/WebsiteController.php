@@ -34,7 +34,7 @@ class WebsiteController extends Controller
         $type = $request->get('type', 'php');
         
         // Get available PHP versions (you can customize this list)
-        $phpVersions = ['7.4', '8.0', '8.1', '8.2', '8.3'];
+        $phpVersions = ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4'];
         
         // Get available Node versions (you can customize this list)
         $nodeVersions = ['16.x', '18.x', '20.x', '21.x'];
@@ -104,7 +104,7 @@ class WebsiteController extends Controller
     public function edit(Website $website)
     {
         // Get available PHP versions
-        $phpVersions = ['7.4', '8.0', '8.1', '8.2', '8.3'];
+        $phpVersions = ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4'];
         
         // Get available Node versions
         $nodeVersions = ['16.x', '18.x', '20.x', '21.x'];

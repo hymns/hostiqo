@@ -22,8 +22,9 @@ A comprehensive Laravel-based webhook management system for automated Git deploy
 - 🏠 **Multi-Project Support** - Manage both PHP and Node.js projects
 - ⚡ **Auto Nginx Configuration** - Automatic vhost generation and deployment
 - 🔒 **SSL/TLS Support** - Automated Let's Encrypt SSL certificate management with TLS 1.2/1.3
+- 🔄 **Auto SSL Renewal** - Daily automatic certificate renewal (runs at 2:30 AM)
 - 🛡️ **Security Hardened** - Auto-applied security headers, HSTS, file protection, and hardened SSL
-- 🔄 **Version Management** - Support for multiple PHP (7.4-8.3) and Node.js (16.x-21.x) versions
+- 🔄 **Version Management** - Support for multiple PHP (7.4-8.4) and Node.js (16.x-21.x) versions
 - 🎯 **Background Processing** - Queue-based Nginx deployment and SSL requests
 - 📊 **Status Tracking** - Real-time Nginx and SSL status monitoring
 - 🔧 **Easy Configuration** - Simple web interface for website management
@@ -58,7 +59,7 @@ A comprehensive Laravel-based webhook management system for automated Git deploy
 
 ### Additional Requirements for Virtual Host Management
 - Nginx >= 1.18
-- PHP-FPM (multiple versions: 7.4, 8.0, 8.1, 8.2, 8.3)
+- PHP-FPM (multiple versions: 7.4, 8.0, 8.1, 8.2, 8.3, 8.4)
 - Node.js (multiple versions: 16.x, 18.x, 20.x, 21.x)
 - PM2 (for Node.js process management)
 - Redis >= 6.0
@@ -66,6 +67,29 @@ A comprehensive Laravel-based webhook management system for automated Git deploy
 - Proper sudo permissions (see [PREREQUISITES.md](PREREQUISITES.md))
 
 ## 🔧 Installation
+
+### Quick Setup (Automated) 🚀
+
+For Ubuntu/Debian servers, use our automated setup scripts:
+
+```bash
+# 1. Install system prerequisites
+sudo bash scripts/setup-ubuntu.sh
+
+# 2. Configure permissions
+sudo bash scripts/setup-sudoers.sh
+
+# 3. Setup Laravel application
+bash scripts/setup-app.sh
+```
+
+**Time:** ~20-30 minutes total
+
+📚 **For detailed instructions**, see [scripts/README.md](scripts/README.md)
+
+---
+
+### Manual Installation
 
 ### 1. Clone or Setup Project
 
@@ -395,6 +419,43 @@ This single command handles both scenarios:
 - **Subsequent deployments:** App exists → PM2 restarts it
 
 No need to change webhook scripts after first deployment!
+
+#### SSL Certificate Auto-Renewal
+
+The system automatically renews Let's Encrypt SSL certificates to prevent expiration.
+
+**How It Works:**
+
+1. **Automated Schedule:** Runs daily at 2:30 AM
+2. **Certbot Renewal:** Executes `certbot renew` to check and renew expiring certificates
+3. **Auto-Reload:** Nginx automatically reloads after successful renewal
+4. **Zero Downtime:** Renewal happens without service interruption
+
+**Manual Renewal (if needed):**
+
+```bash
+# Run renewal manually
+sudo certbot renew
+
+# Force renewal (even if not expiring soon)
+sudo certbot renew --force-renewal
+
+# Check certificate expiration
+sudo certbot certificates
+```
+
+**Monitoring:**
+
+- Renewal attempts are logged to `storage/logs/laravel.log`
+- Check logs with: `tail -f storage/logs/laravel.log | grep "SSL"`
+- Certbot logs: `/var/log/letsencrypt/letsencrypt.log`
+
+**Important Notes:**
+
+- Certificates auto-renew when they have 30 days or less remaining
+- Let's Encrypt certificates are valid for 90 days
+- Daily checks ensure you never miss a renewal
+- Failed renewals are logged for investigation
 
 ## 📁 Project Structure
 
