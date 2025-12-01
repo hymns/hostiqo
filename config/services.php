@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'cloudflare' => [
+        'api_token' => env('CLOUDFLARE_API_TOKEN'),
+        'enabled' => env('CLOUDFLARE_ENABLED', false),
+        'proxied' => env('CLOUDFLARE_PROXIED', false),
+    ],
+
 ];

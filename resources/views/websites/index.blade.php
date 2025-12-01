@@ -78,6 +78,9 @@
                                 <th>Version</th>
                                 <th>Nginx</th>
                                 <th>SSL</th>
+                                @if(config('services.cloudflare.enabled'))
+                                    <th>CloudFlare DNS</th>
+                                @endif
                                 <th>Status</th>
                                 <th width="150">Actions</th>
                             </tr>
@@ -108,10 +111,11 @@
                                                 @csrf
                                                 @method('POST')
                                                 <button type="submit" 
-                                                        class="btn btn-sm btn-{{ $website->ssl_enabled ? 'success' : 'outline-secondary' }}"
-                                                        title="{{ $website->ssl_enabled ? 'SSL Enabled' : 'Enable SSL' }}"
+                                                        class="btn btn-link p-0 text-{{ $website->ssl_enabled ? 'success' : 'secondary' }}"
+                                                        style="font-size: 1.2rem; text-decoration: none;"
+                                                        title="{{ $website->ssl_enabled ? 'SSL Enabled - Click to disable' : 'Click to enable SSL' }}"
                                                         {{ $website->ssl_status === 'pending' ? 'disabled' : '' }}>
-                                                    <i class="bi bi-{{ $website->ssl_enabled ? 'shield-check' : 'shield' }}"></i>
+                                                    <i class="bi bi-{{ $website->ssl_enabled ? 'shield-check-fill' : 'shield-x' }}"></i>
                                                 </button>
                                             </form>
                                             @if($website->ssl_status !== 'none')
@@ -121,6 +125,14 @@
                                             @endif
                                         </div>
                                     </td>
+                                    @if(config('services.cloudflare.enabled'))
+                                        <td>
+                                            <span class="badge bg-{{ $website->dns_status_badge }}" title="DNS Status: {{ ucfirst($website->dns_status) }}{{ $website->server_ip ? ' → ' . $website->server_ip : '' }}">
+                                                <i class="bi bi-cloud{{ $website->dns_status === 'active' ? '-check' : '' }}"></i>
+                                                {{ ucfirst($website->dns_status) }}
+                                            </span>
+                                        </td>
+                                    @endif
                                     <td>
                                         <span class="badge bg-{{ $website->status_badge }}">
                                             {{ $website->is_active ? 'Active' : 'Inactive' }}
@@ -133,17 +145,17 @@
                                                title="View">
                                                 <i class="bi bi-search"></i>
                                             </a>
+                                            <button type="button"
+                                                    class="btn btn-outline-primary"
+                                                    title="Redeploy Configuration"
+                                                    onclick="confirmAction('Redeploy Configuration', 'Regenerate and redeploy Nginx and PHP-FPM configurations for {{ $website->domain }}?', 'Yes, redeploy!', 'question').then(confirmed => { if(confirmed) document.getElementById('redeploy-form-{{ $website->id }}').submit(); })">
+                                                <i class="bi bi-rocket-takeoff-fill"></i>
+                                            </button>
                                             <a href="{{ route('websites.edit', $website) }}" 
-                                               class="btn btn-outline-secondary"
+                                               class="btn btn-outline-primary"
                                                title="Edit">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <button type="button"
-                                                    class="btn btn-outline-info"
-                                                    title="Redeploy Configuration"
-                                                    onclick="confirmAction('Redeploy Configuration', 'Regenerate and redeploy Nginx and PHP-FPM configurations for {{ $website->domain }}?', 'Yes, redeploy!', 'question').then(confirmed => { if(confirmed) document.getElementById('redeploy-form-{{ $website->id }}').submit(); })">
-                                                <i class="bi bi-arrow-clockwise"></i>
-                                            </button>
                                             <button type="button" 
                                                     class="btn btn-outline-danger"
                                                     data-bs-toggle="modal" 

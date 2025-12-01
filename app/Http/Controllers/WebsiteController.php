@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\DeployNginxConfig;
 use App\Jobs\RequestSslCertificate;
 use App\Models\Website;
+use App\Services\CloudflareService;
 use App\Services\Pm2Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -76,6 +77,11 @@ class WebsiteController extends Controller
         $validated['is_active'] = $request->boolean('is_active', true);
 
         $website = Website::create($validated);
+
+        // Auto-create DNS record if Cloudflare is enabled
+        if (config('services.cloudflare.enabled') && config('services.cloudflare.api_token')) {
+            $this->createDnsRecord($website);
+        }
 
         // Dispatch job to deploy Nginx configuration
         dispatch(new DeployNginxConfig($website));
@@ -162,6 +168,11 @@ class WebsiteController extends Controller
     public function destroy(Website $website)
     {
         $type = $website->project_type;
+        
+        // Delete DNS record if exists
+        if ($website->cloudflare_zone_id && $website->cloudflare_record_id) {
+            $this->deleteDnsRecord($website);
+        }
         
         // Delete Nginx configuration
         $nginxService = app(\App\Services\NginxService::class);
@@ -315,5 +326,119 @@ class WebsiteController extends Controller
         
         // Default path (you can customize this)
         return '/var/www/' . $path;
+    }
+
+    /**
+     * Create DNS record for website.
+     */
+    protected function createDnsRecord(Website $website): void
+    {
+        try {
+            $cloudflare = app(CloudflareService::class);
+            
+            if (!$cloudflare->isConfigured()) {
+                return;
+            }
+
+            // Get server IP
+            $serverIp = $cloudflare->getServerIp();
+            if (!$serverIp) {
+                \Log::warning('Failed to detect server IP for DNS record', [
+                    'website_id' => $website->id,
+                ]);
+                return;
+            }
+
+            // Update DNS status to pending
+            $website->update([
+                'dns_status' => 'pending',
+                'server_ip' => $serverIp,
+            ]);
+
+            // Get zone ID
+            $zoneId = $cloudflare->getZoneId($website->domain);
+            if (!$zoneId) {
+                $website->update([
+                    'dns_status' => 'failed',
+                    'dns_error' => 'Cloudflare zone not found for domain',
+                ]);
+                return;
+            }
+
+            // Create DNS record
+            $result = $cloudflare->createDnsRecord(
+                $zoneId,
+                $website->domain,
+                $serverIp,
+                config('services.cloudflare.proxied', false)
+            );
+
+            if ($result['success']) {
+                $website->update([
+                    'cloudflare_zone_id' => $zoneId,
+                    'cloudflare_record_id' => $result['record_id'],
+                    'dns_status' => 'active',
+                    'dns_error' => null,
+                    'dns_last_synced_at' => now(),
+                ]);
+
+                \Log::info('DNS record created automatically', [
+                    'website_id' => $website->id,
+                    'domain' => $website->domain,
+                    'ip' => $serverIp,
+                ]);
+            } else {
+                $website->update([
+                    'cloudflare_zone_id' => $zoneId,
+                    'dns_status' => 'failed',
+                    'dns_error' => $result['error'] ?? 'Unknown error',
+                ]);
+
+                \Log::error('Failed to create DNS record automatically', [
+                    'website_id' => $website->id,
+                    'domain' => $website->domain,
+                    'error' => $result['error'] ?? 'Unknown error',
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Exception creating DNS record', [
+                'website_id' => $website->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            $website->update([
+                'dns_status' => 'failed',
+                'dns_error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Delete DNS record for website.
+     */
+    protected function deleteDnsRecord(Website $website): void
+    {
+        try {
+            $cloudflare = app(CloudflareService::class);
+            
+            if (!$cloudflare->isConfigured()) {
+                return;
+            }
+
+            $cloudflare->deleteDnsRecord(
+                $website->cloudflare_zone_id,
+                $website->cloudflare_record_id
+            );
+
+            \Log::info('DNS record deleted automatically', [
+                'website_id' => $website->id,
+                'domain' => $website->domain,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to delete DNS record', [
+                'website_id' => $website->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

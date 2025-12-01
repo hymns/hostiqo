@@ -10,9 +10,9 @@
             <i class="bi bi-pencil me-1"></i> Edit
         </a>
         <button type="button" 
-                class="btn btn-outline-info"
+                class="btn btn-outline-primary"
                 onclick="confirmAction('Redeploy Configuration', 'Regenerate and redeploy Nginx and PHP-FPM configurations for {{ $website->domain }}?', 'Yes, redeploy!', 'question').then(confirmed => { if(confirmed) document.getElementById('redeploy-form').submit(); })">
-            <i class="bi bi-arrow-clockwise me-1"></i> Redeploy
+            <i class="bi bi-rocket-takeoff-fill me-1"></i> Redeploy
         </button>
         <button type="button" 
                 class="btn btn-outline-danger"
@@ -107,7 +107,7 @@
                                 </span>
                             @else
                                 <span class="badge bg-secondary">
-                                    <i class="bi bi-shield me-1"></i> No
+                                    <i class="bi bi-shield-x me-1"></i> No
                                 </span>
                             @endif
                         </div>
@@ -123,6 +123,27 @@
                             </span>
                         </div>
                     </div>
+
+                    @if(config('services.cloudflare.enabled'))
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <strong>CloudFlare DNS Status:</strong>
+                            </div>
+                            <div class="col-md-8">
+                                <span class="badge bg-{{ $website->dns_status_badge }}">
+                                    {{ ucfirst($website->dns_status) }}
+                                </span>
+                                @if($website->dns_status === 'active' && $website->server_ip)
+                                    <small class="text-muted ms-2">→ {{ $website->server_ip }}</small>
+                                @endif
+                                @if($website->dns_error)
+                                    <div class="alert alert-danger alert-sm mt-2 mb-0">
+                                        <small>{{ $website->dns_error }}</small>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
 
                     @if($website->project_type === 'node')
                         <div class="row mb-3">
@@ -202,15 +223,25 @@
                         <a href="{{ route('websites.index', ['type' => $website->project_type]) }}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left me-1"></i> Back to List
                         </a>
-                        <div class="btn-group">
+                        <div class="d-flex gap-2">
                             <form action="{{ route('websites.toggle-ssl', $website) }}" method="POST" class="d-inline">
                                 @csrf
                                 @method('POST')
-                                <button type="submit" class="btn btn-{{ $website->ssl_enabled ? 'success' : 'outline-secondary' }}">
+                                <button type="submit" class="btn btn-{{ $website->ssl_enabled ? 'success' : 'primary' }}">
                                     <i class="bi bi-shield-check me-1"></i> 
                                     {{ $website->ssl_enabled ? 'SSL Enabled' : 'Enable SSL' }}
                                 </button>
                             </form>
+                            
+                            @if(config('services.cloudflare.enabled'))
+                                <form action="{{ route('websites.dns-sync', $website) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-{{ $website->dns_status === 'active' ? 'info' : 'warning' }}" title="Sync DNS record with Cloudflare">
+                                        <i class="bi bi-hdd-network me-1"></i> 
+                                        {{ $website->dns_status === 'active' ? 'DNS Synced' : 'Sync DNS' }}
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     </div>
                 </div>

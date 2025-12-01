@@ -9,7 +9,7 @@
         <form action="{{ route('deployments.trigger', $webhook) }}" method="POST" class="d-inline">
             @csrf
             <button type="submit" class="btn btn-success" {{ !$webhook->is_active ? 'disabled' : '' }}>
-                <i class="bi bi-arrow-repeat me-1"></i> Deploy Now
+                <i class="bi bi-rocket-takeoff-fill me-1"></i> Deploy Now
             </button>
         </form>
         <a href="{{ route('webhooks.edit', $webhook) }}" class="btn btn-primary">

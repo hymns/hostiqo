@@ -146,8 +146,8 @@
                                             <a href="{{ route('databases.show', $database) }}" class="btn btn-outline-primary" title="View">
                                                 <i class="bi bi-search"></i>
                                             </a>
-                                            <a href="{{ route('databases.change-password', $database) }}" class="btn btn-outline-warning" title="Change Password">
-                                                <i class="bi bi-key"></i>
+                                            <a href="{{ route('databases.change-password', $database) }}" class="btn btn-outline-primary" title="Change Password">
+                                                <i class="bi bi-lock-fill"></i>
                                             </a>
                                             <button type="button" class="btn btn-outline-danger" title="Delete" 
                                                     onclick="if(confirmDelete('Are you sure you want to delete this database? This action cannot be undone!')) { document.getElementById('delete-form-{{ $database->id }}').submit(); }">

@@ -7,7 +7,7 @@
 @section('page-actions')
     <div class="d-flex gap-2">
         <a href="{{ route('databases.change-password', $database) }}" class="btn btn-warning">
-            <i class="bi bi-key me-1"></i> Change Password
+            <i class="bi bi-lock-fill me-1"></i> Change Password
         </a>
         <a href="{{ route('databases.edit', $database) }}" class="btn btn-secondary">
             <i class="bi bi-pencil me-1"></i> Edit
@@ -150,7 +150,7 @@
                 <div class="card-body">
                     <div class="d-grid gap-2">
                         <a href="{{ route('databases.change-password', $database) }}" class="btn btn-warning">
-                            <i class="bi bi-key me-2"></i>Change Password
+                            <i class="bi bi-lock-fill me-2"></i>Change Password
                         </a>
                         <a href="{{ route('databases.edit', $database) }}" class="btn btn-secondary">
                             <i class="bi bi-pencil me-2"></i>Edit Description

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\CloudflareController;
 use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeploymentController;
@@ -76,6 +77,16 @@ Route::middleware('auth')->group(function () {
         ->name('websites.pm2-stop');
     Route::post('websites/{website}/pm2-restart', [WebsiteController::class, 'pm2Restart'])
         ->name('websites.pm2-restart');
+    
+    // Cloudflare DNS Management
+    Route::post('websites/{website}/dns-sync', [CloudflareController::class, 'sync'])
+        ->name('websites.dns-sync');
+    Route::delete('websites/{website}/dns-remove', [CloudflareController::class, 'remove'])
+        ->name('websites.dns-remove');
+    Route::get('cloudflare/verify-token', [CloudflareController::class, 'verifyToken'])
+        ->name('cloudflare.verify-token');
+    Route::get('cloudflare/server-ip', [CloudflareController::class, 'getServerIp'])
+        ->name('cloudflare.server-ip');
 });
 
 // Webhook Handler (API endpoint for Git providers - No Auth Required)

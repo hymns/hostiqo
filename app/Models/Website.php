@@ -27,6 +27,12 @@ class Website extends Model
         'ssl_last_checked_at',
         'ssl_auto_renew',
         'pm2_status',
+        'cloudflare_zone_id',
+        'cloudflare_record_id',
+        'server_ip',
+        'dns_status',
+        'dns_error',
+        'dns_last_synced_at',
     ];
 
     protected $casts = [
@@ -37,6 +43,7 @@ class Website extends Model
         'ssl_issued_at' => 'datetime',
         'ssl_expires_at' => 'datetime',
         'ssl_last_checked_at' => 'datetime',
+        'dns_last_synced_at' => 'datetime',
     ];
 
     /**
@@ -173,5 +180,27 @@ class Website extends Model
         }
 
         return 'success';
+    }
+
+    /**
+     * Get the DNS status badge color
+     */
+    public function getDnsStatusBadgeAttribute(): string
+    {
+        return match($this->dns_status) {
+            'active' => 'success',
+            'pending' => 'warning',
+            'failed' => 'danger',
+            'none' => 'secondary',
+            default => 'secondary',
+        };
+    }
+
+    /**
+     * Check if DNS is configured
+     */
+    public function hasDnsConfigured(): bool
+    {
+        return !empty($this->cloudflare_zone_id) && !empty($this->cloudflare_record_id);
     }
 }

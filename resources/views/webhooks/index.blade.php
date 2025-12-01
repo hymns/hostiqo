@@ -84,7 +84,7 @@
                                             <a href="{{ route('webhooks.show', $webhook) }}" class="btn btn-outline-primary" title="View">
                                                 <i class="bi bi-search"></i>
                                             </a>
-                                            <a href="{{ route('webhooks.edit', $webhook) }}" class="btn btn-outline-secondary" title="Edit">
+                                            <a href="{{ route('webhooks.edit', $webhook) }}" class="btn btn-outline-primary" title="Edit">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
                                             <button type="button" class="btn btn-outline-danger" title="Delete" 
