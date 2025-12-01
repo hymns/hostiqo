@@ -380,7 +380,7 @@ POOL;
     /**
      * Test PHP-FPM configuration
      */
-    public function testConfig(string $phpVersion): array
+    public function testConfig(string $phpVersion, ?string $poolConfigPath = null): array
     {
         if ($this->isLocal) {
             Log::info("[LOCAL] PHP-FPM config test (skipped) for PHP {$phpVersion}");
@@ -390,7 +390,15 @@ POOL;
             ];
         }
         
-        $result = Process::run("sudo php-fpm{$phpVersion} -t");
+        // Use full path to php-fpm binary as required by sudoers
+        $command = "sudo /usr/sbin/php-fpm{$phpVersion} -t";
+        
+        // If specific pool config path provided, test that specific config
+        if ($poolConfigPath && file_exists($poolConfigPath)) {
+            $command .= " -y {$poolConfigPath}";
+        }
+        
+        $result = Process::run($command);
 
         return [
             'success' => $result->successful(),

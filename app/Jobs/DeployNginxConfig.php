@@ -44,15 +44,22 @@ class DeployNginxConfig implements ShouldQueue
                     Log::info('PHP-FPM pool config created', [
                         'website_id' => $this->website->id,
                         'pool_name' => $phpFpmResult['pool_name'] ?? 'N/A',
-                        'socket_path' => $phpFpmResult['socket_path'] ?? 'N/A'
+                        'socket_path' => $phpFpmResult['socket_path'] ?? 'N/A',
+                        'filepath' => $phpFpmResult['filepath'] ?? 'N/A'
                     ]);
 
-                    // Test and reload PHP-FPM
-                    $testResult = $phpFpmService->testConfig($this->website->php_version);
+                    // Test and reload PHP-FPM with specific pool config
+                    $poolConfigPath = $phpFpmResult['filepath'] ?? null;
+                    $testResult = $phpFpmService->testConfig($this->website->php_version, $poolConfigPath);
+                    
                     if ($testResult['success']) {
+                        Log::info('PHP-FPM config test passed', [
+                            'website_id' => $this->website->id,
+                            'output' => $testResult['output']
+                        ]);
                         $phpFpmService->reloadService($this->website->php_version);
                     } else {
-                        throw new \Exception("PHP-FPM config test failed: " . $testResult['output']);
+                        throw new \Exception("PHP-FPM config test failed: " . ($testResult['output'] ?? 'Unknown error'));
                     }
                 } else {
                     Log::warning('PHP-FPM pool config creation failed', [

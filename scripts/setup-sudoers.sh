@@ -90,6 +90,11 @@ $WEB_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /var/log/php8.2-fpm[/]*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /var/log/php8.3-fpm[/]*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /var/log/php8.4-fpm[/]*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/chown -R $WEB_USER?$WEB_USER /var/log/php[78].[0-9]*-fpm[/]*
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/touch /var/log/php[78].[0-9]*-fpm[/]*
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/touch /var/log/php-fpm.log
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/chown $WEB_USER?$WEB_USER /var/log/php-fpm.log
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/chmod [0-9]* /var/log/php[78].[0-9]*-fpm[/]*
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/chmod [0-9]* /var/log/php-fpm.log
 
 # File Management - PHP-FPM pool configs
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/cp /tmp/[a-z]* /etc/php/7.4/fpm/pool.d/[a-z]*.conf
