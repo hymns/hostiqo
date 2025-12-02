@@ -269,6 +269,7 @@ MAIL_FROM_NAME="${APP_NAME}"
 **12. Run database migrations**
 ```bash
 cd /var/www/webhook-manager
+sudo -u www-data php artisan optimize:clear
 sudo -u www-data php artisan migrate --force
 ```
 
