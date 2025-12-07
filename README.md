@@ -333,6 +333,216 @@ autostart=true
 autorestart=true
 ```
 
+### Alert & Monitoring System
+
+Monitor system metrics and receive notifications when thresholds are exceeded.
+
+#### Features
+
+- 🚨 **Real-time Monitoring** - Automatic metric checking every minute
+- 📊 **Metric Types** - CPU, Memory, Disk usage, and Service status monitoring
+- 🔔 **Multi-Channel Notifications** - Email and Slack webhook support
+- ⚙️ **Customizable Thresholds** - Define your own alert conditions
+- 🎯 **Smart Alerting** - Duration-based triggers to prevent false alarms
+- 📝 **Alert History** - Track and resolve triggered alerts
+
+#### Creating Alert Rules
+
+1. Navigate to **Alerts & Monitoring** → **Create Alert Rule**
+2. Configure your alert:
+   - **Name:** e.g., "High CPU Alert"
+   - **Metric:** Choose from CPU, Memory, Disk, or Service
+   - **Condition:** `>`, `<`, `==`, `!=`
+   - **Threshold:** e.g., `80` (for 80% CPU usage)
+   - **Duration:** Minutes before alerting (prevents false alarms)
+   - **Channel:** Email, Slack, or Both
+
+#### Slack Integration
+
+**Setting Up Slack Notifications:**
+
+1. **Create Slack Incoming Webhook:**
+   - Go to your Slack workspace settings
+   - Navigate to: **Apps** → **Incoming Webhooks**
+   - Or visit: https://api.slack.com/messaging/webhooks
+   - Click **Add to Slack**
+   - Choose channel for notifications (e.g., `#alerts`, `#monitoring`)
+   - Copy the Webhook URL (looks like: `https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXX`)
+
+2. **Configure Alert Rule with Slack:**
+   - In the alert rule form, select **Slack** or **Both** for notification channel
+   - Paste your Slack Webhook URL in the **Slack Webhook URL** field
+   - Save the alert rule
+
+3. **Test Your Slack Integration:**
+   ```bash
+   # Quick test via curl
+   curl -X POST YOUR_WEBHOOK_URL \
+     -H 'Content-Type: application/json' \
+     -d '{"text":"Test Alert from Git Webhook Manager 🚀"}'
+   ```
+
+**Slack Notification Format:**
+
+Alerts sent to Slack include:
+- 🔴 **Critical** alerts (red color)
+- ⚠️ **Warning** alerts (yellow color)
+- ℹ️ **Info** alerts (green color)
+- Alert title and message
+- Timestamp
+- Formatted as rich attachments with colors
+
+**Example Slack Message:**
+```
+🚨 Alert: High CPU Usage
+━━━━━━━━━━━━━━━━━━━━
+CPU is 85% (threshold: 80%)
+━━━━━━━━━━━━━━━━━━━━
+Git Webhook Manager
+Today at 2:30 PM
+```
+
+#### Email Notifications
+
+**Configuring Email:**
+
+Set up email in your `.env` file:
+
+```bash
+# Email Configuration
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=noreply@webhook.com
+MAIL_FROM_NAME="Git Webhook Manager"
+```
+
+**Supported Mail Drivers:**
+- SMTP (Gmail, Outlook, SendGrid, Mailgun)
+- Mailgun API
+- Postmark
+- Amazon SES
+- Sendmail
+- Log (for testing)
+
+**For Gmail:**
+1. Enable 2-factor authentication
+2. Generate App Password: https://myaccount.google.com/apppasswords
+3. Use App Password in `MAIL_PASSWORD`
+
+**Email Notification Format:**
+
+```
+🔴 Alert: High Memory Usage
+
+Memory is 92% (threshold: 90%)
+
+Time: 2024-12-07 14:30:00
+```
+
+#### Example Alert Configurations
+
+**1. High CPU Alert:**
+```
+Name: High CPU Usage
+Metric: CPU
+Condition: > (greater than)
+Threshold: 80
+Duration: 5 minutes
+Channel: Both (Email + Slack)
+```
+
+**2. Low Disk Space:**
+```
+Name: Low Disk Space Warning
+Metric: Disk
+Condition: > (greater than)
+Threshold: 90
+Duration: 10 minutes
+Channel: Email
+```
+
+**3. Service Down Alert:**
+```
+Name: Nginx Service Down
+Metric: Service
+Condition: != (not equal)
+Threshold: 1
+Service Name: nginx
+Duration: 1 minute
+Channel: Slack
+```
+
+**4. Memory Spike:**
+```
+Name: Memory Threshold Exceeded
+Metric: Memory
+Condition: > (greater than)
+Threshold: 85
+Duration: 3 minutes
+Channel: Both
+```
+
+#### How It Works
+
+```
+Every 2 minutes: SystemMonitorJob collects metrics
+    ↓
+Every 1 minute: CheckAlertsJob checks rules
+    ↓
+If condition met for duration → Trigger alert
+    ↓
+Send notifications (Email/Slack)
+    ↓
+Store alert in database
+    ↓
+User can view and resolve in UI
+```
+
+#### Alert Severity Levels
+
+Alerts are automatically categorized by severity:
+
+- **Critical (🔴)** - Threshold exceeded by >20% or service is down
+- **Warning (⚠️)** - Threshold exceeded by 10-20%
+- **Info (ℹ️)** - Threshold exceeded by <10%
+
+#### Managing Alerts
+
+**View Alerts:**
+- Navigate to **Alerts & Monitoring**
+- See recent triggered alerts
+- Filter by severity and status
+
+**Resolve Alerts:**
+- Click **Resolve** button on an alert
+- Marks alert as resolved
+- Prevents duplicate notifications
+
+**Alert History:**
+- All alerts are stored with timestamps
+- Track patterns and trends
+- Audit alert activity
+
+#### Requirements
+
+The scheduler must be running for alert checking:
+
+```bash
+# Development
+php artisan schedule:work
+
+# Production (use Supervisor)
+[program:webhook-scheduler]
+command=php /path/to/artisan schedule:work
+user=www-data
+autostart=true
+autorestart=true
+```
+
 ### Managing Websites (Virtual Hosts)
 
 #### Creating a PHP Website

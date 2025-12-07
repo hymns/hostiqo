@@ -23,8 +23,6 @@
                     <option value="laravel" {{ $logType === 'laravel' ? 'selected' : '' }}>Laravel</option>
                     <option value="nginx-access" {{ $logType === 'nginx-access' ? 'selected' : '' }}>Nginx Access</option>
                     <option value="nginx-error" {{ $logType === 'nginx-error' ? 'selected' : '' }}>Nginx Error</option>
-                    <option value="apache-access" {{ $logType === 'apache-access' ? 'selected' : '' }}>Apache Access</option>
-                    <option value="apache-error" {{ $logType === 'apache-error' ? 'selected' : '' }}>Apache Error</option>
                     <option value="system" {{ $logType === 'system' ? 'selected' : '' }}>System (syslog)</option>
                 </select>
             </div>

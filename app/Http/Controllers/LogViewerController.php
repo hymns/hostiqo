@@ -28,12 +28,6 @@ class LogViewerController extends Controller
             case 'nginx-error':
                 $logFile = '/var/log/nginx/error.log';
                 break;
-            case 'apache-access':
-                $logFile = '/var/log/apache2/access.log';
-                break;
-            case 'apache-error':
-                $logFile = '/var/log/apache2/error.log';
-                break;
             case 'system':
                 $logFile = '/var/log/syslog';
                 break;
