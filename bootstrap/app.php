@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\CheckAlertsJob;
 use App\Jobs\CheckSslCertificates;
 use App\Jobs\RenewSslCertificates;
 use App\Jobs\SystemMonitorJob;
@@ -28,6 +29,12 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->name('system-monitor')
                 ->withoutOverlapping();
         }
+
+        // Alert checking - runs every minute
+        $schedule->job(new CheckAlertsJob())
+            ->everyMinute()
+            ->name('check-alerts')
+            ->withoutOverlapping();
 
         // SSL certificate renewal - runs daily at 2:30 AM
         $schedule->job(new RenewSslCertificates())
