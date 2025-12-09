@@ -152,6 +152,12 @@ $WEB_USER ALL=(ALL) NOPASSWD: /usr/sbin/ufw *
 # Crontab Management
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/crontab
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/crontab *
+
+# Log File Access - For Log Viewer
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/tail -n * /var/log/*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/tail /var/log/*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/cat /var/log/*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/truncate -s 0 *
 EOF
 
 # Setup PHP-FPM logs
@@ -228,6 +234,7 @@ echo "  • UFW firewall management"
 echo "  • Crontab management"
 echo "  • Git deployments"
 echo "  • Deployment script execution"
+echo "  • Log file access (tail, cat, truncate for Log Viewer)"
 echo ""
 print_info "Security file: $SUDOERS_FILE"
 print_info "Permissions: 0440 (read-only)"

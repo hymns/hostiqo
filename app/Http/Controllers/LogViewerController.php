@@ -23,6 +23,12 @@ class LogViewerController extends Controller
             case 'laravel':
                 $logFile = storage_path('logs/laravel.log');
                 break;
+            case 'queue':
+                $logFile = storage_path('logs/queue-worker.log');
+                break;
+            case 'scheduler':
+                $logFile = storage_path('logs/scheduler.log');
+                break;
             case 'nginx-access':
                 $logFile = '/var/log/nginx/access.log';
                 break;
@@ -38,8 +44,14 @@ class LogViewerController extends Controller
         }
 
         if ($logFile) {
+            // Determine if we need sudo (for system logs outside storage/)
+            $needsSudo = !str_starts_with($logFile, storage_path());
+            $command = $needsSudo 
+                ? "sudo tail -n 1000 {$logFile}" 
+                : "tail -n 1000 {$logFile}";
+            
             // Read last 1000 lines using Process (bypasses open_basedir restrictions)
-            $result = Process::run("tail -n 1000 {$logFile}");
+            $result = Process::run($command);
             
             if ($result->successful()) {
                 $content = $result->output();
@@ -68,11 +80,24 @@ class LogViewerController extends Controller
     }
 
     /**
-     * Clear Laravel log
+     * Clear log file
      */
-    public function clear()
+    public function clear(Request $request)
     {
-        $logFile = storage_path('logs/laravel.log');
+        $logType = $request->input('type', 'laravel');
+        
+        // Determine log file path
+        $logFile = match($logType) {
+            'queue' => storage_path('logs/queue-worker.log'),
+            'scheduler' => storage_path('logs/scheduler.log'),
+            default => storage_path('logs/laravel.log'),
+        };
+        
+        $logName = match($logType) {
+            'queue' => 'Queue Worker',
+            'scheduler' => 'Scheduler',
+            default => 'Laravel',
+        };
         
         try {
             // Try to check if file exists (may fail with open_basedir restrictions)
@@ -83,7 +108,7 @@ class LogViewerController extends Controller
                 File::put($logFile, '');
             }
         } catch (\Exception $e) {
-            // If open_basedir restriction, try to clear anyway via Process
+            // If open_basedir restriction, try to clear anyway via Process with sudo
             $result = Process::run("sudo truncate -s 0 {$logFile}");
             
             if ($result->failed()) {
@@ -91,6 +116,6 @@ class LogViewerController extends Controller
             }
         }
 
-        return back()->with('success', 'Laravel log cleared successfully');
+        return back()->with('success', $logName . ' log cleared successfully');
     }
 }
