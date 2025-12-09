@@ -4,7 +4,12 @@
 
 @section('content')
 <div class="container-fluid py-4">
-    <div class="d-flex justify-content-end align-items-center mb-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h1 class="page-title mb-2">Services Management</h1>
+            <p class="page-subtitle text-muted mb-0">Manage system services</p>
+        </div>
         <button class="btn btn-outline-primary" onclick="location.reload()">
             <i class="bi bi-arrow-clockwise me-2"></i> Refresh
         </button>
@@ -134,6 +139,18 @@
 </div>
 
 <style>
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.page-subtitle {
+    font-size: 0.95rem;
+    color: #6b7280;
+}
+
 .service-card {
     transition: transform 0.2s, box-shadow 0.2s;
 }
