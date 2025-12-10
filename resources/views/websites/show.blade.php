@@ -98,7 +98,7 @@
                         </div>
                         <div class="col-md-8">
                             @if($website->ssl_enabled)
-                                <span class="badge badge-paste-green">
+                                <span class="badge badge-pastel-green">
                                     <i class="bi bi-shield-check me-1"></i> Yes
                                 </span>
                             @else
@@ -412,9 +412,6 @@
                             @method('POST')
                             <button type="submit" class="action-btn {{ $website->ssl_enabled ? 'active' : '' }}" title="{{ $website->ssl_enabled ? 'SSL Enabled' : 'Enable SSL' }}">
                                 <i class="bi bi-shield-check"></i>
-                                @if($website->ssl_enabled)
-                                    <span class="status-badge"></span>
-                                @endif
                             </button>
                         </form>
                         
