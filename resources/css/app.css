@@ -1116,18 +1116,18 @@ canvas {
 }
 
 .file-manager-size {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
 }
 
 .file-manager-modified {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: #6b7280;
 }
 
 .file-manager-breadcrumb {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
 }
 
 .file-manager-breadcrumb .breadcrumb-item a {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
 }
