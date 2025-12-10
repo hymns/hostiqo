@@ -436,3 +436,31 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const domainInput = document.getElementById('domain');
+    const rootPathInput = document.getElementById('root_path');
+
+    // Auto-generate root path from domain (only if root_path is empty)
+    domainInput.addEventListener('input', function() {
+        // Only auto-fill if root path is currently empty
+        if (rootPathInput.value === '') {
+            let domain = this.value.trim();
+            
+            if (domain) {
+                // Remove www. prefix if exists
+                domain = domain.replace(/^www\./, '');
+                
+                // Replace dots with underscores
+                const path = domain.replace(/\./g, '_');
+                
+                // Generate full path
+                rootPathInput.value = '/var/www/' + path;
+            }
+        }
+    });
+});
+</script>
+@endpush

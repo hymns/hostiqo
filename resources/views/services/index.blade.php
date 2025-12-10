@@ -138,35 +138,6 @@
     @endif
 </div>
 
-<style>
-.service-card {
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.service-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-}
-
-.service-icon {
-    width: 50px;
-    height: 50px;
-    border-radius: 10px;
-    background: #e8f0ffff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #6b7280;
-    font-size: 1.5rem;
-}
-
-.service-info {
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 8px;
-}
-</style>
-
 @push('scripts')
 <script>
 // Hidden forms for service actions

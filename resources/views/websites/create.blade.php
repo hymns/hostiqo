@@ -298,3 +298,48 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const domainInput = document.getElementById('domain');
+    const rootPathInput = document.getElementById('root_path');
+    let manuallyEdited = false;
+
+    // Track if user manually edited root path
+    rootPathInput.addEventListener('input', function() {
+        if (this.value !== '') {
+            manuallyEdited = true;
+        }
+    });
+
+    // Auto-generate root path from domain
+    domainInput.addEventListener('input', function() {
+        // Only auto-generate if user hasn't manually edited the root path
+        if (!manuallyEdited || rootPathInput.value === '') {
+            let domain = this.value.trim();
+            
+            if (domain) {
+                // Remove www. prefix if exists
+                domain = domain.replace(/^www\./, '');
+                
+                // Replace dots with underscores
+                const path = domain.replace(/\./g, '_');
+                
+                // Generate full path
+                rootPathInput.value = '/var/www/' + path;
+            } else {
+                rootPathInput.value = '';
+            }
+        }
+    });
+
+    // Reset manual edit flag when root path is cleared
+    rootPathInput.addEventListener('keydown', function(e) {
+        if ((e.key === 'Backspace' || e.key === 'Delete') && this.value.length <= 1) {
+            manuallyEdited = false;
+        }
+    });
+});
+</script>
+@endpush

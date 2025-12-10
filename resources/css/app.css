@@ -854,3 +854,236 @@ canvas {
     color: #6b7280;
     flex-shrink: 0;
 }
+
+/* ============================================
+   Service Manager Styles
+   ============================================ */
+.service-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.service-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.service-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    background: #e8f0ffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-size: 1.5rem;
+}
+
+.service-info {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+/* Log Viewer Styles */
+.log-viewer {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 1.5rem;
+    border-radius: 0 0 0.375rem 0.375rem;
+    max-height: 600px;
+    overflow-y: auto;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    font-family: 'Courier New', monospace;
+}
+
+.log-viewer::-webkit-scrollbar {
+    width: 8px;
+}
+
+.log-viewer::-webkit-scrollbar-track {
+    background: #2d2d2d;
+}
+
+.log-viewer::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+.log-viewer::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
+/* ============================================
+   Website Card Styles (Index Page)
+   ============================================ */
+.website-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    margin-bottom: 1rem;
+    transition: box-shadow 0.2s;
+}
+
+.website-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.website-card-header {
+    padding: 1.25rem 1.5rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.website-card-body {
+    padding: 1.5rem;
+}
+
+.website-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #3c3c3cff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.website-domain {
+    color: #a5a5a5ff;
+    font-size: 0.75rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.website-domain:hover {
+    text-decoration: underline;
+}
+
+.status-badge.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.failed {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.chevron-icon {
+    transition: transform 0.2s;
+}
+
+.chevron-icon.expanded {
+    transform: rotate(90deg);
+}
+
+.deploy-btn {
+    background: #f0f0f0;
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1a1a1a;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.deploy-btn:hover {
+    background: #e0e0e0;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #6b7280;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    color: #5865f2;
+    border-bottom-color: #5865f2;
+}
+
+.tabs-container {
+    margin-bottom: 2rem;
+}
+
+/* App Cards Styles */
+.app-card {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: all 0.3s;
+    cursor: pointer;
+    position: relative;
+    border: 2px solid transparent;
+}
+
+.app-card:hover {
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    border-color: #5865f2;
+    transform: translateY(-4px);
+}
+
+.app-card-disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.app-card-disabled:hover {
+    transform: none;
+    border-color: transparent;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.app-card-icon {
+    font-size: 3.5rem;
+    color: #5865f2;
+    margin-bottom: 1rem;
+}
+
+.app-card-disabled .app-card-icon {
+    color: #9ca3af;
+}
+
+.app-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 0.5rem;
+}
+
+.app-card-desc {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 1rem;
+}
+
+.app-card-badge {
+    margin-top: 1rem;
+}
+
+.website-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: #e8f0ffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: #6b7280;
+    flex-shrink: 0;
+}

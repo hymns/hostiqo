@@ -33,35 +33,4 @@
         </div>
     </div>
 </div>
-
-<style>
-.log-viewer {
-    background: #1e1e1e;
-    color: #d4d4d4;
-    padding: 1.5rem;
-    border-radius: 0 0 0.375rem 0.375rem;
-    max-height: 600px;
-    overflow-y: auto;
-    font-size: 0.85rem;
-    line-height: 1.6;
-    font-family: 'Courier New', monospace;
-}
-
-.log-viewer::-webkit-scrollbar {
-    width: 8px;
-}
-
-.log-viewer::-webkit-scrollbar-track {
-    background: #2d2d2d;
-}
-
-.log-viewer::-webkit-scrollbar-thumb {
-    background: #555;
-    border-radius: 4px;
-}
-
-.log-viewer::-webkit-scrollbar-thumb:hover {
-    background: #777;
-}
-</style>
 @endsection
