@@ -701,7 +701,7 @@ HTML;
      */
     protected function getConfigFilename(Website $website): string
     {
-        return $website->domain . '.conf';
+        return $website->domain;
     }
 
     /**
