@@ -35,7 +35,8 @@ class FileManagerService
 
         try {
             // Get directory listing with details
-            $result = Process::run("ls -lAh {$path}");
+            $escapedPath = escapeshellarg($path);
+            $result = Process::run("ls -lAh {$escapedPath}");
 
             if ($result->failed()) {
                 if (str_contains($result->errorOutput(), 'No such file or directory')) {
@@ -63,15 +64,18 @@ class FileManagerService
         $this->validatePath($path);
 
         try {
+            // Escape path for shell command
+            $escapedPath = escapeshellarg($path);
+            
             // Check if file exists
-            $checkResult = Process::run("sudo test -f {$path}");
+            $checkResult = Process::run("sudo test -f {$escapedPath}");
 
             if ($checkResult->failed()) {
                 throw new Exception("File not found or not readable");
             }
 
             // Read file content with sudo (limit to 10MB for safety)
-            $result = Process::run("sudo head -c 10485760 {$path}");
+            $result = Process::run("sudo head -c 10485760 {$escapedPath}");
 
             if ($result->failed()) {
                 throw new Exception("Failed to read file: " . $result->errorOutput());
@@ -95,24 +99,26 @@ class FileManagerService
         try {
             // Create temporary file with content
             $tempFile = '/tmp/fm_' . uniqid() . '.tmp';
+            $escapedTempFile = escapeshellarg($tempFile);
+            $escapedPath = escapeshellarg($path);
             
             // Write content to temp file (escape content properly)
             $escapedContent = base64_encode($content);
-            $writeResult = Process::run("echo '{$escapedContent}' | base64 -d > {$tempFile}");
+            $writeResult = Process::run("echo '{$escapedContent}' | base64 -d > {$escapedTempFile}");
 
             if ($writeResult->failed()) {
                 throw new Exception("Failed to create temp file");
             }
 
             // Move temp file to target with sudo
-            $moveResult = Process::run("sudo mv {$tempFile} {$path}");
+            $moveResult = Process::run("sudo mv {$escapedTempFile} {$escapedPath}");
             
             if ($moveResult->failed()) {
                 throw new Exception("Failed to move file: " . $moveResult->errorOutput());
             }
             
             // Set readable permissions for created files
-            Process::run("sudo chmod 644 {$path}");
+            Process::run("sudo chmod 644 {$escapedPath}");
 
             return true;
 
@@ -130,7 +136,8 @@ class FileManagerService
         $this->validatePath($path);
 
         try {
-            $command = $recursive ? "sudo rm -rf {$path}" : "sudo rm {$path}";
+            $escapedPath = escapeshellarg($path);
+            $command = $recursive ? "sudo rm -rf {$escapedPath}" : "sudo rm {$escapedPath}";
             $result = Process::run($command);
 
             if ($result->failed()) {
@@ -153,15 +160,17 @@ class FileManagerService
         $this->validatePath($path);
 
         try {
+            $escapedPath = escapeshellarg($path);
+            
             // Create directory with sudo
-            $result = Process::run("sudo mkdir -p {$path}");
+            $result = Process::run("sudo mkdir -p {$escapedPath}");
             
             if ($result->failed()) {
                 throw new Exception("Failed to create directory: " . $result->errorOutput());
             }
 
             // Verify directory exists
-            $checkResult = Process::run("sudo test -d {$path}");
+            $checkResult = Process::run("sudo test -d {$escapedPath}");
             if ($checkResult->failed()) {
                 throw new Exception("Directory was not created successfully");
             }
@@ -184,7 +193,9 @@ class FileManagerService
         $this->validatePath($newPath);
 
         try {
-            $result = Process::run("sudo mv {$oldPath} {$newPath}");
+            $escapedOldPath = escapeshellarg($oldPath);
+            $escapedNewPath = escapeshellarg($newPath);
+            $result = Process::run("sudo mv {$escapedOldPath} {$escapedNewPath}");
 
             if ($result->failed()) {
                 throw new Exception("Failed to rename: " . $result->errorOutput());
@@ -211,7 +222,8 @@ class FileManagerService
         }
 
         try {
-            $result = Process::run("sudo chmod {$permissions} {$path}");
+            $escapedPath = escapeshellarg($path);
+            $result = Process::run("sudo chmod {$permissions} {$escapedPath}");
 
             if ($result->failed()) {
                 throw new Exception("Failed to change permissions: " . $result->errorOutput());
@@ -232,7 +244,8 @@ class FileManagerService
         $path = $this->sanitizePath($path);
 
         try {
-            $result = Process::run("stat -c '%s|%a|%U|%G|%y' {$path}");
+            $escapedPath = escapeshellarg($path);
+            $result = Process::run("stat -c '%s|%a|%U|%G|%y' {$escapedPath}");
             
             if ($result->failed()) {
                 throw new Exception("File not found");
