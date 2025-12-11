@@ -87,6 +87,9 @@
                 <a class="nav-link {{ request()->routeIs('queues.*') ? 'active' : '' }}" href="{{ route('queues.index') }}">
                     <i class="bi bi-calendar2-check me-2"></i> Queues
                 </a>
+                <a class="nav-link {{ request()->routeIs('artisan.*') ? 'active' : '' }}" href="{{ route('artisan.index') }}">
+                    <i class="bi bi-code-slash me-2"></i> Artisan
+                </a>
                 <a class="nav-link {{ request()->routeIs('alerts.*') ? 'active' : '' }}" href="{{ route('alerts.index') }}">
                     <i class="bi bi-bell me-2"></i> Alerts
                 </a>

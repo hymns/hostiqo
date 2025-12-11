@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AlertController;
+use App\Http\Controllers\ArtisanController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CloudflareController;
 use App\Http\Controllers\CronJobController;
@@ -166,6 +167,19 @@ Route::middleware('auth')->group(function () {
     Route::post('services/restart', [ServiceManagerController::class, 'restart'])->name('services.restart');
     Route::post('services/reload', [ServiceManagerController::class, 'reload'])->name('services.reload');
     Route::get('services/logs', [ServiceManagerController::class, 'logs'])->name('services.logs');
+
+    // Artisan Commands
+    Route::get('artisan', [ArtisanController::class, 'index'])->name('artisan.index');
+    Route::post('artisan/optimize', [ArtisanController::class, 'optimize'])->name('artisan.optimize');
+    Route::post('artisan/cache-clear', [ArtisanController::class, 'cacheClear'])->name('artisan.cache-clear');
+    Route::post('artisan/config-clear', [ArtisanController::class, 'configClear'])->name('artisan.config-clear');
+    Route::post('artisan/config-cache', [ArtisanController::class, 'configCache'])->name('artisan.config-cache');
+    Route::post('artisan/route-clear', [ArtisanController::class, 'routeClear'])->name('artisan.route-clear');
+    Route::post('artisan/route-cache', [ArtisanController::class, 'routeCache'])->name('artisan.route-cache');
+    Route::post('artisan/view-clear', [ArtisanController::class, 'viewClear'])->name('artisan.view-clear');
+    Route::post('artisan/view-cache', [ArtisanController::class, 'viewCache'])->name('artisan.view-cache');
+    Route::post('artisan/clear-all', [ArtisanController::class, 'clearAll'])->name('artisan.clear-all');
+    Route::post('artisan/optimize-production', [ArtisanController::class, 'optimizeProduction'])->name('artisan.optimize-production');
 });
 
 // Webhook Handler (API endpoint for Git providers - No Auth Required)
