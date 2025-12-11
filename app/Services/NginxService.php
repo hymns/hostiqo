@@ -140,7 +140,6 @@ server {
 
     # PHP processing
     location ~ \.php$ {
-        try_files \$uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
         include snippets/fastcgi-php.conf;
         fastcgi_pass unix:{$socketPath};
