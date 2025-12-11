@@ -31,6 +31,7 @@ class Website extends Model
         'pm2_status',
         'cloudflare_zone_id',
         'cloudflare_record_id',
+        'cloudflare_www_record_id',
         'server_ip',
         'dns_status',
         'dns_error',

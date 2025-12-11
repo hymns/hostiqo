@@ -75,9 +75,36 @@ class CloudflareController extends Controller
             }
 
             if ($result['success']) {
+                // Also create/update www subdomain record
+                $wwwDomain = "www.{$website->domain}";
+                
+                if ($website->cloudflare_www_record_id) {
+                    // Update existing www record
+                    $wwwResult = $this->cloudflare->updateDnsRecord(
+                        $website->cloudflare_zone_id,
+                        $website->cloudflare_www_record_id,
+                        $wwwDomain,
+                        $serverIp,
+                        config('services.cloudflare.proxied', false)
+                    );
+                } else {
+                    // Create new www record
+                    $wwwResult = $this->cloudflare->createDnsRecord(
+                        $website->cloudflare_zone_id,
+                        $wwwDomain,
+                        $serverIp,
+                        config('services.cloudflare.proxied', false)
+                    );
+
+                    if ($wwwResult['success']) {
+                        $website->cloudflare_www_record_id = $wwwResult['record_id'];
+                    }
+                }
+
                 $website->update([
                     'cloudflare_zone_id' => $website->cloudflare_zone_id,
                     'cloudflare_record_id' => $website->cloudflare_record_id,
+                    'cloudflare_www_record_id' => $website->cloudflare_www_record_id,
                     'server_ip' => $serverIp,
                     'dns_status' => 'active',
                     'dns_error' => null,
@@ -87,10 +114,17 @@ class CloudflareController extends Controller
                 Log::info('DNS synced successfully', [
                     'website_id' => $website->id,
                     'domain' => $website->domain,
+                    'www_domain' => $wwwDomain,
                     'ip' => $serverIp,
+                    'www_success' => $wwwResult['success'] ?? false,
                 ]);
 
-                return back()->with('success', "DNS record synced successfully. {$website->domain} → {$serverIp}");
+                $message = "DNS records synced successfully. {$website->domain} → {$serverIp}";
+                if (isset($wwwResult['success']) && $wwwResult['success']) {
+                    $message .= " and {$wwwDomain} → {$serverIp}";
+                }
+
+                return back()->with('success', $message);
             } else {
                 throw new \Exception($result['error'] ?? 'Failed to sync DNS record');
             }
@@ -124,26 +158,44 @@ class CloudflareController extends Controller
         }
 
         try {
+            // Delete main domain record
             $result = $this->cloudflare->deleteDnsRecord(
                 $website->cloudflare_zone_id,
                 $website->cloudflare_record_id
             );
 
+            // Also delete www subdomain record if exists
+            $wwwDeleted = false;
+            if ($website->cloudflare_www_record_id) {
+                $wwwResult = $this->cloudflare->deleteDnsRecord(
+                    $website->cloudflare_zone_id,
+                    $website->cloudflare_www_record_id
+                );
+                $wwwDeleted = $wwwResult['success'] ?? false;
+            }
+
             if ($result['success']) {
                 $website->update([
                     'cloudflare_zone_id' => null,
                     'cloudflare_record_id' => null,
+                    'cloudflare_www_record_id' => null,
                     'dns_status' => 'none',
                     'dns_error' => null,
                     'server_ip' => null,
                 ]);
 
-                Log::info('DNS record removed', [
+                Log::info('DNS records removed', [
                     'website_id' => $website->id,
                     'domain' => $website->domain,
+                    'www_deleted' => $wwwDeleted,
                 ]);
 
-                return back()->with('success', 'DNS record removed successfully');
+                $message = 'DNS record removed successfully';
+                if ($wwwDeleted) {
+                    $message = 'DNS records removed successfully (including www subdomain)';
+                }
+
+                return back()->with('success', $message);
             } else {
                 throw new \Exception($result['error'] ?? 'Failed to remove DNS record');
             }
