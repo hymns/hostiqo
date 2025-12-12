@@ -15,6 +15,16 @@ class SupervisorService
      */
     public function generateConfig(SupervisorProgram $program): string
     {
+        $stdoutLogfileMaxBytes = $program->stdout_logfile_maxbytes;
+        if ($stdoutLogfileMaxBytes === null || $stdoutLogfileMaxBytes === '') {
+            $stdoutLogfileMaxBytes = 50 * 1024 * 1024;
+        }
+
+        $stdoutLogfileBackups = $program->stdout_logfile_backups;
+        if ($stdoutLogfileBackups === null || $stdoutLogfileBackups === '') {
+            $stdoutLogfileBackups = 10;
+        }
+
         $config = "[program:{$program->name}]\n";
         $config .= "command={$program->command}\n";
         $config .= "directory={$program->directory}\n";
@@ -26,11 +36,11 @@ class SupervisorService
         $config .= "startsecs={$program->startsecs}\n";
         $config .= "stopwaitsecs={$program->stopwaitsecs}\n";
         $config .= "stdout_logfile={$program->getLogFilePath()}\n";
-        $config .= "stdout_logfile_maxbytes={$program->stdout_logfile_maxbytes}\n";
-        $config .= "stdout_logfile_backups={$program->stdout_logfile_backups}\n";
-        $config .= "redirect_stderr={$program->redirect_stderr}\n";
-        $config .= "stopasgroup={$program->stopasgroup}\n";
-        $config .= "killasgroup={$program->killasgroup}\n";
+        $config .= "stdout_logfile_maxbytes={$stdoutLogfileMaxBytes}\n";
+        $config .= "stdout_logfile_backups={$stdoutLogfileBackups}\n";
+        $config .= "redirect_stderr=" . $this->toSupervisorBool($program->redirect_stderr, true) . "\n";
+        $config .= "stopasgroup=" . $this->toSupervisorBool($program->stopasgroup, true) . "\n";
+        $config .= "killasgroup=" . $this->toSupervisorBool($program->killasgroup, true) . "\n";
         
         // Add environment variables if set
         if ($program->environment && is_array($program->environment)) {
@@ -44,6 +54,37 @@ class SupervisorService
         }
         
         return $config;
+    }
+
+    protected function toSupervisorBool(mixed $value, bool $default): string
+    {
+        if ($value === null) {
+            return $default ? 'true' : 'false';
+        }
+
+        if (is_string($value) && trim($value) === '') {
+            return $default ? 'true' : 'false';
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        if (is_int($value)) {
+            return ($value !== 0) ? 'true' : 'false';
+        }
+
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+            if (in_array($normalized, ['1', 'true', 'yes', 'on'], true)) {
+                return 'true';
+            }
+            if (in_array($normalized, ['0', 'false', 'no', 'off'], true)) {
+                return 'false';
+            }
+        }
+
+        return $default ? 'true' : 'false';
     }
 
     /**

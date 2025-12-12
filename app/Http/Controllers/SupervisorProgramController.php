@@ -50,6 +50,11 @@ class SupervisorProgramController extends Controller
             'startsecs' => ['required', 'integer', 'min:0'],
             'stopwaitsecs' => ['required', 'integer', 'min:1'],
             'stdout_logfile' => ['nullable', 'string'],
+            'stdout_logfile_maxbytes' => ['nullable', 'integer', 'min:0'],
+            'stdout_logfile_backups' => ['nullable', 'integer', 'min:0'],
+            'redirect_stderr' => ['nullable'],
+            'stopasgroup' => ['nullable'],
+            'killasgroup' => ['nullable'],
             'environment' => ['nullable', 'array'],
             'is_active' => ['boolean'],
         ]);
@@ -57,6 +62,13 @@ class SupervisorProgramController extends Controller
         $validated['autostart'] = $request->boolean('autostart', true);
         $validated['autorestart'] = $request->boolean('autorestart', true);
         $validated['is_active'] = $request->boolean('is_active', true);
+
+        $validated['stdout_logfile_maxbytes'] = $request->input('stdout_logfile_maxbytes') ?? (50 * 1024 * 1024);
+        $validated['stdout_logfile_backups'] = $request->input('stdout_logfile_backups') ?? 10;
+
+        $validated['redirect_stderr'] = $request->boolean('redirect_stderr', true);
+        $validated['stopasgroup'] = $request->boolean('stopasgroup', true);
+        $validated['killasgroup'] = $request->boolean('killasgroup', true);
 
         $program = SupervisorProgram::create($validated);
 
@@ -112,6 +124,11 @@ class SupervisorProgramController extends Controller
             'startsecs' => ['required', 'integer', 'min:0'],
             'stopwaitsecs' => ['required', 'integer', 'min:1'],
             'stdout_logfile' => ['nullable', 'string'],
+            'stdout_logfile_maxbytes' => ['nullable', 'integer', 'min:0'],
+            'stdout_logfile_backups' => ['nullable', 'integer', 'min:0'],
+            'redirect_stderr' => ['nullable'],
+            'stopasgroup' => ['nullable'],
+            'killasgroup' => ['nullable'],
             'environment' => ['nullable', 'array'],
             'is_active' => ['boolean'],
         ]);
@@ -119,6 +136,13 @@ class SupervisorProgramController extends Controller
         $validated['autostart'] = $request->boolean('autostart', $supervisorProgram->autostart);
         $validated['autorestart'] = $request->boolean('autorestart', $supervisorProgram->autorestart);
         $validated['is_active'] = $request->boolean('is_active', $supervisorProgram->is_active);
+
+        $validated['stdout_logfile_maxbytes'] = $request->input('stdout_logfile_maxbytes') ?? ($supervisorProgram->stdout_logfile_maxbytes ?? (50 * 1024 * 1024));
+        $validated['stdout_logfile_backups'] = $request->input('stdout_logfile_backups') ?? ($supervisorProgram->stdout_logfile_backups ?? 10);
+
+        $validated['redirect_stderr'] = $request->boolean('redirect_stderr', true);
+        $validated['stopasgroup'] = $request->boolean('stopasgroup', true);
+        $validated['killasgroup'] = $request->boolean('killasgroup', true);
 
         $supervisorProgram->update($validated);
 
