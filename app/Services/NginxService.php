@@ -790,6 +790,70 @@ HTML;
     }
 
     /**
+     * Delete SSL certificate using certbot
+     */
+    public function deleteSslCertificate(Website $website): array
+    {
+        try {
+            if ($this->isLocal) {
+                Log::info('[LOCAL] SSL certificate deletion skipped (local mode)', [
+                    'domain' => $website->domain
+                ]);
+                
+                return [
+                    'success' => true,
+                    'message' => 'SSL deletion skipped (local mode)'
+                ];
+            }
+
+            $domain = escapeshellarg($website->domain);
+            
+            $command = "sudo certbot delete --cert-name {$domain} --non-interactive";
+            $result = Process::run($command);
+
+            if ($result->failed()) {
+                $errorOutput = $result->errorOutput();
+                
+                if (str_contains($errorOutput, 'No certificate found') || 
+                    str_contains($errorOutput, 'not found')) {
+                    Log::info('SSL certificate not found (already deleted or never existed)', [
+                        'domain' => $website->domain
+                    ]);
+                    
+                    return [
+                        'success' => true,
+                        'message' => 'No SSL certificate found to delete'
+                    ];
+                }
+                
+                throw new \Exception("Certbot delete failed: " . $errorOutput);
+            }
+
+            Log::info('SSL certificate deleted successfully', [
+                'website_id' => $website->id,
+                'domain' => $website->domain
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'SSL certificate deleted successfully',
+                'output' => $result->output()
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to delete SSL certificate', [
+                'website_id' => $website->id,
+                'domain' => $website->domain,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
      * Deploy full Nginx config (write, test, enable, reload)
      */
     public function deploy(Website $website): array

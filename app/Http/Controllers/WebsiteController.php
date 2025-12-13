@@ -195,8 +195,14 @@ class WebsiteController extends Controller
             $this->deleteDnsRecord($website);
         }
         
-        // Delete Nginx configuration
         $nginxService = app(\App\Services\NginxService::class);
+        
+        // Delete SSL certificate from Let's Encrypt if SSL was enabled
+        if ($website->ssl_enabled || $website->ssl_status === 'active') {
+            $nginxService->deleteSslCertificate($website);
+        }
+        
+        // Delete Nginx configuration
         $nginxService->deleteConfig($website);
         
         // Delete PHP-FPM pool configuration if PHP project
