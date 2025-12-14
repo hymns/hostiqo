@@ -28,7 +28,6 @@
                         <thead>
                             <tr>
                                 <th>Name / Domain</th>
-                                <th>Provider</th>
                                 <th>Repository</th>
                                 <th>Branch</th>
                                 <th>Status</th>
@@ -47,11 +46,8 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <i class="bi {{ $webhook->provider_icon }} me-1"></i>
-                                        {{ ucfirst($webhook->git_provider) }}
-                                    </td>
-                                    <td>
                                         <small class="font-monospace">{{ Str::limit($webhook->repository_url, 40) }}</small>
+                                        <br><small class="text-muted"><i class="bi {{ $webhook->provider_icon }}"></i> {{ ucfirst($webhook->git_provider) }}</small>
                                     </td>
                                     <td>
                                         <code>{{ $webhook->branch }}</code>
