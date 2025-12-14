@@ -170,7 +170,7 @@
                     <p class="small mt-2 mb-0">Laravel Example:</p>
                     <code class="small d-block bg-white p-2 rounded mb-2">/usr/bin/php8.3 artisan migrate</code>
                     <p class="small mt-2 mb-0">Composer Example:</p>
-                    <code class="small d-block bg-white p-2 rounded">/usr/bin/php8.3 /usr/bin/composer install</code>
+                    <code class="small d-block bg-white p-2 rounded">/usr/bin/php8.3 /usr/local/bin/composer install</code>
 
                     <h6 class="mt-3">SSH Key</h6>
                     <p class="small">The SSH key remains the same when editing. To regenerate, delete and recreate the webhook.</p>

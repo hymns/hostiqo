@@ -142,7 +142,7 @@
 
                         <div class="mb-3">
                             <label for="post_deploy_script" class="form-label">Post-Deploy Script</label>
-                            <textarea class="form-control font-monospace @error('post_deploy_script') is-invalid @enderror" id="post_deploy_script" name="post_deploy_script" rows="5" placeholder="#!/bin/bash&#10;/usr/bin/php8.3 /usr/bin/composer install --no-dev&#10;/usr/bin/php8.3 artisan migrate --force&#10;/usr/bin/php8.3 artisan config:cache&#10;npm install && npm run build">{{ old('post_deploy_script') }}</textarea>
+                            <textarea class="form-control font-monospace @error('post_deploy_script') is-invalid @enderror" id="post_deploy_script" name="post_deploy_script" rows="5" placeholder="#!/bin/bash&#10;/usr/bin/php8.3 /usr/local/bin/composer install --no-dev&#10;/usr/bin/php8.3 artisan migrate --force&#10;/usr/bin/php8.3 artisan config:cache&#10;npm install && npm run build">{{ old('post_deploy_script') }}</textarea>
                             <div class="form-text">Script to run after deployment (e.g., composer install, migrations, build assets)</div>
                             @error('post_deploy_script')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -194,7 +194,7 @@
                     <p class="small mt-2 mb-0">Laravel Example:</p>
                     <code class="small d-block bg-white p-2 rounded mb-2">/usr/bin/php8.3 artisan migrate</code>
                     <p class="small mt-2 mb-0">Composer Example:</p>
-                    <code class="small d-block bg-white p-2 rounded">/usr/bin/php8.3 /usr/bin/composer install</code>
+                    <code class="small d-block bg-white p-2 rounded">/usr/bin/php8.3 /usr/local/bin/composer install</code>
 
                     <h6 class="mt-3">Security</h6>
                     <p class="small">Each webhook gets a unique secret token for verification. Never share your webhook URLs publicly.</p>
