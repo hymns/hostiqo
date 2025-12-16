@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Queue Management - Git Webhook Manager')
+@section('title', 'Queue Management - Hostiqo')
 @section('page-title', 'Queue Management')
 @section('page-description', 'Monitor and manage Laravel queues')
 

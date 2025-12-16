@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Databases - Git Webhook Manager')
+@section('title', 'Databases - Hostiqo')
 @section('page-title', 'Database Management')
 @section('page-description', 'Manage MySQL databases and users')
 

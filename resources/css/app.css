@@ -50,10 +50,13 @@ body {
 
 .sidebar .brand {
     padding: 1rem 1.5rem;
-    font-size: 1.5rem;
-    font-weight: bold;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     margin-bottom: 1rem;
+}
+
+.sidebar .brand .sidebar-logo {
+    width: 272px;
+    height: auto;
 }
 
 .sidebar .nav-link {

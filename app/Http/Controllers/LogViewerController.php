@@ -91,7 +91,7 @@ class LogViewerController extends Controller
         }
 
         if ($logFile) {
-            // Only skip sudo for webhook-manager's own storage logs
+            // Only skip sudo for hostiqo's own storage logs
             // All other logs (system, website) need sudo or direct read attempt
             $isOwnStorage = str_starts_with($logFile, storage_path());
             

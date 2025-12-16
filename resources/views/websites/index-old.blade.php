@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Websites - Git Webhook Manager')
+@section('title', 'Websites - Hostiqo')
 @section('page-title', 'Websites')
 @section('page-description', 'Manage PHP and Node.js website configurations')
 

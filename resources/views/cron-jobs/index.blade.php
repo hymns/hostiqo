@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Cron Jobs - Git Webhook Manager')
+@section('title', 'Cron Jobs - Hostiqo')
 @section('page-title', 'Cron Jobs')
 @section('page-description', 'Schedule and manage automated tasks')
 

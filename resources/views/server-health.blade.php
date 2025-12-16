@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Server Health - Git Webhook Manager')
+@section('title', 'Server Health - Hostiqo')
 @section('page-title', 'Server Health')
 @section('page-description', 'Monitor your server performance metrics')
 

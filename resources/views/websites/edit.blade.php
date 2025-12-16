@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Website - Git Webhook Manager')
+@section('title', 'Edit Website - Hostiqo')
 @section('page-title', 'Edit ' . ucfirst($website->project_type) . ' Website')
 @section('page-description', 'Update website configuration')
 

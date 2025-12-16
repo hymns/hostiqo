@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Create Database - Git Webhook Manager')
+@section('title', 'Create Database - Hostiqo')
 @section('page-title', 'Create New Database')
 @section('page-description', 'Create a new MySQL database and user')
 

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Firewall - Git Webhook Manager')
+@section('title', 'Firewall - Hostiqo')
 @section('page-title', 'Firewall')
 @section('page-description', 'Manage UFW firewall rules and network security')
 

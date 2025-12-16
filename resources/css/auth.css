@@ -1,4 +1,4 @@
-/* Auth Pages Styles - Git Webhook Manager */
+/* Auth Pages Styles - Hostiqo */
 
 body {
     font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -52,20 +52,51 @@ body {
     margin-bottom: 3rem;
 }
 
-.logo-section i {
-    font-size: 4rem;
-    margin-bottom: 1rem;
+.logo-section .logo-img {
+    width: 320px;
+    height: auto;
 }
 
-.logo-section h1 {
+.hero-content {
+    margin-top: 2rem;
+}
+
+.hero-title {
     font-size: 2.5rem;
     font-weight: 700;
-    margin-bottom: 0.5rem;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+    color: white;
 }
 
-.logo-section p {
+.hero-description {
     font-size: 1.1rem;
+    line-height: 1.6;
     opacity: 0.9;
+    margin-bottom: 2rem;
+}
+
+.feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.feature-check {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1rem;
+}
+
+.feature-check i {
+    color: #10b981;
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+
+.feature-check span {
+    color: white;
 }
 
 .features {
@@ -142,7 +173,13 @@ body {
 
 .form-header {
     margin-bottom: 2rem;
-    text-align: center;
+    text-align: left;
+}
+
+.form-header .login-logo {
+    width: 400px;
+    height: auto;
+    margin-bottom: 1.5rem;
 }
 
 .form-header h2 {

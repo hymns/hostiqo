@@ -1,4 +1,4 @@
-# 🚀 Git Webhook Manager
+# 🚀 Hostiqo - Simple Server Management
 
 A simple self-managed server panel built with Laravel for automating Git deployments and managing your web server. Deploy websites from GitHub/GitLab, configure Nginx virtual hosts, monitor system health, manage SSL certificates, set up alerts, control your firewall, and more—all through a clean, modern web interface.
 
@@ -8,7 +8,7 @@ A simple self-managed server panel built with Laravel for automating Git deploym
 
 ## ✨ Features
 
-### 🚀 Git Webhook Management
+### 🚀 Hostiqo Management
 - 🎯 **Multi-Provider Support** - Works with GitHub and GitLab
 - 🔐 **Auto SSH Key Generation** - Unique SSH key pairs for each webhook
 - 👤 **Deploy User Control** - Execute deployments as specific system users
@@ -94,169 +94,67 @@ A simple self-managed server panel built with Laravel for automating Git deploym
 
 ## 📋 Requirements
 
-> **⚠️ Important**: For complete system requirements and installation instructions for Nginx, PHP, Redis, and other dependencies, please see **[PREREQUISITES.md](PREREQUISITES.md)**.
+- Ubuntu 20.04+ / Debian 11+
+- Root access or sudo privileges
+- Domain name pointed to your server
 
-### Minimum Requirements
-- PHP >= 8.2
-- Composer
-- Laravel 12.x
-- Database (MySQL, PostgreSQL, SQLite, etc.)
-- Git
-- SSH (ssh-keygen command)
-- Queue worker (for background processing)
-
-### Additional Requirements for Virtual Host Management
-- Nginx >= 1.18
-- PHP-FPM (multiple versions: 7.4, 8.0, 8.1, 8.2, 8.3, 8.4)
-- Node.js (multiple versions: 16.x, 18.x, 20.x, 21.x)
-- PM2 (for Node.js process management)
-- Redis >= 6.0
-- MySQL >= 8.0
-- Supervisor (process manager)
-- Certbot (for SSL certificates)
-- fail2ban (security)
-- UFW (firewall)
-- Proper sudo permissions (see [scripts/README.md](scripts/README.md))
+All other dependencies (PHP, MySQL, Nginx, Redis, etc.) will be installed automatically by the installer.
 
 ## 🔧 Installation
 
-### Quick Setup (Automated) 🚀
-
-For Ubuntu/Debian servers, use our comprehensive automated setup scripts:
+### One-Command Install 🚀
 
 ```bash
-# 1. Install system prerequisites (Nginx, PHP 7.4-8.4, MySQL, Redis, Node.js 20, Supervisor, fail2ban, UFW)
-sudo bash scripts/setup-1-ubuntu.sh
-
-# 2. Configure sudo permissions (Nginx, services, firewall, etc)
-sudo bash scripts/setup-2-sudoers.sh
-
-# 3. Setup Laravel app (database, migrations, admin user, assets)
-sudo -u www-data bash scripts/setup-3-app.sh
-
-# 4. Configure web server (Nginx vhost, SSL certificate)
-sudo bash scripts/setup-4-webserver.sh
+curl -fsSL https://raw.githubusercontent.com/hymns/hostiqo/master/scripts/install.sh | sudo bash
 ```
 
-**Features:**
-- ✅ Automated database setup with secure MySQL configuration
-- ✅ Interactive admin user creation
-- ✅ Automatic firewall rules seeding (SSH, HTTP, HTTPS)
-- ✅ SSL certificate automation with Let's Encrypt
-- ✅ Service Manager with full systemctl integration
-
-**Time:** ~25-35 minutes total  
-📚 **For detailed step-by-step guide**, see [scripts/README.md](scripts/README.md)
-
----
-
-### Manual Installation
-
-### 1. Clone or Setup Project
+Or download and run manually:
 
 ```bash
-# If cloning
-git clone <your-repo-url>
-cd git-webhook
-
-# Install dependencies
-composer install
-npm install
+wget https://raw.githubusercontent.com/hymns/hostiqo/master/scripts/install.sh
+sudo bash install.sh
 ```
 
-### 2. Environment Configuration
+**The installer will:**
+1. Clone Hostiqo to `/var/www/hostiqo`
+2. Install all system prerequisites (Nginx, PHP 8.2, MySQL, Redis, Node.js, Supervisor, etc.)
+3. Configure sudo permissions for www-data
+4. Setup Laravel application (database, migrations, admin user)
+5. Configure Nginx with SSL and security hardening
+
+**Time:** ~15-25 minutes
+
+### What Gets Installed
+
+| Component | Version |
+|-----------|---------|
+| PHP | 8.2 (with extensions) |
+| MySQL | 8.0 |
+| Nginx | Latest |
+| Redis | Latest |
+| Node.js | 20.x LTS |
+| Supervisor | Latest |
+| Certbot | Latest |
+| fail2ban | Latest |
+
+### Post-Installation
+
+Access your Hostiqo panel at `https://your-domain.com`
+
+Login with the admin credentials you created during installation.
+
+## 🔄 Updating
+
+Update to the latest version:
 
 ```bash
-# Copy environment file
-cp .env.example .env
-
-# Generate application key
-php artisan key:generate
-
-# Configure your environment
-# For local development, keep APP_ENV=local
-# This will write configs to storage/server/ instead of /etc/
-APP_ENV=local
-
-# Configure your database in .env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=webhook_db
-DB_USERNAME=root
-DB_PASSWORD=
-
-# Configure queue connection
-# Redis recommended for production (better performance)
-# Database acceptable for local development (simpler setup)
-QUEUE_CONNECTION=redis
-REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=null
-REDIS_PORT=6379
-
-# Alternative for local dev (if Redis not available):
-# QUEUE_CONNECTION=database
+cd /var/www/hostiqo
+php artisan hostiqo:update
 ```
 
-### 3. Database Migration
-
-```bash
-# Run migrations
-php artisan migrate
-
-# Or run with fresh installation
-php artisan migrate:fresh
-```
-
-### 4. Build Assets
-
-```bash
-# Build frontend assets
-npm run build
-
-# Or for development
-npm run dev
-```
-
-### 5. Start Queue Worker and Scheduler
-
-**Important:** Both the queue worker and scheduler must be running!
-
-```bash
-# Start queue worker (for deployments)
-php artisan queue:work
-
-# Start scheduler (for system monitoring)
-php artisan schedule:work
-
-# Or use queue:listen for development
-php artisan queue:listen
-```
-
-**For Production:** Use a process manager like Supervisor:
-```ini
-[program:webhook-queue]
-command=php /path/to/artisan queue:work --sleep=3 --tries=3
-user=www-data
-autostart=true
-autorestart=true
-
-[program:webhook-scheduler]
-command=php /path/to/artisan schedule:work
-user=www-data
-autostart=true
-autorestart=true
-```
-
-### 6. Start Development Server
-
-```bash
-# Start Laravel development server
-php artisan serve
-
-# Access the application at
-# http://localhost:8000
-```
+Options:
+- `--force` - Skip confirmation prompt
+- `--no-backup` - Skip database backup
 
 ## 📖 Usage Guide
 
@@ -387,7 +285,7 @@ MONITORING_CHART_HOURS=6
 php artisan schedule:work
 
 # Production (use Supervisor or systemd)
-[program:webhook-scheduler]
+[program:hostiqo-scheduler]
 command=php /path/to/artisan schedule:work
 user=www-data
 autostart=true
@@ -440,7 +338,7 @@ Monitor system metrics and receive notifications when thresholds are exceeded.
    # Quick test via curl
    curl -X POST YOUR_WEBHOOK_URL \
      -H 'Content-Type: application/json' \
-     -d '{"text":"Test Alert from Git Webhook Manager 🚀"}'
+     -d '{"text":"Test Alert from Hostiqo Manager 🚀"}'
    ```
 
 **Slack Notification Format:**
@@ -459,7 +357,7 @@ Alerts sent to Slack include:
 ━━━━━━━━━━━━━━━━━━━━
 CPU is 85% (threshold: 80%)
 ━━━━━━━━━━━━━━━━━━━━
-Git Webhook Manager
+Hostiqo Manager
 Today at 2:30 PM
 ```
 
@@ -478,7 +376,7 @@ MAIL_USERNAME=your-email@gmail.com
 MAIL_PASSWORD=your-app-password
 MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=noreply@webhook.com
-MAIL_FROM_NAME="Git Webhook Manager"
+MAIL_FROM_NAME="Hostiqo Manager"
 ```
 
 **Supported Mail Drivers:**
@@ -943,90 +841,6 @@ www-data ALL=(ALL) NOPASSWD: /usr/bin/git
 www-data ALL=(ALL) NOPASSWD: /bin/bash
 ```
 
-📖 **Full Documentation:** See [DEPLOYMENT_USER.md](DEPLOYMENT_USER.md) for comprehensive guide
-
-## 🚀 Production Deployment
-
-### 1. Optimize Laravel
-
-```bash
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-composer install --optimize-autoloader --no-dev
-```
-
-### 2. Setup Supervisor for Queue Worker
-
-Create `/etc/supervisor/conf.d/git-webhook-worker.conf`:
-
-```ini
-[program:git-webhook-worker]
-process_name=%(program_name)s_%(process_num)02d
-command=php /path/to/artisan queue:work --sleep=3 --tries=3 --max-time=3600
-autostart=true
-autorestart=true
-stopasflimit=3600
-user=www-data
-numprocs=2
-redirect_stderr=true
-stdout_logfile=/path/to/storage/logs/worker.log
-stopwaitsecs=3600
-```
-
-Then:
-```bash
-sudo supervisorctl reread
-sudo supervisorctl update
-sudo supervisorctl start git-webhook-worker:*
-```
-
-### 3. Setup Nginx (Example)
-
-```nginx
-server {
-    listen 80;
-    server_name webhook.example.com;
-    root /path/to/public;
-
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-Content-Type-Options "nosniff";
-
-    index index.php;
-
-    charset utf-8;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
-
-    error_page 404 /index.php;
-
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
-
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
-}
-```
-
-## 📝 Code Standards
-
-This project follows **PSR-12** coding standards:
-
-- ✅ PSR-4 autoloading
-- ✅ Type declarations
-- ✅ Proper docblocks
-- ✅ Meaningful variable names
-- ✅ Single responsibility principle
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please ensure your code:
@@ -1038,25 +852,15 @@ Contributions are welcome! Please ensure your code:
 
 ## 📄 License
 
-This project is open-sourced software licensed under the MIT license.
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
 ## 💬 Support
 
 For issues, questions, or suggestions:
+
 - Create an issue in the repository
 - Check existing documentation
-- Review troubleshooting section
 
 ---
 
-**Built with ❤️ using Laravel 12 & Bootstrap 5**
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+**Built with ❤️ using Laravel & Bootstrap 5**

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Supervisor Program - Git Webhook Manager')
+@section('title', 'Edit Supervisor Program - Hostiqo')
 @section('page-title', 'Supervisor Programs')
 @section('page-description', 'Edit ' . $supervisorProgram->name)
 

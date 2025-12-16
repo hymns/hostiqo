@@ -1,6 +1,6 @@
 # Team Development Workflow with Auto-Deploy
 
-This guide covers best practices for team collaboration using the Git Webhook Manager with automatic deployments.
+This guide covers best practices for team collaboration using the Hostiqo Manager with automatic deployments.
 
 ## Table of Contents
 1. [Feature Branch Workflow (Recommended)](#feature-branch-workflow-recommended)
@@ -460,7 +460,7 @@ git push origin master --force  # ⚠️ Dangerous! Use carefully
 
 **Option 3: Manual Deployment Trigger**
 ```bash
-# In Webhook Manager, click "Manual Deployment" button
+# In Hostiqo, click "Manual Deployment" button
 # This re-deploys the current master branch
 ```
 
@@ -526,7 +526,7 @@ git push origin feature/my-feature
 ```bash
 # Review pull requests on GitHub/GitLab
 # Merge approved PRs
-# Monitor deployments in Webhook Manager
+# Monitor deployments in Hostiqo
 # Check deployment logs if issues occur
 ```
 
@@ -538,7 +538,7 @@ Each developer should have their own SSH key, but for webhook deployments, use a
 
 ### Generate Deploy Key (Project Lead)
 ```bash
-# In Webhook Manager, use "Generate SSH Key" button
+# In Hostiqo, use "Generate SSH Key" button
 # This creates a unique SSH key for this webhook
 ```
 
@@ -580,7 +580,7 @@ Each developer should have their own SSH key, but for webhook deployments, use a
 ---
 
 **Need Help?**
-- Check deployment logs in Webhook Manager
+- Check deployment logs in Hostiqo
 - Review recent commits: `git log --oneline -10`
 - Check current branch: `git branch`
 - See uncommitted changes: `git status`

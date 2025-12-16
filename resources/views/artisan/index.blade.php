@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Artisan Commands - Git Webhook Manager')
+@section('title', 'Artisan Commands - Hostiqo')
 @section('page-title', 'Artisan Commands')
 @section('page-description', 'Execute common Laravel artisan commands for optimization and cache management')
 

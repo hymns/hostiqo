@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Edit File - Git Webhook Manager')
+@section('title', 'Edit File - Hostiqo')
 @section('page-title', basename($path))
 @section('page-description', dirname($path))
 

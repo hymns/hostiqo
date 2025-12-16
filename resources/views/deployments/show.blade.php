@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Deployment Details - Git Webhook Manager')
+@section('title', 'Deployment Details - Hostiqo')
 @section('page-title', 'Deployment Details')
 @section('page-description', 'Deployment #' . $deployment->id)
 

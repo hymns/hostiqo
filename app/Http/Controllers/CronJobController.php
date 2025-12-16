@@ -111,7 +111,7 @@ class CronJobController extends Controller
     {
         $activeCronJobs = CronJob::where('is_active', true)->get();
 
-        $crontabContent = "# Managed by Git Webhook Manager\n";
+        $crontabContent = "# Managed by Hostiqo\n";
         $crontabContent .= "# Do not edit manually\n\n";
 
         foreach ($activeCronJobs as $job) {

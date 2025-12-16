@@ -16,14 +16,14 @@ class UserSeeder extends Seeder
         // Create admin user
         User::create([
             'name' => 'Admin',
-            'email' => 'admin@gitwebhook.local',
+            'email' => 'admin@hostiqo.local',
             'password' => Hash::make('password'),
         ]);
 
         // Create demo user
         User::create([
             'name' => 'Demo User',
-            'email' => 'demo@gitwebhook.local',
+            'email' => 'demo@hostiqo.local',
             'password' => Hash::make('password'),
         ]);
     }

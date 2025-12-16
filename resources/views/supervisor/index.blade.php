@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Supervisor Programs - Git Webhook Manager')
+@section('title', 'Supervisor Programs - Hostiqo')
 @section('page-title', 'Supervisor Programs')
 @section('page-description', 'Manage long-running processes and background workers')
 

@@ -27,7 +27,7 @@ class SshKeyService
             '-t', 'ed25519',
             '-f', $keyPath,
             '-N', '', // No passphrase
-            '-C', "webhook_{$webhook->id}@gitwebhook",
+            '-C', "webhook_{$webhook->id}@hostiqo",
         ]);
 
         $publicKey = File::get($keyPath . '.pub');

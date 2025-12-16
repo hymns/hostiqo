@@ -84,7 +84,7 @@ class Deployment extends Model
             return null;
         }
 
-        return $this->completed_at->diffInSeconds($this->started_at);
+        return abs($this->completed_at->diffInSeconds($this->started_at));
     }
 
     /**

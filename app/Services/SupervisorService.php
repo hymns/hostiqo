@@ -103,7 +103,7 @@ class SupervisorService
 
             $config = $this->generateConfig($program);
             $configPath = $program->getConfigFilePath();
-            $tempFile = '/tmp/webhook-manager-' . $program->getConfigFileName();
+            $tempFile = '/tmp/hostiqo-' . $program->getConfigFileName();
             
             // Write to temp file
             File::put($tempFile, $config);

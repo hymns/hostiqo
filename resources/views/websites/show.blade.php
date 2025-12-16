@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $website->name . ' - Git Webhook Manager')
+@section('title', $website->name . ' - Hostiqo')
 @section('page-title', $website->name)
 @section('page-description', ucfirst($website->project_type) . ' Website Details')
 

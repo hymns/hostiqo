@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Add Website - Git Webhook Manager')
+@section('title', 'Add Website - Hostiqo')
 @section('page-title', 'Add New ' . ucfirst($type) . ' Website')
 @section('page-description', 'Configure a new ' . $type . ' virtual host')
 

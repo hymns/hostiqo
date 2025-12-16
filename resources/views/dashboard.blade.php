@@ -1,78 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard - Git Webhook Manager')
+@section('title', 'Dashboard - Hostiqo')
 @section('page-title', 'Dashboard')
-@section('page-description', 'Overview of your webhooks and deployments')
+@section('page-description', 'Overview of your websites and deployments')
 
 @section('content')
     <!-- Statistics Cards -->
-    <div class="row mb-4" style="row-gap: 1rem;">
-        <div class="col-sm-6 col-lg-3">
-            <div class="card stat-card">
-                <div class="card-body mb-2">
-                    <div class="d-flex" style="flex-direction: row !important; justify-content: space-between !important; align-items: center !important; width: 100% !important;">
-                        <div>
-                            <p class="text-muted mb-1">Total Webhooks</p>
-                            <h3 class="mb-0">{{ $totalWebhooks }}</h3>
-                        </div>
-                        <div class="text-primary" style="font-size: 2.5rem;">
-                            <i class="bi bi-hdd-network"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-sm-6 col-lg-3">
-            <div class="card stat-card">
-                <div class="card-body mb-2">
-                    <div class="d-flex" style="flex-direction: row !important; justify-content: space-between !important; align-items: center !important; width: 100% !important;">
-                        <div>
-                            <p class="text-muted mb-1">Active Webhooks</p>
-                            <h3 class="mb-0">{{ $activeWebhooks }}</h3>
-                        </div>
-                        <div class="text-primary" style="font-size: 2.5rem;">
-                            <i class="bi bi-hdd-rack"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-sm-6 col-lg-3">
-            <div class="card stat-card">
-                <div class="card-body mb-2">
-                    <div class="d-flex" style="flex-direction: row !important; justify-content: space-between !important; align-items: center !important; width: 100% !important;">
-                        <div>
-                            <p class="text-muted mb-1">Total Deployments</p>
-                            <h3 class="mb-0">{{ $totalDeployments }}</h3>
-                        </div>
-                        <div class="text-primary" style="font-size: 2.5rem;">
-                            <i class="bi bi-cloud-check"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-sm-6 col-lg-3">
-            <div class="card stat-card">
-                <div class="card-body mb-2">
-                    <div class="d-flex" style="flex-direction: row !important; justify-content: space-between !important; align-items: center !important; width: 100% !important;">
-                        <div>
-                            <p class="text-muted mb-1">Last 24h</p>
-                            <h3 class="mb-0">{{ $recentDeployments->where('created_at', '>=', now()->subDay())->count() }}</h3>
-                        </div>
-                        <div class="text-primary" style="font-size: 2.5rem;">
-                            <i class="bi bi-clock"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Additional Statistics Cards -->
     <div class="row mb-4" style="row-gap: 1rem;">
         <div class="col-sm-6 col-lg-3">
             <div class="card stat-card">
@@ -132,6 +65,73 @@
                         </div>
                         <div class="text-{{ $pendingQueues > 0 ? 'danger' : 'primary' }}" style="font-size: 2.5rem;">
                             <i class="bi bi-files"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Statistics Cards -->
+    <div class="row mb-4" style="row-gap: 1rem;">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card stat-card">
+                <div class="card-body mb-2">
+                    <div class="d-flex" style="flex-direction: row !important; justify-content: space-between !important; align-items: center !important; width: 100% !important;">
+                        <div>
+                            <p class="text-muted mb-1">Total Webhooks</p>
+                            <h3 class="mb-0">{{ $totalWebhooks }}</h3>
+                        </div>
+                        <div class="text-primary" style="font-size: 2.5rem;">
+                            <i class="bi bi-hdd-network"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-sm-6 col-lg-3">
+            <div class="card stat-card">
+                <div class="card-body mb-2">
+                    <div class="d-flex" style="flex-direction: row !important; justify-content: space-between !important; align-items: center !important; width: 100% !important;">
+                        <div>
+                            <p class="text-muted mb-1">Active Webhooks</p>
+                            <h3 class="mb-0">{{ $activeWebhooks }}</h3>
+                        </div>
+                        <div class="text-primary" style="font-size: 2.5rem;">
+                            <i class="bi bi-hdd-rack"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-sm-6 col-lg-3">
+            <div class="card stat-card">
+                <div class="card-body mb-2">
+                    <div class="d-flex" style="flex-direction: row !important; justify-content: space-between !important; align-items: center !important; width: 100% !important;">
+                        <div>
+                            <p class="text-muted mb-1">Total Deployments</p>
+                            <h3 class="mb-0">{{ $totalDeployments }}</h3>
+                        </div>
+                        <div class="text-primary" style="font-size: 2.5rem;">
+                            <i class="bi bi-cloud-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-sm-6 col-lg-3">
+            <div class="card stat-card">
+                <div class="card-body mb-2">
+                    <div class="d-flex" style="flex-direction: row !important; justify-content: space-between !important; align-items: center !important; width: 100% !important;">
+                        <div>
+                            <p class="text-muted mb-1">Last 24h</p>
+                            <h3 class="mb-0">{{ $recentDeployments->where('created_at', '>=', now()->subDay())->count() }}</h3>
+                        </div>
+                        <div class="text-primary" style="font-size: 2.5rem;">
+                            <i class="bi bi-clock"></i>
                         </div>
                     </div>
                 </div>

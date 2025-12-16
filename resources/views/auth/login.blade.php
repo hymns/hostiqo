@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Login - Git Webhook Manager</title>
+    <title>Login - Hostiqo</title>
     
     <!-- Google Fonts - Montserrat -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,10 +23,12 @@
         <!-- Left Side - Branding & Features -->
         <div class="left-side">
             <div class="left-content">
-                <div class="logo-section">
-                    <i class="bi bi-git"></i>
-                    <h1>Git Webhook Manager</h1>
-                    <p>Automate your deployments with confidence</p>
+                <div class="hero-content">
+                    <h1 class="hero-title">Server Management Made Simple</h1>
+                    <p class="hero-description">
+                        Deploy, monitor, and manage your servers with ease. 
+                        Self-hosted, open-source, and privacy-focused.
+                    </p>
                 </div>
                 
                 <div class="features">
@@ -77,8 +79,9 @@
         <div class="right-side">
             <div class="form-container">
                 <div class="form-header">
-                    <h2>Welcome Back</h2>
-                    <p>Sign in to manage your webhooks and deployments</p>
+                    <img src="{{ asset('images/logo.svg') }}" alt="Hostiqo" class="login-logo">
+                    <h5>Welcome Back</h5>
+                    <p style="margin-top: -5px;">Sign in to manage your server</p>
                 </div>
                 
                 @if($errors->any())

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $webhook->name . ' - Git Webhook Manager')
+@section('title', $webhook->name . ' - Hostiqo')
 @section('page-title', $webhook->name)
 @section('page-description', $webhook->domain ?? 'Webhook Details')
 

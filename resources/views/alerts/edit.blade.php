@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Alert Rule - Git Webhook Manager')
+@section('title', 'Edit Alert Rule - Hostiqo')
 @section('page-title', 'Alerts & Monitoring')
 @section('page-description', 'Edit alert rule')
 

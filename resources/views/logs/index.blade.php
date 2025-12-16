@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Logs - Git Webhook Manager')
+@section('title', 'Logs - Hostiqo')
 @section('page-title', 'Log Viewer')
 @section('page-description', 'View and search application, system, and website-specific logs')
 

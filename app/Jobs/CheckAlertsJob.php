@@ -248,7 +248,7 @@ class CheckAlertsJob implements ShouldQueue
                 'attachments' => [[
                     'color' => $color,
                     'text' => $alert->message,
-                    'footer' => 'Git Webhook Manager',
+                    'footer' => 'Hostiqo',
                     'ts' => $alert->created_at->timestamp,
                 ]]
             ]);

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Git Webhook Manager')</title>
+    <title>@yield('title', 'Hostiqo')</title>
     
     <!-- Google Fonts - Montserrat -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,7 +35,7 @@
     <div class="sidebar" id="sidebar">
         <div class="sidebar-content">
             <div class="brand">
-                <i class="bi bi-git"></i> GitWebhook
+                <img src="{{ asset('images/logo-white.svg') }}" alt="Hostiqo" class="sidebar-logo">
             </div>
             <nav class="nav flex-column">
                 <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">

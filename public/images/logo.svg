@@ -1,0 +1,46 @@
+<svg viewBox="0 0 280 55" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Icon - Server with Pulse -->
+  <g transform="translate(0, 0)">
+    <!-- Outer pulse ring -->
+    <circle cx="27" cy="27" r="26" fill="none" stroke="#3b82f6" stroke-width="2" opacity="0.3"/>
+    
+    <!-- Background circle -->
+    <circle cx="27" cy="27" r="21" fill="url(#blueGrad)"/>
+    
+    <!-- Server rack icon -->
+    <!-- Top server -->
+    <rect x="17" y="18" width="20" height="5" rx="1.5" fill="white"/>
+    <circle cx="19.5" cy="20.5" r="1" fill="#3b82f6"/>
+    <circle cx="22" cy="20.5" r="1" fill="#3b82f6"/>
+    <rect x="30" y="19.5" width="5" height="2" rx="1" fill="#10b981"/>
+    
+    <!-- Middle server -->
+    <rect x="17" y="24" width="20" height="5" rx="1.5" fill="white"/>
+    <circle cx="19.5" cy="26.5" r="1" fill="#3b82f6"/>
+    <circle cx="22" cy="26.5" r="1" fill="#3b82f6"/>
+    <rect x="30" y="25.5" width="5" height="2" rx="1" fill="#10b981"/>
+    
+    <!-- Bottom server -->
+    <rect x="17" y="30" width="20" height="5" rx="1.5" fill="white"/>
+    <circle cx="19.5" cy="32.5" r="1" fill="#3b82f6"/>
+    <circle cx="22" cy="32.5" r="1" fill="#3b82f6"/>
+    <rect x="30" y="31.5" width="5" height="2" rx="1" fill="#10b981"/>
+  </g>
+  
+  <!-- Text: hostiqo -->
+  <text x="62" y="32" font-family="'Montserrat', Arial, sans-serif" font-size="32" font-weight="700" fill="#1f2937">
+    host<tspan fill="url(#blueGrad)">iqo</tspan>
+  </text>
+  
+  <!-- Tagline -->
+  <text x="64" y="47" font-family="'Montserrat', Arial, sans-serif" font-size="8" fill="#6b7280" letter-spacing="1.2">
+    AUTOMATE YOUR SERVER
+  </text>
+</svg>
