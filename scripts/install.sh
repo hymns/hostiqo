@@ -750,6 +750,12 @@ $WEB_USER ALL=(ALL) NOPASSWD: /usr/sbin/ufw *
 # Firewalld (RHEL)
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/firewall-cmd
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/firewall-cmd *
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH start firewalld
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH stop firewalld
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH enable firewalld
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH disable firewalld
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH restart firewalld
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH reload firewalld
 
 # Crontab
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/crontab
