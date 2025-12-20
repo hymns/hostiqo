@@ -410,12 +410,12 @@ install_prerequisites_rhel() {
 
     # Configure SELinux for web
     print_info "Configuring SELinux..."
-    if command -v setsebool &> /dev/null; then
-        setsebool -P httpd_can_network_connect 1 > /dev/null 2>&1 || true
-        setsebool -P httpd_can_network_connect_db 1 > /dev/null 2>&1 || true
-        setsebool -P httpd_execmem 1 > /dev/null 2>&1 || true
-        setsebool -P httpd_unified 1 > /dev/null 2>&1 || true
-        print_success "SELinux configured"
+    if command -v getenforce &> /dev/null; then
+        # Set SELinux to permissive mode for Hostiqo compatibility
+        # httpd_t context has issues with sudo/PAM when enforcing
+        sed -i 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config 2>/dev/null || true
+        setenforce 0 2>/dev/null || true
+        print_success "SELinux set to permissive mode"
     fi
 }
 
