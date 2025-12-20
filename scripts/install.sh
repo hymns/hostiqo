@@ -2,7 +2,12 @@
 
 #########################################################
 # Hostiqo - Complete Installer
-# Single script to install everything
+# Server Management Made Simple
+#
+# Author: Muhammad Hamizi Jaminan
+# Website: https://hostiqo.dev
+# License: MIT
+#
 # Run with: sudo bash scripts/install.sh
 #########################################################
 
@@ -71,10 +76,61 @@ EOF
 # Default installation path
 DEFAULT_APP_DIR="/var/www/hostiqo"
 REPO_URL="https://github.com/hymns/hostiqo.git"
-WEB_USER="www-data"
 
 # Will be set after clone/detection
 APP_DIR=""
+
+# OS Detection variables (set by detect_os)
+OS_FAMILY=""      # debian or rhel
+OS_ID=""          # ubuntu, debian, rocky, alma, centos, rhel
+OS_VERSION=""     # e.g., 22.04, 9, 8
+PKG_MANAGER=""    # apt or dnf/yum
+WEB_USER=""       # www-data or nginx
+PHP_FPM_SERVICE="" # php8.x-fpm or php-fpm
+SYSTEMCTL="/bin/systemctl"
+
+#########################################################
+# OS DETECTION
+#########################################################
+detect_os() {
+    print_info "Detecting operating system..."
+
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS_ID="$ID"
+        OS_VERSION="$VERSION_ID"
+    else
+        print_error "Cannot detect OS. /etc/os-release not found."
+        exit 1
+    fi
+
+    case "$OS_ID" in
+        ubuntu|debian)
+            OS_FAMILY="debian"
+            PKG_MANAGER="apt"
+            WEB_USER="www-data"
+            ;;
+        rocky|almalinux|centos|rhel)
+            OS_FAMILY="rhel"
+            WEB_USER="nginx"
+            # Use dnf if available, fallback to yum
+            if command -v dnf &> /dev/null; then
+                PKG_MANAGER="dnf"
+            else
+                PKG_MANAGER="yum"
+            fi
+            ;;
+        *)
+            print_error "Unsupported OS: $OS_ID"
+            print_info "Supported: Ubuntu, Debian, Rocky Linux, AlmaLinux, CentOS, RHEL"
+            exit 1
+            ;;
+    esac
+
+    print_success "Detected: $OS_ID $OS_VERSION ($OS_FAMILY family)"
+    print_info "Package manager: $PKG_MANAGER"
+    print_info "Web user: $WEB_USER"
+}
 
 #########################################################
 # PHASE 1: System Prerequisites
@@ -82,6 +138,23 @@ APP_DIR=""
 install_prerequisites() {
     print_header "Phase 1: Installing System Prerequisites"
     
+    if [ "$OS_FAMILY" = "debian" ]; then
+        install_prerequisites_debian
+    else
+        install_prerequisites_rhel
+    fi
+
+    # Common post-installation tasks
+    install_common_tools
+    configure_security
+
+    print_success "Phase 1 completed!"
+}
+
+#########################################################
+# DEBIAN/UBUNTU Prerequisites
+#########################################################
+install_prerequisites_debian() {
     # Update system
     print_info "Updating system packages..."
     apt-get update -y > /dev/null 2>&1
@@ -131,25 +204,12 @@ install_prerequisites() {
         print_success "PHP $version installed"
     done
     
-    # Install Composer
-    print_info "Installing Composer..."
-    curl -sS https://getcomposer.org/installer | php > /dev/null 2>&1
-    mv composer.phar /usr/local/bin/composer
-    chmod +x /usr/local/bin/composer
-    print_success "Composer installed"
-    
     # Install Node.js
     print_info "Adding NodeSource repository for Node.js 20..."
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
     print_info "Installing Node.js 20..."
     apt-get install -y nodejs > /dev/null 2>&1
     print_success "Node.js $(node -v) installed"
-    
-    # Install PM2
-    print_info "Installing PM2..."
-    npm install -g pm2 > /dev/null 2>&1
-    pm2 startup systemd > /dev/null 2>&1
-    print_success "PM2 installed"
     
     # Install Redis
     print_info "Installing Redis..."
@@ -177,12 +237,167 @@ install_prerequisites() {
     systemctl start supervisor > /dev/null 2>&1
     print_success "Supervisor installed and started"
     
+    # Install fail2ban
+    print_info "Installing fail2ban..."
+    apt-get install -y fail2ban > /dev/null 2>&1
+    print_success "fail2ban installed"
+
     # Create web directories
     print_info "Creating web directories..."
     mkdir -p /var/www
     chown -R www-data:www-data /var/www
     chmod -R 755 /var/www
     print_success "Web directories created"
+}
+
+#########################################################
+# RHEL/Rocky/Alma/CentOS Prerequisites
+#########################################################
+install_prerequisites_rhel() {
+    # Update system
+    print_info "Updating system packages..."
+    $PKG_MANAGER update -y > /dev/null 2>&1
+    print_success "System updated"
+
+    # Install EPEL repository
+    print_info "Installing EPEL repository..."
+    $PKG_MANAGER install -y epel-release > /dev/null 2>&1
+    print_success "EPEL repository installed"
+
+    # Install basic dependencies
+    print_info "Installing basic dependencies..."
+    $PKG_MANAGER install -y ca-certificates curl wget git net-tools unzip \
+        gcc gcc-c++ make gnupg2 > /dev/null 2>&1
+    print_success "Basic dependencies installed"
+
+    # Install Nginx
+    print_info "Installing Nginx..."
+    $PKG_MANAGER install -y nginx > /dev/null 2>&1
+    systemctl enable nginx > /dev/null 2>&1
+    systemctl start nginx > /dev/null 2>&1
+    print_success "Nginx installed and started"
+
+    # Add Remi repository for PHP
+    print_info "Adding Remi repository for PHP..."
+    if [ "$OS_ID" = "centos" ] && [ "${OS_VERSION%%.*}" = "7" ]; then
+        $PKG_MANAGER install -y https://rpms.remirepo.net/enterprise/remi-release-7.rpm > /dev/null 2>&1
+    else
+        # Rocky 8/9, Alma 8/9, RHEL 8/9, CentOS Stream
+        $PKG_MANAGER install -y https://rpms.remirepo.net/enterprise/remi-release-${OS_VERSION%%.*}.rpm > /dev/null 2>&1
+    fi
+    print_success "Remi repository added"
+
+    # Enable Remi PHP module
+    print_info "Enabling PHP module..."
+    if command -v dnf &> /dev/null; then
+        dnf module reset php -y > /dev/null 2>&1 || true
+    fi
+
+    # Install multiple PHP versions
+    print_info "Installing PHP versions (7.4, 8.0, 8.1, 8.2, 8.3, 8.4)..."
+    for version in 74 80 81 82 83 84; do
+        version_dot="${version:0:1}.${version:1}"
+        print_info "Installing PHP $version_dot..."
+        $PKG_MANAGER install -y \
+            php${version}-php-fpm \
+            php${version}-php-cli \
+            php${version}-php-common \
+            php${version}-php-mysqlnd \
+            php${version}-php-pgsql \
+            php${version}-php-pdo \
+            php${version}-php-zip \
+            php${version}-php-gd \
+            php${version}-php-mbstring \
+            php${version}-php-curl \
+            php${version}-php-xml \
+            php${version}-php-bcmath \
+            php${version}-php-intl \
+            php${version}-php-redis \
+            php${version}-php-opcache > /dev/null 2>&1
+
+        # Enable and start PHP-FPM service
+        systemctl enable php${version}-php-fpm > /dev/null 2>&1
+        systemctl start php${version}-php-fpm > /dev/null 2>&1
+        print_success "PHP $version_dot installed"
+    done
+
+    # Create symlink for default PHP
+    if [ ! -f /usr/bin/php ]; then
+        ln -sf /opt/remi/php84/root/usr/bin/php /usr/bin/php
+    fi
+
+    # Install Node.js
+    print_info "Adding NodeSource repository for Node.js 20..."
+    curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
+    print_info "Installing Node.js 20..."
+    $PKG_MANAGER install -y nodejs > /dev/null 2>&1
+    print_success "Node.js $(node -v) installed"
+
+    # Install Redis
+    print_info "Installing Redis..."
+    $PKG_MANAGER install -y redis > /dev/null 2>&1
+    systemctl enable redis > /dev/null 2>&1
+    systemctl start redis > /dev/null 2>&1
+    print_success "Redis installed and started"
+
+    # Install MySQL/MariaDB
+    print_info "Installing MariaDB..."
+    $PKG_MANAGER install -y mariadb-server mariadb > /dev/null 2>&1
+    systemctl enable mariadb > /dev/null 2>&1
+    systemctl start mariadb > /dev/null 2>&1
+    print_success "MariaDB installed and started"
+
+    # Install Certbot
+    print_info "Installing Certbot..."
+    $PKG_MANAGER install -y certbot python3-certbot-nginx > /dev/null 2>&1
+    print_success "Certbot installed"
+
+    # Install Supervisor
+    print_info "Installing Supervisor..."
+    $PKG_MANAGER install -y supervisor > /dev/null 2>&1
+    systemctl enable supervisord > /dev/null 2>&1
+    systemctl start supervisord > /dev/null 2>&1
+    print_success "Supervisor installed and started"
+
+    # Install fail2ban
+    print_info "Installing fail2ban..."
+    $PKG_MANAGER install -y fail2ban > /dev/null 2>&1
+    print_success "fail2ban installed"
+
+    # Create web directories
+    print_info "Creating web directories..."
+    mkdir -p /var/www
+    chown -R nginx:nginx /var/www
+    chmod -R 755 /var/www
+    print_success "Web directories created"
+
+    # Configure SELinux for web
+    print_info "Configuring SELinux..."
+    if command -v setsebool &> /dev/null; then
+        setsebool -P httpd_can_network_connect 1 > /dev/null 2>&1 || true
+        setsebool -P httpd_can_network_connect_db 1 > /dev/null 2>&1 || true
+        setsebool -P httpd_execmem 1 > /dev/null 2>&1 || true
+        setsebool -P httpd_unified 1 > /dev/null 2>&1 || true
+        print_success "SELinux configured"
+    fi
+}
+
+#########################################################
+# Common Tools Installation
+#########################################################
+install_common_tools() {
+    # Install Composer
+    print_info "Installing Composer..."
+    curl -sS https://getcomposer.org/installer | php > /dev/null 2>&1
+    mv composer.phar /usr/local/bin/composer
+    chmod +x /usr/local/bin/composer
+    print_success "Composer installed"
+
+    # Install PM2
+    print_info "Installing PM2..."
+    npm install -g pm2 > /dev/null 2>&1
+    pm2 startup systemd > /dev/null 2>&1 || true
+    print_success "PM2 installed"
     
     # Install WP-CLI
     print_info "Installing WP-CLI..."
@@ -200,37 +415,47 @@ install_prerequisites() {
     # Create PM2 config directory
     mkdir -p /etc/pm2
     chmod 755 /etc/pm2
-    
-    # Security Hardening
+}
+
+#########################################################
+# Security Configuration
+#########################################################
+configure_security() {
     print_header "Security Hardening"
     
-    # Install fail2ban
-    print_info "Installing fail2ban..."
-    if apt-get install -y fail2ban > /dev/null 2>&1; then
-        print_info "Configuring fail2ban defaults..."
-        if [ -f /etc/fail2ban/jail.conf ]; then
-            # Global defaults
-            ensure_jail 00 DEFAULT "
+    # Configure fail2ban
+    print_info "Configuring fail2ban defaults..."
+    if [ -f /etc/fail2ban/jail.conf ]; then
+        ensure_jail 00 DEFAULT "
 bantime  = 1h
 findtime = 10m
 maxretry = 5
 backend  = systemd
 ignoreip = 127.0.0.1/8 ::1
 "
+        ensure_jail 10 sshd
+        ensure_jail 20 nginx-botsearch
+        ensure_jail 21 nginx-http-auth
+    fi
+    systemctl enable fail2ban > /dev/null 2>&1
+    systemctl restart fail2ban > /dev/null 2>&1
+    print_success "fail2ban configured and enabled"
 
-            # SSH
-            ensure_jail 10 sshd
-
-            # Nginx
-            ensure_jail 20 nginx-botsearch
-            ensure_jail 21 nginx-http-auth
-        fi
-        systemctl enable fail2ban > /dev/null 2>&1
-        systemctl restart fail2ban > /dev/null 2>&1
-        print_success "fail2ban installed and enabled"
+    # Configure firewall based on OS
+    if [ "$OS_FAMILY" = "debian" ]; then
+        configure_ufw
+    else
+        configure_firewalld
     fi
     
-    # Configure UFW
+    # Secure MySQL/MariaDB
+    secure_database
+}
+
+#########################################################
+# UFW Firewall (Debian/Ubuntu)
+#########################################################
+configure_ufw() {
     print_info "Configuring UFW firewall..."
     if command -v ufw &> /dev/null; then
         ufw --force enable > /dev/null 2>&1
@@ -240,24 +465,55 @@ ignoreip = 127.0.0.1/8 ::1
         ufw allow 'Nginx Full' > /dev/null 2>&1
         print_success "UFW firewall configured"
     fi
-    
-    # Secure MySQL
-    print_info "Securing MySQL installation..."
+}
+
+#########################################################
+# Firewalld (RHEL/Rocky/Alma/CentOS)
+#########################################################
+configure_firewalld() {
+    print_info "Configuring firewalld..."
+    if command -v firewall-cmd &> /dev/null; then
+        systemctl enable firewalld > /dev/null 2>&1
+        systemctl start firewalld > /dev/null 2>&1
+        firewall-cmd --permanent --add-service=http > /dev/null 2>&1
+        firewall-cmd --permanent --add-service=https > /dev/null 2>&1
+        firewall-cmd --permanent --add-service=ssh > /dev/null 2>&1
+        firewall-cmd --reload > /dev/null 2>&1
+        print_success "firewalld configured"
+    fi
+}
+
+#########################################################
+# Secure Database
+#########################################################
+secure_database() {
+    print_info "Securing database installation..."
     MYSQL_ROOT_PASS=$(openssl rand -base64 32)
-    mysql --user=root <<_EOF_ > /dev/null 2>&1 || true
+
+    if [ "$OS_FAMILY" = "debian" ]; then
+        mysql --user=root <<_EOF_ > /dev/null 2>&1 || true
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_ROOT_PASS}';
 DELETE FROM mysql.user WHERE User='';
 DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
 DROP DATABASE IF EXISTS test;
-DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
+DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%';
 FLUSH PRIVILEGES;
 _EOF_
+    else
+        # MariaDB on RHEL-based systems
+        mysql --user=root <<_EOF_ > /dev/null 2>&1 || true
+SET PASSWORD FOR 'root'@'localhost' = PASSWORD('${MYSQL_ROOT_PASS}');
+DELETE FROM mysql.user WHERE User='';
+DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+DROP DATABASE IF EXISTS test;
+DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%';
+FLUSH PRIVILEGES;
+_EOF_
+    fi
     
     echo "$MYSQL_ROOT_PASS" > /root/.mysql_root_password
     chmod 600 /root/.mysql_root_password
-    print_success "MySQL secured (root password: /root/.mysql_root_password)"
-    
-    print_success "Phase 1 completed!"
+    print_success "Database secured (root password: /root/.mysql_root_password)"
 }
 
 #########################################################
@@ -270,40 +526,70 @@ configure_sudoers() {
     
     print_info "Creating sudoers configuration for $WEB_USER..."
     
+    # Determine systemctl path based on OS
+    if [ "$OS_FAMILY" = "rhel" ]; then
+        SYSTEMCTL_PATH="/usr/bin/systemctl"
+    else
+        SYSTEMCTL_PATH="/bin/systemctl"
+    fi
+
     cat > "$SUDOERS_FILE" << EOF
 # Hostiqo - Automated Management Permissions
 # Web server user: $WEB_USER
+# OS Family: $OS_FAMILY
 
 # Nginx Management
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/sbin/nginx -t
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl start nginx
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl stop nginx
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart nginx
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH start nginx
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH stop nginx
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH reload nginx
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH restart nginx
 
 # Certbot - SSL Certificate Management
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/certbot
 $WEB_USER ALL=(ALL) NOPASSWD: /snap/bin/certbot
 
-# PHP-FPM Pool Management
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl start php*-fpm
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl stop php*-fpm
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl reload php*-fpm
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart php*-fpm
+# PHP-FPM Pool Management (Debian style)
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH start php*-fpm
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH stop php*-fpm
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH reload php*-fpm
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH restart php*-fpm
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/sbin/php-fpm* -t
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/sbin/php-fpm* -t *
 
-# File Management - PHP-FPM Pool Config Files
+# PHP-FPM Pool Management (RHEL/Remi style)
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH start php*-php-fpm
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH stop php*-php-fpm
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH reload php*-php-fpm
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH restart php*-php-fpm
+
+# File Management - PHP-FPM Pool Config Files (Debian)
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/cp /tmp/[a-zA-Z0-9._-]* /etc/php/[78].[0-9]*/fpm/pool.d/[a-zA-Z0-9._-]*.conf
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/chmod 644 /etc/php/[78].[0-9]*/fpm/pool.d/[a-zA-Z0-9._-]*.conf
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/rm -f /etc/php/[78].[0-9]*/fpm/pool.d/[a-zA-Z0-9._-]*.conf
 
-# File Management - Nginx Config Files
+# File Management - PHP-FPM Pool Config Files (RHEL/Remi)
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/cp /tmp/[a-zA-Z0-9._-]* /etc/opt/remi/php*/php-fpm.d/[a-zA-Z0-9._-]*.conf
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/chmod 644 /etc/opt/remi/php*/php-fpm.d/[a-zA-Z0-9._-]*.conf
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/rm -f /etc/opt/remi/php*/php-fpm.d/[a-zA-Z0-9._-]*.conf
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/cp /tmp/[a-zA-Z0-9._-]* /etc/opt/remi/php*/php-fpm.d/[a-zA-Z0-9._-]*.conf
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/chmod 644 /etc/opt/remi/php*/php-fpm.d/[a-zA-Z0-9._-]*.conf
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/rm -f /etc/opt/remi/php*/php-fpm.d/[a-zA-Z0-9._-]*.conf
+
+# File Management - Nginx Config Files (Debian style)
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/cp /tmp/[a-zA-Z0-9._-]* /etc/nginx/sites-available/[a-zA-Z0-9._-]*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/chmod 644 /etc/nginx/sites-available/[a-zA-Z0-9._-]*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/ln -sf /etc/nginx/sites-available/[a-zA-Z0-9._-]* /etc/nginx/sites-enabled/[a-zA-Z0-9._-]*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/rm -f /etc/nginx/sites-available/[a-zA-Z0-9._-]*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/rm -f /etc/nginx/sites-enabled/[a-zA-Z0-9._-]*
+
+# File Management - Nginx Config Files (RHEL style)
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/cp /tmp/[a-zA-Z0-9._-]* /etc/nginx/conf.d/[a-zA-Z0-9._-]*.conf
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/chmod 644 /etc/nginx/conf.d/[a-zA-Z0-9._-]*.conf
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/rm -f /etc/nginx/conf.d/[a-zA-Z0-9._-]*.conf
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/cp /tmp/[a-zA-Z0-9._-]* /etc/nginx/conf.d/[a-zA-Z0-9._-]*.conf
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/chmod 644 /etc/nginx/conf.d/[a-zA-Z0-9._-]*.conf
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/rm -f /etc/nginx/conf.d/[a-zA-Z0-9._-]*.conf
 
 # Webroot Directory Management
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /var/www/[a-zA-Z0-9._-]*
@@ -315,15 +601,25 @@ $WEB_USER ALL=(ALL) NOPASSWD: /bin/chmod [0-9]* /var/www/[a-zA-Z0-9._-]*/*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/mv /tmp/* /var/www/[a-zA-Z0-9._-]*/*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/rm -rf /var/www/[a-zA-Z0-9._-]*
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/find /var/www/[a-zA-Z0-9._-]* *
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/mkdir -p /var/www/[a-zA-Z0-9._-]*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/chown -R [a-zA-Z0-9_-]*?[a-zA-Z0-9_-]* /var/www/[a-zA-Z0-9._-]*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/chmod -R [0-9]* /var/www/[a-zA-Z0-9._-]*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/mv /tmp/* /var/www/[a-zA-Z0-9._-]*/*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/rm -rf /var/www/[a-zA-Z0-9._-]*
 
 # Nginx Cache Directory
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /var/cache/nginx/*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/chown -R [a-zA-Z0-9_-]*?[a-zA-Z0-9_-]* /var/cache/nginx/*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/chmod -R [0-9]* /var/cache/nginx/*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/mkdir -p /var/cache/nginx/*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/chown -R [a-zA-Z0-9_-]*?[a-zA-Z0-9_-]* /var/cache/nginx/*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/chmod -R [0-9]* /var/cache/nginx/*
 
 # PHP-FPM Log Directory
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /var/log/php*-fpm
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/chown [a-zA-Z0-9_-]*?[a-zA-Z0-9_-]* /var/log/php*-fpm
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/mkdir -p /var/log/php*-fpm
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/chown [a-zA-Z0-9_-]*?[a-zA-Z0-9_-]* /var/log/php*-fpm
 
 # PM2 Process Control
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/pm2
@@ -332,12 +628,25 @@ $WEB_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /etc/pm2
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/cp /tmp/[a-zA-Z0-9._-]* /etc/pm2/[a-zA-Z0-9._-]*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/chmod 644 /etc/pm2/[a-zA-Z0-9._-]*
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/rm -f /etc/pm2/[a-zA-Z0-9._-]*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/mkdir -p /etc/pm2
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/cp /tmp/[a-zA-Z0-9._-]* /etc/pm2/[a-zA-Z0-9._-]*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/chmod 644 /etc/pm2/[a-zA-Z0-9._-]*
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/rm -f /etc/pm2/[a-zA-Z0-9._-]*
 
-# Supervisor - Process Manager
+# Supervisor - Process Manager (Debian)
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/cp /tmp/hostiqo-*.conf /etc/supervisor/conf.d/*.conf
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/cp /tmp/hostiqo-*.conf /etc/supervisor/conf.d/*.conf
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/rm -f /etc/supervisor/conf.d/*.conf
 $WEB_USER ALL=(ALL) NOPASSWD: /bin/chmod 644 /etc/supervisor/conf.d/*.conf
+
+# Supervisor - Process Manager (RHEL)
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/cp /tmp/hostiqo-*.ini /etc/supervisord.d/*.ini
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/cp /tmp/hostiqo-*.ini /etc/supervisord.d/*.ini
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/rm -f /etc/supervisord.d/*.ini
+$WEB_USER ALL=(ALL) NOPASSWD: /bin/chmod 644 /etc/supervisord.d/*.ini
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/rm -f /etc/supervisord.d/*.ini
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/chmod 644 /etc/supervisord.d/*.ini
+
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl reread
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl update
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl start *
@@ -347,23 +656,33 @@ $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl status
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/tail -n * /var/log/supervisor/*.log
 
 # Service Management
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl status *
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl is-active *
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl is-enabled *
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl start supervisor
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl stop supervisor
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart supervisor
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl reload supervisor
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl start redis-server
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl stop redis-server
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart redis-server
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl start mysql
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl stop mysql
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart mysql
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl start fail2ban
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl stop fail2ban
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart fail2ban
-$WEB_USER ALL=(ALL) NOPASSWD: /bin/systemctl reload fail2ban
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH status *
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH is-active *
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH is-enabled *
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH start supervisor
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH stop supervisor
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH restart supervisor
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH reload supervisor
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH start supervisord
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH stop supervisord
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH restart supervisord
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH reload supervisord
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH start redis-server
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH stop redis-server
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH restart redis-server
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH start redis
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH stop redis
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH restart redis
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH start mysql
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH stop mysql
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH restart mysql
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH start mariadb
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH stop mariadb
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH restart mariadb
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH start fail2ban
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH stop fail2ban
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH restart fail2ban
+$WEB_USER ALL=(ALL) NOPASSWD: $SYSTEMCTL_PATH reload fail2ban
 
 # Journal logs
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/journalctl -u * -n * --no-pager
@@ -371,9 +690,13 @@ $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/journalctl -u * -n * --no-pager
 # Git
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/git
 
-# UFW Firewall
+# UFW Firewall (Debian)
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/sbin/ufw
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/sbin/ufw *
+
+# Firewalld (RHEL)
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/firewall-cmd
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/firewall-cmd *
 
 # Crontab
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/crontab
@@ -384,6 +707,11 @@ $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/tail -n * /var/log/*
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/tail /var/log/*
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/cat /var/log/*
 $WEB_USER ALL=(ALL) NOPASSWD: /usr/bin/truncate -s 0 *
+
+# SELinux (RHEL)
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/sbin/semanage fcontext *
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/sbin/restorecon *
+$WEB_USER ALL=(ALL) NOPASSWD: /usr/sbin/setsebool *
 EOF
 
     chmod 0440 "$SUDOERS_FILE"
@@ -397,78 +725,87 @@ EOF
         exit 1
     fi
     
-    # Setup PHP-FPM logs
+    # Setup PHP-FPM logs based on OS
     print_info "Setting up PHP-FPM log directories..."
     if [ ! -f "/var/log/php-fpm.log" ]; then
         touch /var/log/php-fpm.log
-        chown www-data:www-data /var/log/php-fpm.log
+        chown $WEB_USER:$WEB_USER /var/log/php-fpm.log
         chmod 644 /var/log/php-fpm.log
     fi
     
-    for php_version in $(ls -d /etc/php/*/ 2>/dev/null | grep -oP '\d+\.\d+' | sort -u); do
-        log_dir="/var/log/php${php_version}-fpm"
-        if [ ! -d "$log_dir" ]; then
-            mkdir -p "$log_dir"
-            chown www-data:www-data "$log_dir"
-            chmod 755 "$log_dir"
-        fi
-    done
+    if [ "$OS_FAMILY" = "debian" ]; then
+        for php_version in $(ls -d /etc/php/*/ 2>/dev/null | grep -oP '\d+\.\d+' | sort -u); do
+            log_dir="/var/log/php${php_version}-fpm"
+            if [ ! -d "$log_dir" ]; then
+                mkdir -p "$log_dir"
+                chown $WEB_USER:$WEB_USER "$log_dir"
+                chmod 755 "$log_dir"
+            fi
+        done
+    else
+        # RHEL-based: Remi PHP logs are in /var/opt/remi/phpXX/log/php-fpm/
+        for php_dir in /var/opt/remi/php*/log/php-fpm; do
+            if [ -d "$php_dir" ]; then
+                chown -R $WEB_USER:$WEB_USER "$php_dir" 2>/dev/null || true
+            fi
+        done
+    fi
     print_success "PHP-FPM logs configured"
     
     print_success "Phase 2 completed!"
 }
 
 #########################################################
-# PHASE 3: Application Setup (runs as www-data)
+# PHASE 3: Application Setup
 #########################################################
 setup_application() {
     print_header "Phase 3: Setting Up Application"
     
     print_info "Application directory: $APP_DIR"
     
-    # Set ownership of app directory to www-data
-    print_info "Setting ownership to www-data..."
-    chown -R www-data:www-data "$APP_DIR"
+    # Set ownership of app directory
+    print_info "Setting ownership to $WEB_USER..."
+    chown -R $WEB_USER:$WEB_USER "$APP_DIR"
     
     # Create .env if not exists
     if [ ! -f "$APP_DIR/.env" ]; then
         print_info "Creating .env file..."
-        sudo -u www-data cp "$APP_DIR/.env.example" "$APP_DIR/.env"
+        sudo -u $WEB_USER cp "$APP_DIR/.env.example" "$APP_DIR/.env"
         print_success ".env file created"
     fi
     
-    # Install Composer dependencies (as www-data)
+    # Install Composer dependencies
     print_info "Installing Composer dependencies..."
     cd "$APP_DIR"
-    sudo -u www-data composer install --no-interaction --prefer-dist --optimize-autoloader --quiet
+    sudo -u $WEB_USER composer install --no-interaction --prefer-dist --optimize-autoloader --quiet
     print_success "Composer dependencies installed"
     
     # Generate application key
     if ! grep -q "APP_KEY=base64:" "$APP_DIR/.env"; then
         print_info "Generating application key..."
-        sudo -u www-data php artisan key:generate --force > /dev/null 2>&1
+        sudo -u $WEB_USER php artisan key:generate --force > /dev/null 2>&1
         print_success "Application key generated"
     fi
     
-    # Create required directories (as www-data)
+    # Create required directories
     print_info "Creating required directories..."
-    sudo -u www-data mkdir -p "$APP_DIR/storage/app/public"
-    sudo -u www-data mkdir -p "$APP_DIR/storage/app/ssh-keys"
-    sudo -u www-data mkdir -p "$APP_DIR/storage/framework/cache"
-    sudo -u www-data mkdir -p "$APP_DIR/storage/framework/sessions"
-    sudo -u www-data mkdir -p "$APP_DIR/storage/framework/views"
-    sudo -u www-data mkdir -p "$APP_DIR/storage/logs"
-    sudo -u www-data mkdir -p "$APP_DIR/storage/server/nginx"
-    sudo -u www-data mkdir -p "$APP_DIR/storage/server/php-fpm"
-    sudo -u www-data mkdir -p "$APP_DIR/storage/server/pm2"
-    sudo -u www-data mkdir -p "$APP_DIR/bootstrap/cache"
+    sudo -u $WEB_USER mkdir -p "$APP_DIR/storage/app/public"
+    sudo -u $WEB_USER mkdir -p "$APP_DIR/storage/app/ssh-keys"
+    sudo -u $WEB_USER mkdir -p "$APP_DIR/storage/framework/cache"
+    sudo -u $WEB_USER mkdir -p "$APP_DIR/storage/framework/sessions"
+    sudo -u $WEB_USER mkdir -p "$APP_DIR/storage/framework/views"
+    sudo -u $WEB_USER mkdir -p "$APP_DIR/storage/logs"
+    sudo -u $WEB_USER mkdir -p "$APP_DIR/storage/server/nginx"
+    sudo -u $WEB_USER mkdir -p "$APP_DIR/storage/server/php-fpm"
+    sudo -u $WEB_USER mkdir -p "$APP_DIR/storage/server/pm2"
+    sudo -u $WEB_USER mkdir -p "$APP_DIR/bootstrap/cache"
     print_success "Directories created"
     
     # Set permissions
     chmod -R 755 "$APP_DIR/storage"
     chmod -R 755 "$APP_DIR/bootstrap/cache"
-    chown -R www-data:www-data "$APP_DIR/storage"
-    chown -R www-data:www-data "$APP_DIR/bootstrap/cache"
+    chown -R $WEB_USER:$WEB_USER "$APP_DIR/storage"
+    chown -R $WEB_USER:$WEB_USER "$APP_DIR/bootstrap/cache"
     print_success "Permissions set"
     
     # Database Setup
@@ -527,13 +864,13 @@ MYSQL_SCRIPT
         fi
     fi
     
-    # Run migrations (as www-data)
+    # Run migrations
     print_info "Running database migrations..."
-    if sudo -u www-data php artisan migrate --force > /dev/null 2>&1; then
+    if sudo -u $WEB_USER php artisan migrate --force > /dev/null 2>&1; then
         print_success "Migrations completed"
         
         # Seed firewall rules
-        sudo -u www-data php artisan db:seed --class=FirewallRuleSeeder --force > /dev/null 2>&1 || true
+        sudo -u $WEB_USER php artisan db:seed --class=FirewallRuleSeeder --force > /dev/null 2>&1 || true
     fi
     
     # Create admin user
@@ -550,7 +887,7 @@ MYSQL_SCRIPT
         echo ""
         
         if [ -n "$ADMIN_EMAIL" ] && [ -n "$ADMIN_PASS" ]; then
-            sudo -u www-data php artisan tinker --execute="
+            sudo -u $WEB_USER php artisan tinker --execute="
                 \$user = new App\Models\User();
                 \$user->name = '$ADMIN_NAME';
                 \$user->email = '$ADMIN_EMAIL';
@@ -561,30 +898,42 @@ MYSQL_SCRIPT
         fi
     fi
     
-    # Build frontend assets (as www-data)
+    # Build frontend assets
     if [ -f "$APP_DIR/package.json" ]; then
         print_info "Installing npm dependencies..."
         cd "$APP_DIR"
-        sudo -u www-data npm install --silent > /dev/null 2>&1
+        sudo -u $WEB_USER npm install --silent > /dev/null 2>&1
         print_info "Building frontend assets..."
-        sudo -u www-data npm run build > /dev/null 2>&1
+        sudo -u $WEB_USER npm run build > /dev/null 2>&1
         print_success "Frontend assets built"
     fi
     
     # Create storage link
-    sudo -u www-data php artisan storage:link > /dev/null 2>&1
+    sudo -u $WEB_USER php artisan storage:link > /dev/null 2>&1
     
     # Optimize
     print_info "Optimizing application..."
-    sudo -u www-data php artisan config:cache > /dev/null 2>&1
-    sudo -u www-data php artisan route:cache > /dev/null 2>&1
-    sudo -u www-data php artisan view:cache > /dev/null 2>&1
+    sudo -u $WEB_USER php artisan config:cache > /dev/null 2>&1
+    sudo -u $WEB_USER php artisan route:cache > /dev/null 2>&1
+    sudo -u $WEB_USER php artisan view:cache > /dev/null 2>&1
     print_success "Application optimized"
     
-    # Setup Supervisor configs
+    # Setup Supervisor configs based on OS
     print_info "Creating Supervisor configurations..."
     
-    cat > /etc/supervisor/conf.d/hostiqo-queue.conf << EOF
+    if [ "$OS_FAMILY" = "debian" ]; then
+        # Debian/Ubuntu: /etc/supervisor/conf.d/*.conf
+        SUPERVISOR_DIR="/etc/supervisor/conf.d"
+        SUPERVISOR_EXT="conf"
+    else
+        # RHEL-based: /etc/supervisord.d/*.ini
+        SUPERVISOR_DIR="/etc/supervisord.d"
+        SUPERVISOR_EXT="ini"
+    fi
+
+    mkdir -p "$SUPERVISOR_DIR"
+
+    cat > "$SUPERVISOR_DIR/hostiqo-queue.$SUPERVISOR_EXT" << EOF
 [program:hostiqo-queue]
 process_name=%(program_name)s_%(process_num)02d
 command=php $APP_DIR/artisan queue:work --sleep=3 --tries=3 --max-time=3600
@@ -593,14 +942,14 @@ autostart=true
 autorestart=true
 stopasgroup=true
 killasgroup=true
-user=www-data
+user=$WEB_USER
 numprocs=2
 redirect_stderr=true
 stdout_logfile=$APP_DIR/storage/logs/queue-worker.log
 stopwaitsecs=3600
 EOF
 
-    cat > /etc/supervisor/conf.d/hostiqo-scheduler.conf << EOF
+    cat > "$SUPERVISOR_DIR/hostiqo-scheduler.$SUPERVISOR_EXT" << EOF
 [program:hostiqo-scheduler]
 process_name=%(program_name)s
 command=php $APP_DIR/artisan schedule:work
@@ -609,7 +958,7 @@ autostart=true
 autorestart=true
 stopasgroup=true
 killasgroup=true
-user=www-data
+user=$WEB_USER
 redirect_stderr=true
 stdout_logfile=$APP_DIR/storage/logs/scheduler.log
 EOF
@@ -653,14 +1002,32 @@ setup_webserver() {
         SSL_EMAIL=${SSL_EMAIL:-admin@$DOMAIN_NAME}
     fi
     
-    # Detect PHP version
+    # Detect PHP version and socket path based on OS
     PHP_VERSION=$(php -v | grep -oP 'PHP \K[0-9]+\.[0-9]+' | head -1)
-    PHP_SOCKET="/var/run/php/php${PHP_VERSION}-fpm.sock"
+
+    if [ "$OS_FAMILY" = "debian" ]; then
+        PHP_SOCKET="/var/run/php/php${PHP_VERSION}-fpm.sock"
+        NGINX_CONF_DIR="/etc/nginx/sites-available"
+        NGINX_ENABLED_DIR="/etc/nginx/sites-enabled"
+    else
+        # RHEL-based: Remi PHP uses different socket path
+        PHP_VERSION_NODOT=$(echo $PHP_VERSION | tr -d '.')
+        PHP_SOCKET="/var/opt/remi/php${PHP_VERSION_NODOT}/run/php-fpm/www.sock"
+        NGINX_CONF_DIR="/etc/nginx/conf.d"
+        NGINX_ENABLED_DIR=""  # RHEL doesn't use sites-enabled
+    fi
     
     # Create Nginx config
     print_info "Creating Nginx configuration..."
     
-    cat > /etc/nginx/sites-available/hostiqo << EOF
+    # Determine config file path
+    if [ "$OS_FAMILY" = "debian" ]; then
+        NGINX_CONF_FILE="$NGINX_CONF_DIR/hostiqo"
+    else
+        NGINX_CONF_FILE="$NGINX_CONF_DIR/hostiqo.conf"
+    fi
+
+    cat > "$NGINX_CONF_FILE" << EOF
 server {
     listen 80;
     listen [::]:80;
@@ -769,8 +1136,10 @@ server {
 }
 EOF
 
-    # Enable site
-    ln -sf /etc/nginx/sites-available/hostiqo /etc/nginx/sites-enabled/
+    # Enable site (Debian uses symlinks, RHEL uses conf.d directly)
+    if [ "$OS_FAMILY" = "debian" ]; then
+        ln -sf "$NGINX_CONF_FILE" "$NGINX_ENABLED_DIR/hostiqo"
+    fi
     
     # Test and reload Nginx
     if nginx -t > /dev/null 2>&1; then
@@ -791,7 +1160,8 @@ EOF
             # Apply SSL hardening
             print_info "Applying SSL hardening..."
             
-            # Create SSL params file
+            # Create SSL params file (create snippets dir if needed)
+            mkdir -p /etc/nginx/snippets
             cat > /etc/nginx/snippets/ssl-params.conf << 'SSLEOF'
 # SSL Hardening - Modern Configuration
 ssl_protocols TLSv1.2 TLSv1.3;
@@ -814,8 +1184,8 @@ add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; prelo
 SSLEOF
 
             # Include SSL params in site config
-            if ! grep -q "ssl-params.conf" /etc/nginx/sites-available/hostiqo; then
-                sed -i '/listen 443 ssl/a\    include /etc/nginx/snippets/ssl-params.conf;' /etc/nginx/sites-available/hostiqo
+            if ! grep -q "ssl-params.conf" "$NGINX_CONF_FILE"; then
+                sed -i '/listen 443 ssl/a\    include /etc/nginx/snippets/ssl-params.conf;' "$NGINX_CONF_FILE"
             fi
             
             # Reload Nginx with SSL hardening
@@ -828,6 +1198,15 @@ SSLEOF
         fi
     fi
     
+    # Configure SELinux context for web directory on RHEL
+    if [ "$OS_FAMILY" = "rhel" ] && command -v semanage &> /dev/null; then
+        print_info "Setting SELinux context for web directory..."
+        semanage fcontext -a -t httpd_sys_rw_content_t "$APP_DIR/storage(/.*)?" > /dev/null 2>&1 || true
+        semanage fcontext -a -t httpd_sys_rw_content_t "$APP_DIR/bootstrap/cache(/.*)?" > /dev/null 2>&1 || true
+        restorecon -Rv "$APP_DIR" > /dev/null 2>&1 || true
+        print_success "SELinux context configured"
+    fi
+
     # Start services
     print_info "Starting services..."
     supervisorctl start hostiqo-queue:* > /dev/null 2>&1 || true
@@ -892,11 +1271,13 @@ main() {
     print_header "Hostiqo - Server Management Made Simple"
     
     check_root
+    detect_os
     
+    echo ""
     echo "This installer will:"
     echo "  1. Clone Hostiqo repository to /var/www/hostiqo"
-    echo "  2. Install system prerequisites (Nginx, PHP, MySQL, Redis, etc.)"
-    echo "  3. Configure sudoers for www-data"
+    echo "  2. Install system prerequisites (Nginx, PHP, MySQL/MariaDB, Redis, etc.)"
+    echo "  3. Configure sudoers for $WEB_USER"
     echo "  4. Setup Laravel application"
     echo "  5. Configure web server and SSL"
     echo ""
@@ -920,14 +1301,25 @@ main() {
     echo ""
     print_success "Hostiqo has been installed successfully!"
     echo ""
+    print_info "Detected OS: $OS_ID $OS_VERSION ($OS_FAMILY)"
+    print_info "Web user: $WEB_USER"
+    echo ""
     print_info "Installed components:"
-    echo "  • Nginx, PHP 7.4-8.4, MySQL, Redis"
+    if [ "$OS_FAMILY" = "debian" ]; then
+        echo "  • Nginx, PHP 7.4-8.4, MySQL, Redis"
+    else
+        echo "  • Nginx, PHP 7.4-8.4, MariaDB, Redis"
+    fi
     echo "  • Composer, Node.js 20, PM2"
     echo "  • Supervisor, Certbot, fail2ban"
     echo ""
     print_info "Important files:"
-    echo "  • MySQL root password: /root/.mysql_root_password"
-    echo "  • Nginx config: /etc/nginx/sites-available/hostiqo"
+    echo "  • Database root password: /root/.mysql_root_password"
+    if [ "$OS_FAMILY" = "debian" ]; then
+        echo "  • Nginx config: /etc/nginx/sites-available/hostiqo"
+    else
+        echo "  • Nginx config: /etc/nginx/conf.d/hostiqo.conf"
+    fi
     echo "  • App logs: $APP_DIR/storage/logs/"
     echo ""
     if [[ "$SETUP_SSL" =~ ^[Yy]$ ]]; then
@@ -942,19 +1334,23 @@ main() {
 case "${1:-}" in
     --phase1|--prerequisites)
         check_root
+        detect_os
         install_prerequisites
         ;;
     --phase2|--sudoers)
         check_root
+        detect_os
         configure_sudoers
         ;;
     --phase3|--app)
         check_root
+        detect_os
         APP_DIR="${2:-/var/www/hostiqo}"
         setup_application
         ;;
     --phase4|--webserver)
         check_root
+        detect_os
         APP_DIR="${2:-/var/www/hostiqo}"
         setup_webserver
         ;;
@@ -962,6 +1358,10 @@ case "${1:-}" in
         echo "Hostiqo Installer"
         echo ""
         echo "Usage: sudo bash install.sh [option]"
+        echo ""
+        echo "Supported OS:"
+        echo "  - Ubuntu / Debian"
+        echo "  - Rocky Linux / AlmaLinux / CentOS / RHEL"
         echo ""
         echo "Options:"
         echo "  (no option)      Run full installation"
