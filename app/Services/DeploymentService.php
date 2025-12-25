@@ -221,8 +221,16 @@ class DeploymentService
                     'bash', '-c', $cleanedScript
                 ], $deployUser);
 
+                // Set required environment variables for Composer and other tools
+                $homeDir = $deployUser === 'www-data' ? '/var/www' : ('/home/' . $deployUser);
+                
                 $result = Process::path($localPath)
                     ->timeout(300)
+                    ->env([
+                        'HOME' => $homeDir,
+                        'COMPOSER_HOME' => $homeDir . '/.composer',
+                        'PATH' => '/usr/local/bin:/usr/bin:/bin',
+                    ])
                     ->run($command);
 
                 $output[] = $result->output();
