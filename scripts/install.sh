@@ -212,8 +212,8 @@ install_prerequisites_debian() {
         print_success "PHP $version installed"
     done
     
-    # Configure PHP OPcache + JIT
-    print_info "Configuring PHP OPcache + JIT..."
+    # Configure PHP
+    print_info "Configuring PHP..."
     TOTAL_RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
     OPCACHE_MEM=$((TOTAL_RAM_MB / 8))
     [ $OPCACHE_MEM -lt 128 ] && OPCACHE_MEM=128
@@ -399,7 +399,7 @@ install_prerequisites_rhel() {
     fi
 
     # Configure PHP OPcache + JIT
-    print_info "Configuring PHP OPcache + JIT..."
+    print_info "Configuring PHP..."
     TOTAL_RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
     OPCACHE_MEM=$((TOTAL_RAM_MB / 8))
     [ $OPCACHE_MEM -lt 128 ] && OPCACHE_MEM=128
