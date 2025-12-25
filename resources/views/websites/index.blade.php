@@ -267,8 +267,30 @@
         }
 
         function redeployWebsite(id) {
-            confirmAction('Redeploy Website?', 'Regenerate and redeploy Nginx and PHP-FPM configurations?', 'Yes, redeploy!', 'question').then(function(confirmed) {
-                if (confirmed) {
+            Swal.fire({
+                title: 'Redeploy Website?',
+                text: 'Regenerate and redeploy Nginx and PHP-FPM configurations?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#0d6efd',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, redeploy!',
+                cancelButtonText: 'Cancel'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    // Show loading
+                    Swal.fire({
+                        title: 'Redeploying...',
+                        text: 'Please wait while we redeploy your configuration.',
+                        icon: 'info',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        willOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // Submit form
                     $('#redeploy-form-' + id).submit();
                 }
             });

@@ -429,7 +429,7 @@
                         <form id="redeploy-form" action="{{ route('websites.redeploy', $website) }}" method="POST">
                             @csrf
                             <button type="button" class="action-btn warning" title="Redeploy Configuration"
-                                    onclick="confirmAction('Redeploy Configuration', 'Regenerate and redeploy Nginx and PHP-FPM configurations for {{ $website->domain }}?', 'Yes, redeploy!', 'question').then(confirmed => { if(confirmed) this.closest('form').submit(); })">
+                                    onclick="redeployConfig()">
                                 <i class="bi bi-rocket-takeoff"></i>
                             </button>
                         </form>
@@ -519,3 +519,37 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    function redeployConfig() {
+        Swal.fire({
+            title: 'Redeploy Configuration?',
+            text: 'Regenerate and redeploy Nginx and PHP-FPM configurations for {{ $website->domain }}?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#0d6efd',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, redeploy!',
+            cancelButtonText: 'Cancel'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                // Show loading
+                Swal.fire({
+                    title: 'Redeploying...',
+                    text: 'Please wait while we redeploy your configuration.',
+                    icon: 'info',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    willOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Submit form
+                $('#redeploy-form').submit();
+            }
+        });
+    }
+</script>
+@endpush
