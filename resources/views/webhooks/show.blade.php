@@ -79,6 +79,59 @@
                 </div>
             </div>
 
+            <!-- SSH Key -->
+            @if($webhook->sshKey)
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-key me-2"></i> SSH Key</span>
+                        <form id="regenerate-ssh-form" action="{{ route('webhooks.generate-ssh-key', $webhook) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="confirmAction('Regenerate SSH Key?', 'You will need to update the key in your Git provider.', 'Yes, regenerate!', 'warning').then(confirmed => { if(confirmed) document.getElementById('regenerate-ssh-form').submit(); })">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Regenerate
+                            </button>
+                        </form>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-2">Add this public key to your Git provider's deploy keys:</p>
+                        <div class="code-block">
+                            <pre class="mb-0">{{ $webhook->sshKey->public_key }}</pre>
+                            <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('{{ addslashes($webhook->sshKey->public_key) }}', this)">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                        @if($webhook->sshKey->fingerprint)
+                            <div class="mt-3">
+                                <strong>Fingerprint:</strong>
+                                <code class="ms-2">{{ $webhook->sshKey->fingerprint }}</code>
+                            </div>
+                        @endif
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Adding Deploy Key:</strong>
+                            @if($webhook->git_provider === 'github')
+                                <p class="mb-0 mt-2 small">Go to Repository → Settings → Deploy keys → Add deploy key. Paste the public key above. You don't need write access for deployments.</p>
+                            @else
+                                <p class="mb-0 mt-2 small">Go to Repository → Settings → Repository → Deploy Keys → Add key. Paste the public key above.</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-key me-2"></i> SSH Key
+                    </div>
+                    <div class="card-body text-center py-4">
+                        <p class="text-muted">No SSH key generated yet.</p>
+                        <form action="{{ route('webhooks.generate-ssh-key', $webhook) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-circle me-1"></i> Generate SSH Key
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @endif
             <!-- Webhook URL -->
             <div class="card">
                 <div class="card-header">
@@ -137,60 +190,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- SSH Key -->
-            @if($webhook->sshKey)
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-key me-2"></i> SSH Key</span>
-                        <form id="regenerate-ssh-form" action="{{ route('webhooks.generate-ssh-key', $webhook) }}" method="POST" class="d-inline">
-                            @csrf
-                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="confirmAction('Regenerate SSH Key?', 'You will need to update the key in your Git provider.', 'Yes, regenerate!', 'warning').then(confirmed => { if(confirmed) document.getElementById('regenerate-ssh-form').submit(); })">
-                                <i class="bi bi-arrow-clockwise me-1"></i> Regenerate
-                            </button>
-                        </form>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted mb-2">Add this public key to your Git provider's deploy keys:</p>
-                        <div class="code-block">
-                            <pre class="mb-0">{{ $webhook->sshKey->public_key }}</pre>
-                            <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('{{ addslashes($webhook->sshKey->public_key) }}', this)">
-                                <i class="bi bi-clipboard"></i> Copy
-                            </button>
-                        </div>
-                        @if($webhook->sshKey->fingerprint)
-                            <div class="mt-3">
-                                <strong>Fingerprint:</strong>
-                                <code class="ms-2">{{ $webhook->sshKey->fingerprint }}</code>
-                            </div>
-                        @endif
-                        <div class="alert alert-info mt-3 mb-0">
-                            <i class="bi bi-info-circle me-2"></i>
-                            <strong>Adding Deploy Key:</strong>
-                            @if($webhook->git_provider === 'github')
-                                <p class="mb-0 mt-2 small">Go to Repository → Settings → Deploy keys → Add deploy key. Paste the public key above. You don't need write access for deployments.</p>
-                            @else
-                                <p class="mb-0 mt-2 small">Go to Repository → Settings → Repository → Deploy Keys → Add key. Paste the public key above.</p>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            @else
-                <div class="card">
-                    <div class="card-header">
-                        <i class="bi bi-key me-2"></i> SSH Key
-                    </div>
-                    <div class="card-body text-center py-4">
-                        <p class="text-muted">No SSH key generated yet.</p>
-                        <form action="{{ route('webhooks.generate-ssh-key', $webhook) }}" method="POST">
-                            @csrf
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-plus-circle me-1"></i> Generate SSH Key
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            @endif
 
             <!-- Recent Deployments -->
             <div class="card">

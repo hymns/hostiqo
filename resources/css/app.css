@@ -255,15 +255,25 @@ pre {
     position: relative;
 }
 
+.code-block pre {
+    padding-right: 5rem;
+}
+
 .copy-btn {
     position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    opacity: 0.7;
+    top: 0.7rem;
+    right: 0.6rem;
+    background-color: rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
 }
 
 .copy-btn:hover {
-    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #fff;
 }
 
 /* Chart Canvas - Default Desktop Height */
