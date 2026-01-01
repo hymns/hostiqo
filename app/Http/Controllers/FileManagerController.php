@@ -193,11 +193,11 @@ class FileManagerController extends Controller
      */
     public function upload(Request $request)
     {
-        // Security: Limit file upload to 30MB (30720 KB) to prevent DoS attacks
+        // Security: Limit file upload to 10MB (10240 KB) to prevent DoS attacks
         // and memory exhaustion from large file uploads
         $validated = $request->validate([
             'path' => 'required|string',
-            'file' => 'required|file|max:30720', // 30MB max - sufficient for source code files
+            'file' => 'required|file|max:10240', // 10MB max - aligned with FileManagerService read limit
         ]);
 
         $file = $request->file('file');
@@ -206,7 +206,7 @@ class FileManagerController extends Controller
         try {
             // Additional safety check: Verify file size before reading into memory
             $fileSize = $file->getSize();
-            if ($fileSize > 31457280) { // 30MB in bytes
+            if ($fileSize > 10485760) { // 10MB in bytes
                 throw FileManagerException::fileTooLarge();
             }
 
