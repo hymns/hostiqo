@@ -207,13 +207,7 @@ class LogViewerController extends Controller
         };
         
         try {
-            // Try to check if file exists (may fail with open_basedir restrictions)
-            if (file_exists($logFile)) {
-                File::put($logFile, '');
-            } else {
-                // File doesn't exist, create it empty
-                File::put($logFile, '');
-            }
+            File::put($logFile, '');
         } catch (\Exception $e) {
             // If open_basedir restriction, try to clear anyway via Process with sudo
             $result = Process::run("sudo truncate -s 0 {$logFile}");

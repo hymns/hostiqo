@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\FileManagerException;
 use App\Services\FileManagerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
@@ -192,15 +193,23 @@ class FileManagerController extends Controller
      */
     public function upload(Request $request)
     {
+        // Security: Limit file upload to 100MB (102400 KB) to prevent DoS attacks
+        // and memory exhaustion from large file uploads
         $validated = $request->validate([
             'path' => 'required|string',
-            'file' => 'required|file|max:102400', // 100MB max
+            'file' => 'required|file|max:102400', // 100MB max - safe limit for web uploads
         ]);
 
         $file = $request->file('file');
         $targetPath = rtrim($validated['path'], '/') . '/' . $file->getClientOriginalName();
 
         try {
+            // Additional safety check: Verify file size before reading into memory
+            $fileSize = $file->getSize();
+            if ($fileSize > 104857600) { // 100MB in bytes
+                throw FileManagerException::fileTooLarge();
+            }
+
             $content = file_get_contents($file->getRealPath());
             $this->fileManager->uploadFile($targetPath, $content);
 

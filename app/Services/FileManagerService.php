@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
+use App\Exceptions\FileManagerException;
 use Illuminate\Support\Facades\File;
-use Exception;
 
 class FileManagerService
 {
@@ -28,7 +28,7 @@ class FileManagerService
      *
      * @param string $path The directory path
      * @return array<int, array> List of directory items
-     * @throws Exception If directory cannot be listed
+     * @throws FileManagerException If directory cannot be listed
      */
     public function listDirectory(string $path = '/var/www'): array
     {
@@ -38,11 +38,11 @@ class FileManagerService
 
         try {
             if (!File::isDirectory($path)) {
-                throw new Exception("Directory not found: {$path}");
+                throw FileManagerException::directoryNotFound($path);
             }
 
             if (!File::isReadable($path)) {
-                throw new Exception("Permission denied: {$path}");
+                throw FileManagerException::permissionDenied($path);
             }
 
             $items = [];
@@ -86,8 +86,8 @@ class FileManagerService
 
             return $items;
 
-        } catch (Exception $e) {
-            throw new Exception("Failed to list directory: " . $e->getMessage());
+        } catch (FileManagerException $e) {
+            throw FileManagerException::operationFailed('list directory', $e->getMessage());
         }
     }
 
@@ -96,7 +96,7 @@ class FileManagerService
      *
      * @param string $path The file path
      * @return string The file contents
-     * @throws Exception If file cannot be read
+     * @throws FileManagerException If file cannot be read
      */
     public function readFile(string $path): string
     {
@@ -105,27 +105,27 @@ class FileManagerService
 
         try {
             if (!File::exists($path)) {
-                throw new Exception("File not found");
+                throw FileManagerException::fileNotFound();
             }
 
             if (!File::isFile($path)) {
-                throw new Exception("Path is not a file");
+                throw FileManagerException::notAFile();
             }
 
             if (!File::isReadable($path)) {
-                throw new Exception("File not readable");
+                throw FileManagerException::fileNotReadable();
             }
 
             // Limit file size to 10MB for safety
             $filesize = File::size($path);
             if ($filesize > 10485760) {
-                throw new Exception("File too large (max 10MB)");
+                throw FileManagerException::fileTooLarge();
             }
 
             return File::get($path);
 
-        } catch (Exception $e) {
-            throw new Exception("Failed to read file: " . $e->getMessage());
+        } catch (FileManagerException $e) {
+            throw FileManagerException::operationFailed('read file', $e->getMessage());
         }
     }
 
@@ -135,7 +135,7 @@ class FileManagerService
      * @param string $path The file path
      * @param string $content The content to write
      * @return bool True on success
-     * @throws Exception If file cannot be written
+     * @throws FileManagerException If file cannot be written
      */
     public function writeFile(string $path, string $content): bool
     {
@@ -146,24 +146,26 @@ class FileManagerService
             // Check if directory exists, if not create it
             $directory = dirname($path);
             if (!File::isDirectory($directory)) {
+                // 0755: Owner rwx, Group rx, Others rx - secure for directories
                 File::makeDirectory($directory, 0755, true);
             }
 
             // Check if we can write (either file doesn't exist or is writable)
             if (File::exists($path) && !File::isWritable($path)) {
-                throw new Exception("File is not writable");
+                throw FileManagerException::fileNotWritable();
             }
 
             // Write content
             File::put($path, $content);
 
             // Set permissions for new files
+            // 0644: Owner rw, Group r, Others r - secure for files (no execute)
             File::chmod($path, 0644);
 
             return true;
 
-        } catch (Exception $e) {
-            throw new Exception("Failed to write file: " . $e->getMessage());
+        } catch (FileManagerException $e) {
+            throw FileManagerException::operationFailed('write file', $e->getMessage());
         }
     }
 
@@ -173,7 +175,7 @@ class FileManagerService
      * @param string $path The path to delete
      * @param bool $recursive Whether to delete recursively
      * @return bool True on success
-     * @throws Exception If deletion fails
+     * @throws FileManagerException If deletion fails
      */
     public function delete(string $path, bool $recursive = false): bool
     {
@@ -182,7 +184,7 @@ class FileManagerService
 
         try {
             if (!File::exists($path)) {
-                throw new Exception("File or directory not found");
+                throw FileManagerException::pathNotFound();
             }
 
             if (File::isDirectory($path)) {
@@ -193,8 +195,8 @@ class FileManagerService
 
             return true;
 
-        } catch (Exception $e) {
-            throw new Exception("Failed to delete: " . $e->getMessage());
+        } catch (FileManagerException $e) {
+            throw FileManagerException::operationFailed('delete', $e->getMessage());
         }
     }
 
@@ -203,7 +205,7 @@ class FileManagerService
      *
      * @param string $path The directory path to create
      * @return bool True on success
-     * @throws Exception If creation fails
+     * @throws FileManagerException If creation fails
      */
     public function createDirectory(string $path): bool
     {
@@ -212,15 +214,16 @@ class FileManagerService
 
         try {
             if (File::exists($path)) {
-                throw new Exception("Path already exists");
+                throw FileManagerException::pathAlreadyExists();
             }
 
+            // 0755: Owner rwx, Group rx, Others rx - secure for directories
             File::makeDirectory($path, 0755, true);
 
             return true;
 
-        } catch (Exception $e) {
-            throw new Exception("Failed to create directory: " . $e->getMessage());
+        } catch (FileManagerException $e) {
+            throw FileManagerException::operationFailed('create directory', $e->getMessage());
         }
     }
 
@@ -230,7 +233,7 @@ class FileManagerService
      * @param string $oldPath The source path
      * @param string $newPath The destination path
      * @return bool True on success
-     * @throws Exception If rename fails
+     * @throws FileManagerException If rename fails
      */
     public function rename(string $oldPath, string $newPath): bool
     {
@@ -241,19 +244,19 @@ class FileManagerService
 
         try {
             if (!File::exists($oldPath)) {
-                throw new Exception("Source path not found");
+                throw FileManagerException::sourceNotFound();
             }
 
             if (File::exists($newPath)) {
-                throw new Exception("Destination path already exists");
+                throw FileManagerException::destinationExists();
             }
 
             File::move($oldPath, $newPath);
 
             return true;
 
-        } catch (Exception $e) {
-            throw new Exception("Failed to rename: " . $e->getMessage());
+        } catch (FileManagerException $e) {
+            throw FileManagerException::operationFailed('rename', $e->getMessage());
         }
     }
 
@@ -263,7 +266,7 @@ class FileManagerService
      * @param string $path The file path
      * @param string $permissions The permissions in octal format (e.g., '0755')
      * @return bool True on success
-     * @throws Exception If chmod fails
+     * @throws FileManagerException If chmod fails
      */
     public function chmod(string $path, string $permissions): bool
     {
@@ -272,12 +275,12 @@ class FileManagerService
 
         // Validate permissions format (octal)
         if (!preg_match('/^[0-7]{3,4}$/', $permissions)) {
-            throw new Exception("Invalid permissions format");
+            throw FileManagerException::invalidPermissionsFormat();
         }
 
         try {
             if (!File::exists($path)) {
-                throw new Exception("File not found");
+                throw FileManagerException::fileNotFound();
             }
 
             // Convert string octal to integer
@@ -287,8 +290,8 @@ class FileManagerService
 
             return true;
 
-        } catch (Exception $e) {
-            throw new Exception("Failed to change permissions: " . $e->getMessage());
+        } catch (FileManagerException $e) {
+            throw FileManagerException::operationFailed('change permissions', $e->getMessage());
         }
     }
 
@@ -297,7 +300,7 @@ class FileManagerService
      *
      * @param string $path The file path
      * @return array{path: string, size: int, permissions: string, owner: string|int, group: string|int, modified: string}
-     * @throws Exception If file info cannot be retrieved
+     * @throws FileManagerException If file info cannot be retrieved
      */
     public function getFileInfo(string $path): array
     {
@@ -305,13 +308,13 @@ class FileManagerService
 
         try {
             if (!File::exists($path)) {
-                throw new Exception("File not found");
+                throw FileManagerException::fileNotFound();
             }
 
             $stat = stat($path);
             
             if ($stat === false) {
-                throw new Exception("Failed to get file info");
+                throw FileManagerException::failedToGetFileInfo();
             }
 
             return [
@@ -323,8 +326,8 @@ class FileManagerService
                 'modified' => date('Y-m-d H:i:s', File::lastModified($path)),
             ];
 
-        } catch (Exception $e) {
-            throw new Exception("Failed to get file info: " . $e->getMessage());
+        } catch (FileManagerException $e) {
+            throw FileManagerException::operationFailed('get file info', $e->getMessage());
         }
     }
 
@@ -375,14 +378,14 @@ class FileManagerService
      *
      * @param string $path The path to validate
      * @return void
-     * @throws Exception If path is not allowed
+     * @throws FileManagerException If path is not allowed
      */
     protected function validatePath(string $path): void
     {
         // Check if path is in restricted list
         foreach ($this->restrictedPaths as $restricted) {
             if (str_starts_with($path, $restricted)) {
-                throw new Exception("Access denied: Restricted path");
+                throw FileManagerException::accessDeniedRestricted();
             }
         }
 
@@ -396,7 +399,7 @@ class FileManagerService
         }
 
         if (!$isAllowed) {
-            throw new Exception("Access denied: Path outside allowed locations");
+            throw FileManagerException::accessDeniedOutsideAllowed();
         }
     }
 
