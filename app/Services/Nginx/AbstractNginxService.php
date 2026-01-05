@@ -83,9 +83,10 @@ server {
 {$securityHeaders}
 
     # Allow Let's Encrypt ACME challenge
-    location ~ /.well-known/acme-challenge {
+    location ^~ /.well-known/acme-challenge/ {
         allow all;
-        default_type "text/plain";
+        root {$documentRoot};
+        try_files \$uri =404;
     }
 
     # Main location
@@ -161,9 +162,10 @@ server {
 {$securityHeaders}
 
     # Allow Let's Encrypt ACME challenge
-    location ~ /.well-known/acme-challenge {
+    location ^~ /.well-known/acme-challenge/ {
         allow all;
-        default_type "text/plain";
+        root {$documentRoot};
+        try_files \$uri =404;
     }
 
     location / {

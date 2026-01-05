@@ -23,6 +23,13 @@ class SslService
             $webroot = rtrim($website->root_path, '/') . '/' . ltrim($website->working_directory ?? '/', '/');
             $webroot = rtrim($webroot, '/');
 
+            // Ensure .well-known/acme-challenge directory exists with proper permissions
+            $acmeDir = $webroot . '/.well-known/acme-challenge';
+            Process::run("sudo /bin/mkdir -p {$acmeDir}");
+            Process::run("sudo /bin/chmod 755 {$webroot}/.well-known");
+            Process::run("sudo /bin/chmod 755 {$acmeDir}");
+            Process::run("sudo /bin/chown -R www-data:www-data {$webroot}/.well-known");
+
             // Build domain list - only add www if www_redirect is configured
             $domains = [$domain];
             if (in_array($website->www_redirect, ['to_www', 'none'])) {
