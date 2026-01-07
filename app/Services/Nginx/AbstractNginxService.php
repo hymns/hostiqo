@@ -407,9 +407,8 @@ NGINX;
     
     ssl_certificate /etc/letsencrypt/live/{$domain}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/{$domain}/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
-    ssl_prefer_server_ciphers off;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 SSL;
     }
 
