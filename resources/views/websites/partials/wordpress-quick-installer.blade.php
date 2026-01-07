@@ -179,13 +179,13 @@
 
         <div class="row g-3">
             <div class="col-md-6">
-                <label for="website_name" class="form-label fw-semibold">
+                <label for="name" class="form-label fw-semibold">
                     <i class="bi bi-tag me-1"></i> Website Name <span class="text-danger">*</span>
                 </label>
                 <input type="text"
                        class="form-control"
-                       id="website_name"
-                       name="website_name"
+                       id="name"
+                       name="name"
                        placeholder="My WordPress Site"
                        required>
                 <div class="form-text"><small>Display name for your website</small></div>
@@ -488,7 +488,7 @@ $('#wordpressQuickInstallForm').on('submit', function(e) {
             'X-CSRF-TOKEN': '{{ csrf_token() }}'
         },
         data: JSON.stringify({
-            name: data.website_name,
+            name: data.name,
             domain: data.domain,
             project_type: 'php',
             php_version: data.php_version || '8.3',
@@ -518,7 +518,7 @@ $('#wordpressQuickInstallForm').on('submit', function(e) {
                 admin_user: data.admin_user,
                 admin_password: data.admin_password,
                 admin_email: data.admin_email,
-                site_title: data.website_name,
+                site_title: data.name,
                 enable_cache: data.enable_cache === '1',
                 install_plugins: data.install_plugins === '1'
             })
@@ -530,7 +530,7 @@ $('#wordpressQuickInstallForm').on('submit', function(e) {
                             '<i class="bi bi-check-circle me-2"></i> WordPress Deployed Successfully!' +
                         '</h5>' +
                         '<hr>' +
-                        '<p><strong>Site:</strong> ' + data.website_name + ' (' + data.domain + ')</p>' +
+                        '<p><strong>Site:</strong> ' + data.name + ' (' + data.domain + ')</p>' +
                         '<p><strong>Admin URL:</strong> <a href="' + installResult.data.admin_url + '" target="_blank">' + installResult.data.admin_url + '</a></p>' +
                         '<p class="mb-0"><strong>Admin Username:</strong> ' + installResult.data.admin_user + '</p>' +
                         '<hr>' +
