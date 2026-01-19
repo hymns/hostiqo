@@ -71,6 +71,91 @@
                     </div>
                 </div>
 
+                @if($type === 'php' || $type === 'reverse-proxy')
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-code-slash me-2"></i> 
+                        @if($type === 'php')
+                            PHP Configuration
+                        @else
+                            Reverse Proxy Configuration
+                        @endif
+                    </div>
+                    <div class="card-body">
+                        @if($type === 'php')
+                            <div class="mb-3">
+                                <label for="php_version" class="form-label">
+                                    PHP Version <span class="text-danger">*</span>
+                                </label>
+                                <select
+                                    class="form-select @error('php_version') is-invalid @enderror"
+                                    id="php_version"
+                                    name="php_version"
+                                    required
+                                >
+                                    <option value="">-- Select PHP Version --</option>
+                                    @foreach($phpVersions as $version)
+                                        <option value="{{ $version }}" {{ old('php_version') === $version ? 'selected' : '' }}>
+                                            PHP {{ $version }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">Select the PHP version for this website</div>
+                                @error('php_version')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        @elseif($type === 'reverse-proxy')
+                            <div class="mb-3">
+                                <label for="runtime" class="form-label">
+                                    Runtime <span class="text-danger">*</span>
+                                </label>
+                                <select
+                                    class="form-select @error('runtime') is-invalid @enderror"
+                                    id="runtime"
+                                    name="runtime"
+                                    required
+                                >
+                                    <option value="">Select Runtime</option>
+                                    <option value="Node.js" {{ old('runtime') === 'Node.js' ? 'selected' : '' }}>Node.js</option>
+                                    <option value="Python" {{ old('runtime') === 'Python' ? 'selected' : '' }}>Python</option>
+                                    <option value="Go" {{ old('runtime') === 'Go' ? 'selected' : '' }}>Go</option>
+                                    <option value="Ruby" {{ old('runtime') === 'Ruby' ? 'selected' : '' }}>Ruby</option>
+                                    <option value="Java" {{ old('runtime') === 'Java' ? 'selected' : '' }}>Java</option>
+                                    <option value="Other" {{ old('runtime') === 'Other' ? 'selected' : '' }}>Other</option>
+                                </select>
+                                <div class="form-text">Select the runtime/language for your application</div>
+                                @error('runtime')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <!-- Port -->
+                            <div class="mb-3">
+                                <label for="port" class="form-label">
+                                    Port <span class="text-danger">*</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    class="form-control @error('port') is-invalid @enderror"
+                                    id="port"
+                                    name="port"
+                                    value="{{ old('port') }}"
+                                    placeholder="3000"
+                                    min="1"
+                                    max="65535"
+                                    required
+                                >
+                                <div class="form-text">Port where your application will run (Nginx will proxy to this port)</div>
+                                @error('port')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
                 <div class="card">
                     <div class="card-header">
                         <i class="bi bi-folder me-2"></i> Path Configuration
@@ -94,7 +179,6 @@
                             @enderror
                         </div>
 
-                        <!-- Working Directory / Run Opt -->
                         @if($type === 'php')
                             <div class="mb-3">
                                 <label for="working_directory" class="form-label">
@@ -137,93 +221,6 @@
                         @endif
                     </div>
                 </div>
-
-                @if($type === 'php' || $type === 'reverse-proxy')
-                <div class="card">
-                    <div class="card-header">
-                        <i class="bi bi-code-slash me-2"></i> 
-                        @if($type === 'php')
-                            PHP Configuration
-                        @else
-                            Reverse Proxy Configuration
-                        @endif
-                    </div>
-                    <div class="card-body">
-                        @if($type === 'php')
-                            <div class="mb-3">
-                                <label for="php_version" class="form-label">
-                                    PHP Version <span class="text-danger">*</span>
-                                </label>
-                                <select
-                                    class="form-select @error('php_version') is-invalid @enderror"
-                                    id="php_version"
-                                    name="php_version"
-                                    required
-                                >
-                                    <option value="">-- Select PHP Version --</option>
-                                    @foreach($phpVersions as $version)
-                                        <option value="{{ $version }}" {{ old('php_version') === $version ? 'selected' : '' }}>
-                                            PHP {{ $version }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <div class="form-text">Select the PHP version for this website</div>
-                                @error('php_version')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        @elseif($type === 'reverse-proxy')
-                            <div class="mb-3">
-                                <label for="runtime" class="form-label">
-                                    Runtime
-                                </label>
-                                <select
-                                    class="form-select @error('runtime') is-invalid @enderror"
-                                    id="runtime"
-                                    name="runtime"
-                                    required
-                                >
-                                    <option value="">Select Runtime</option>
-                                    <option value="Node.js" {{ old('runtime') === 'Node.js' ? 'selected' : '' }}>Node.js</option>
-                                    <option value="Python" {{ old('runtime') === 'Python' ? 'selected' : '' }}>Python</option>
-                                    <option value="Go" {{ old('runtime') === 'Go' ? 'selected' : '' }}>Go</option>
-                                    <option value="Ruby" {{ old('runtime') === 'Ruby' ? 'selected' : '' }}>Ruby</option>
-                                    <option value="Java" {{ old('runtime') === 'Java' ? 'selected' : '' }}>Java</option>
-                                    <option value="Other" {{ old('runtime') === 'Other' ? 'selected' : '' }}>Other</option>
-                                </select>
-                                <div class="form-text">Select the runtime/language for your application</div>
-                                @error('runtime')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        @endif
-
-                        @if($type === 'reverse-proxy')
-
-                            <!-- Port -->
-                            <div class="mb-3">
-                                <label for="port" class="form-label">
-                                    Port
-                                </label>
-                                <input
-                                    type="number"
-                                    class="form-control @error('port') is-invalid @enderror"
-                                    id="port"
-                                    name="port"
-                                    value="{{ old('port') }}"
-                                    placeholder="3000"
-                                    min="1"
-                                    max="65535"
-                                >
-                                <div class="form-text">Port where your application will run (Nginx will proxy to this port)</div>
-                                @error('port')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        @endif
-                    </div>
-                </div>
-                @endif
 
                 <div class="card">
                     <div class="card-header">
