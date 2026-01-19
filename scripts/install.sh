@@ -185,6 +185,59 @@ install_prerequisites_debian() {
     systemctl start nginx > /dev/null 2>&1
     print_success "Nginx installed and started"
     
+    # Configure rate limiting with Cloudflare IP allowlist
+    print_info "Configuring Nginx rate limiting with Cloudflare IP allowlist..."
+    mkdir -p /etc/nginx/conf.d
+    
+    # Create rate limiting configuration
+    cat > /etc/nginx/conf.d/rate-limit.conf << 'RATELIMITEOF'
+# Rate Limiting Zone - 10MB zone can store ~160k IP addresses
+# Limit: 10 requests per second per IP (burst of 20)
+limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+
+# Cloudflare IP allowlist - bypass rate limiting for Cloudflare IPs
+geo $cloudflare_ip {
+    default 0;
+    
+    # Cloudflare IPv4 ranges
+    173.245.48.0/20 1;
+    103.21.244.0/22 1;
+    103.22.200.0/22 1;
+    103.31.4.0/22 1;
+    141.101.64.0/18 1;
+    108.162.192.0/18 1;
+    190.93.240.0/20 1;
+    188.114.96.0/20 1;
+    197.234.240.0/22 1;
+    198.41.128.0/17 1;
+    162.158.0.0/15 1;
+    104.16.0.0/13 1;
+    104.24.0.0/14 1;
+    172.64.0.0/13 1;
+    131.0.72.0/22 1;
+    
+    # Cloudflare IPv6 ranges
+    2400:cb00::/32 1;
+    2606:4700::/32 1;
+    2803:f800::/32 1;
+    2405:b500::/32 1;
+    2405:8100::/32 1;
+    2a06:98c0::/29 1;
+    2c0f:f248::/32 1;
+}
+
+# Map to determine if rate limiting should be applied
+map $cloudflare_ip $limit_key {
+    0 $binary_remote_addr;  # Apply rate limiting
+    1 "";                   # Bypass rate limiting for Cloudflare
+}
+
+# Rate limiting zone using the mapped key
+limit_req_zone $limit_key zone=cloudflare_bypass:10m rate=10r/s;
+RATELIMITEOF
+    
+    print_success "Nginx rate limiting configured with Cloudflare IP allowlist"
+    
     # Add PHP repository
     print_info "Adding PHP repository..."
     add-apt-repository -y ppa:ondrej/php > /dev/null 2>&1
@@ -417,6 +470,59 @@ install_prerequisites_rhel() {
     systemctl enable nginx > /dev/null 2>&1
     systemctl start nginx > /dev/null 2>&1
     print_success "Nginx installed and started"
+    
+    # Configure rate limiting with Cloudflare IP allowlist
+    print_info "Configuring Nginx rate limiting with Cloudflare IP allowlist..."
+    mkdir -p /etc/nginx/conf.d
+    
+    # Create rate limiting configuration
+    cat > /etc/nginx/conf.d/rate-limit.conf << 'RATELIMITEOF'
+# Rate Limiting Zone - 10MB zone can store ~160k IP addresses
+# Limit: 10 requests per second per IP (burst of 20)
+limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+
+# Cloudflare IP allowlist - bypass rate limiting for Cloudflare IPs
+geo $cloudflare_ip {
+    default 0;
+    
+    # Cloudflare IPv4 ranges
+    173.245.48.0/20 1;
+    103.21.244.0/22 1;
+    103.22.200.0/22 1;
+    103.31.4.0/22 1;
+    141.101.64.0/18 1;
+    108.162.192.0/18 1;
+    190.93.240.0/20 1;
+    188.114.96.0/20 1;
+    197.234.240.0/22 1;
+    198.41.128.0/17 1;
+    162.158.0.0/15 1;
+    104.16.0.0/13 1;
+    104.24.0.0/14 1;
+    172.64.0.0/13 1;
+    131.0.72.0/22 1;
+    
+    # Cloudflare IPv6 ranges
+    2400:cb00::/32 1;
+    2606:4700::/32 1;
+    2803:f800::/32 1;
+    2405:b500::/32 1;
+    2405:8100::/32 1;
+    2a06:98c0::/29 1;
+    2c0f:f248::/32 1;
+}
+
+# Map to determine if rate limiting should be applied
+map $cloudflare_ip $limit_key {
+    0 $binary_remote_addr;  # Apply rate limiting
+    1 "";                   # Bypass rate limiting for Cloudflare
+}
+
+# Rate limiting zone using the mapped key
+limit_req_zone $limit_key zone=cloudflare_bypass:10m rate=10r/s;
+RATELIMITEOF
+    
+    print_success "Nginx rate limiting configured with Cloudflare IP allowlist"
 
     # Add Remi repository for PHP
     print_info "Adding Remi repository for PHP..."
@@ -719,6 +825,22 @@ install_common_tools() {
 configure_security() {
     print_header "Security Hardening"
     
+    # Kernel parameter hardening for DDoS protection
+    print_info "Configuring kernel parameters for DDoS protection..."
+    sysctl -w net.ipv4.tcp_syncookies=1 > /dev/null 2>&1
+    sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 > /dev/null 2>&1
+    sysctl -w net.ipv4.conf.all.rp_filter=1 > /dev/null 2>&1
+    
+    # Make sysctl changes persistent
+    cat >> /etc/sysctl.conf << 'SYSCTLEOF'
+
+# DDoS Protection
+net.ipv4.tcp_syncookies=1
+net.ipv4.icmp_echo_ignore_broadcasts=1
+net.ipv4.conf.all.rp_filter=1
+SYSCTLEOF
+    print_success "Kernel parameters configured for DDoS protection"
+    
     # Configure fail2ban
     print_info "Configuring fail2ban defaults..."
     if [ -f /etc/fail2ban/jail.conf ]; then
@@ -732,6 +854,7 @@ ignoreip = 127.0.0.1/8 ::1
         ensure_jail 10 sshd
         ensure_jail 20 nginx-botsearch
         ensure_jail 21 nginx-http-auth
+        ensure_jail 22 nginx-http-flood
     fi
     systemctl enable fail2ban > /dev/null 2>&1
     systemctl restart fail2ban > /dev/null 2>&1

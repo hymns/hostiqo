@@ -91,6 +91,8 @@ server {
 
     # Main location
     location / {
+        # Rate limiting with Cloudflare bypass (10 req/s, burst 20)
+        limit_req zone=cloudflare_bypass burst=20 nodelay;
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
 
