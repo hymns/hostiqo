@@ -11,6 +11,7 @@ use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\FileManagerController;
 use App\Http\Controllers\FirewallController;
 use App\Http\Controllers\LogViewerController;
+use App\Http\Controllers\Pm2Controller;
 use App\Http\Controllers\QueueController;
 use App\Http\Controllers\ServerHealthController;
 use App\Http\Controllers\ServiceManagerController;
@@ -85,13 +86,24 @@ Route::middleware('auth')->group(function () {
     Route::post('websites/{website}/redeploy', [WebsiteController::class, 'redeploy'])
         ->name('websites.redeploy');
     
-    // PM2 Process Control (Node.js)
+    // PM2 Process Control (Node.js) - Individual Website
     Route::post('websites/{website}/pm2-start', [WebsiteController::class, 'pm2Start'])
         ->name('websites.pm2-start');
     Route::post('websites/{website}/pm2-stop', [WebsiteController::class, 'pm2Stop'])
         ->name('websites.pm2-stop');
     Route::post('websites/{website}/pm2-restart', [WebsiteController::class, 'pm2Restart'])
         ->name('websites.pm2-restart');
+    
+    // PM2 Process Manager - Centralized Management
+    Route::get('pm2', [Pm2Controller::class, 'index'])->name('pm2.index');
+    Route::get('pm2/{appName}/logs', [Pm2Controller::class, 'logs'])->name('pm2.logs');
+    Route::post('pm2/{appName}/start', [Pm2Controller::class, 'start'])->name('pm2.start');
+    Route::post('pm2/{appName}/stop', [Pm2Controller::class, 'stop'])->name('pm2.stop');
+    Route::post('pm2/{appName}/restart', [Pm2Controller::class, 'restart'])->name('pm2.restart');
+    Route::delete('pm2/{appName}', [Pm2Controller::class, 'delete'])->name('pm2.delete');
+    Route::post('pm2/start-all', [Pm2Controller::class, 'startAll'])->name('pm2.start-all');
+    Route::post('pm2/stop-all', [Pm2Controller::class, 'stopAll'])->name('pm2.stop-all');
+    Route::post('pm2/restart-all', [Pm2Controller::class, 'restartAll'])->name('pm2.restart-all');
     
     // 1-Click App Deployment (Dynamic - supports WordPress, Drupal, etc)
     // Legacy WordPress routes (kept for backwards compatibility)

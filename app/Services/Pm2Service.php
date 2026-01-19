@@ -470,4 +470,303 @@ JS;
             ];
         }
     }
+
+    /**
+     * List all PM2 applications with their status.
+     *
+     * @return array{success: bool, apps?: array, error?: string}
+     */
+    public function listAllApps(): array
+    {
+        try {
+            if ($this->isLocal) {
+                return [
+                    'success' => true,
+                    'apps' => [],
+                    'message' => 'PM2 not available in local mode'
+                ];
+            }
+
+            $result = Process::run("pm2 jlist");
+            
+            if ($result->failed()) {
+                return [
+                    'success' => false,
+                    'error' => 'PM2 not available or not running'
+                ];
+            }
+
+            $processes = json_decode($result->output(), true);
+            $apps = [];
+
+            foreach ($processes as $process) {
+                $apps[] = [
+                    'name' => $process['name'] ?? 'unknown',
+                    'pm_id' => $process['pm_id'] ?? null,
+                    'status' => $process['pm2_env']['status'] ?? 'unknown',
+                    'pid' => $process['pid'] ?? null,
+                    'uptime' => $process['pm2_env']['pm_uptime'] ?? null,
+                    'restarts' => $process['pm2_env']['restart_time'] ?? 0,
+                    'memory' => $process['monit']['memory'] ?? 0,
+                    'cpu' => $process['monit']['cpu'] ?? 0,
+                    'instances' => $process['pm2_env']['instances'] ?? 1,
+                    'exec_mode' => $process['pm2_env']['exec_mode'] ?? 'fork',
+                    'script' => $process['pm2_env']['pm_exec_path'] ?? null,
+                    'cwd' => $process['pm2_env']['pm_cwd'] ?? null,
+                ];
+            }
+
+            return [
+                'success' => true,
+                'apps' => $apps
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to list PM2 apps', [
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get PM2 application logs.
+     *
+     * @param string $appName The application name
+     * @param int $lines Number of lines to retrieve
+     * @return array{success: bool, logs?: string, error?: string}
+     */
+    public function getLogs(string $appName, int $lines = 100): array
+    {
+        try {
+            if ($this->isLocal) {
+                $errorLog = storage_path("server/logs/pm2/{$appName}-error.log");
+                $outLog = storage_path("server/logs/pm2/{$appName}-out.log");
+                
+                $logs = '';
+                
+                if (File::exists($outLog)) {
+                    $logs .= "=== Output Logs ===\n";
+                    $logs .= shell_exec("tail -n {$lines} {$outLog}") ?? '';
+                }
+                
+                if (File::exists($errorLog)) {
+                    $logs .= "\n\n=== Error Logs ===\n";
+                    $logs .= shell_exec("tail -n {$lines} {$errorLog}") ?? '';
+                }
+                
+                return [
+                    'success' => true,
+                    'logs' => $logs ?: 'No logs available'
+                ];
+            }
+
+            $result = Process::run("pm2 logs {$appName} --lines {$lines} --nostream --raw");
+            
+            if ($result->failed()) {
+                return [
+                    'success' => false,
+                    'error' => 'Failed to retrieve logs'
+                ];
+            }
+
+            return [
+                'success' => true,
+                'logs' => $result->output()
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to get PM2 logs', [
+                'app_name' => $appName,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Delete PM2 application from process list.
+     *
+     * @param string $appName The application name
+     * @return array{success: bool, message?: string, error?: string}
+     */
+    public function deleteApp(string $appName): array
+    {
+        try {
+            if ($this->isLocal) {
+                return [
+                    'success' => false,
+                    'error' => 'PM2 control not available in local mode'
+                ];
+            }
+
+            $result = Process::run("pm2 delete {$appName}");
+
+            if ($result->successful()) {
+                Process::run("pm2 save");
+                
+                Log::info('PM2 app deleted', [
+                    'app_name' => $appName
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => 'Application deleted successfully'
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $result->errorOutput()
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to delete PM2 app', [
+                'app_name' => $appName,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Start all PM2 applications.
+     *
+     * @return array{success: bool, message?: string, error?: string}
+     */
+    public function startAll(): array
+    {
+        try {
+            if ($this->isLocal) {
+                return [
+                    'success' => false,
+                    'error' => 'PM2 control not available in local mode'
+                ];
+            }
+
+            $result = Process::run("pm2 start all");
+
+            if ($result->successful()) {
+                Process::run("pm2 save");
+                
+                Log::info('All PM2 apps started');
+
+                return [
+                    'success' => true,
+                    'message' => 'All applications started successfully'
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $result->errorOutput()
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to start all PM2 apps', [
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Stop all PM2 applications.
+     *
+     * @return array{success: bool, message?: string, error?: string}
+     */
+    public function stopAll(): array
+    {
+        try {
+            if ($this->isLocal) {
+                return [
+                    'success' => false,
+                    'error' => 'PM2 control not available in local mode'
+                ];
+            }
+
+            $result = Process::run("pm2 stop all");
+
+            if ($result->successful()) {
+                Process::run("pm2 save");
+                
+                Log::info('All PM2 apps stopped');
+
+                return [
+                    'success' => true,
+                    'message' => 'All applications stopped successfully'
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $result->errorOutput()
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to stop all PM2 apps', [
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Restart all PM2 applications.
+     *
+     * @return array{success: bool, message?: string, error?: string}
+     */
+    public function restartAll(): array
+    {
+        try {
+            if ($this->isLocal) {
+                return [
+                    'success' => false,
+                    'error' => 'PM2 control not available in local mode'
+                ];
+            }
+
+            $result = Process::run("pm2 restart all");
+
+            if ($result->successful()) {
+                Process::run("pm2 save");
+                
+                Log::info('All PM2 apps restarted');
+
+                return [
+                    'success' => true,
+                    'message' => 'All applications restarted successfully'
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $result->errorOutput()
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to restart all PM2 apps', [
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
 }

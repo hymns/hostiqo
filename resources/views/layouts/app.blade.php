@@ -81,6 +81,9 @@
                 <div class="nav-section-title">
                     Process Manager
                 </div>
+                <a class="nav-link {{ request()->routeIs('pm2.*') ? 'active' : '' }}" href="{{ route('pm2.index') }}">
+                    <i class="bi bi-hdd-rack me-2"></i> PM2
+                </a>
                 <a class="nav-link {{ request()->routeIs('supervisor.*') ? 'active' : '' }}" href="{{ route('supervisor.index') }}">
                     <i class="bi bi-terminal me-2"></i> Supervisor
                 </a>
