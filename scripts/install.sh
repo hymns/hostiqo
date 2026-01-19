@@ -288,7 +288,7 @@ OPCACHE
     
     # Install Certbot
     print_info "Installing Certbot..."
-    apt-get install -y certbot python3-certbot-nginx > /dev/null 2>&1
+    apt-get install -y certbot > /dev/null 2>&1
     print_success "Certbot installed"
     
     # Install Supervisor
@@ -561,10 +561,7 @@ OPCACHE
 
     # Install Certbot
     print_info "Installing Certbot..."
-    $PKG_MANAGER install -y certbot python3-certbot-nginx > /dev/null 2>&1 || {
-        print_warning "certbot-nginx not found, trying certbot only..."
-        $PKG_MANAGER install -y certbot > /dev/null 2>&1 || true
-    }
+    $PKG_MANAGER install -y certbot > /dev/null 2>&1
     print_success "Certbot installed"
 
     # Install Supervisor
@@ -1543,15 +1540,10 @@ EOF
     # SSL Setup
     if [[ "$SETUP_SSL" =~ ^[Yy]$ ]]; then
         print_info "Requesting SSL certificate..."
-        if certbot --nginx $SSL_DOMAINS --non-interactive --agree-tos --email "$SSL_EMAIL" --redirect > /dev/null 2>&1; then
-            print_success "SSL certificate installed"
-            
-            # Apply SSL hardening
-            print_info "Applying SSL hardening..."
-            
-            # Create SSL params file (create snippets dir if needed)
-            mkdir -p /etc/nginx/snippets
-            cat > /etc/nginx/snippets/ssl-params.conf << 'SSLEOF'
+        
+        # Create SSL snippets first
+        mkdir -p /etc/nginx/snippets
+        cat > /etc/nginx/snippets/ssl-params.conf << 'SSLEOF'
 # SSL Hardening - Modern Configuration
 ssl_protocols TLSv1.2 TLSv1.3;
 ssl_prefer_server_ciphers off;
@@ -1567,18 +1559,154 @@ resolver_timeout 5s;
 add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
 SSLEOF
 
-            # Include SSL params in site config
-            if ! grep -q "ssl-params.conf" "$NGINX_CONF_FILE"; then
-                sed -i '/listen 443 ssl/a\    include /etc/nginx/snippets/ssl-params.conf;' "$NGINX_CONF_FILE"
-            fi
+        # Request certificate using certonly (no auto-config)
+        if certbot certonly --webroot -w $APP_DIR/public $SSL_DOMAINS --non-interactive --agree-tos --email "$SSL_EMAIL" > /dev/null 2>&1; then
+            print_success "SSL certificate obtained"
             
-            # Reload Nginx with SSL hardening
+            # Extract primary domain for cert path
+            PRIMARY_DOMAIN=$(echo $SSL_DOMAINS | sed 's/-d //g' | awk '{print $1}')
+            CERT_PATH="/etc/letsencrypt/live/$PRIMARY_DOMAIN"
+            
+            # Add SSL configuration to Nginx
+            print_info "Configuring Nginx with SSL..."
+            
+            # Backup current config
+            cp "$NGINX_CONF_FILE" "${NGINX_CONF_FILE}.bak"
+            
+            # Add SSL server block
+            cat >> "$NGINX_CONF_FILE" << SSLCONF
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name $SERVER_NAME;
+    root $APP_DIR/public;
+
+    # SSL Certificate
+    ssl_certificate ${CERT_PATH}/fullchain.pem;
+    ssl_certificate_key ${CERT_PATH}/privkey.pem;
+    ssl_trusted_certificate ${CERT_PATH}/chain.pem;
+    
+    # Include SSL hardening params
+    include /etc/nginx/snippets/ssl-params.conf;
+
+    index index.php index.html;
+    charset utf-8;
+
+    access_log /var/log/nginx/hostiqo-access.log combined buffer=512k flush=1m;
+    error_log /var/log/nginx/hostiqo-error.log warn;
+
+    # Performance - Buffer Tuning
+    client_max_body_size 100M;
+    client_body_buffer_size 128k;
+    client_header_buffer_size 1k;
+    large_client_header_buffers 4 16k;
+    
+    # Timeouts
+    client_body_timeout 60s;
+    client_header_timeout 60s;
+    keepalive_timeout 65s;
+    send_timeout 60s;
+    
+    # Hide server info
+    server_tokens off;
+
+    # Security Headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+
+    # Gzip Compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_min_length 1000;
+    gzip_types text/plain text/css text/xml application/json application/javascript application/rss+xml application/atom+xml image/svg+xml;
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    location ~ \.php\$ {
+        fastcgi_pass unix:$PHP_SOCKET;
+        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+        
+        # FastCGI Tuning
+        fastcgi_buffer_size 128k;
+        fastcgi_buffers 256 16k;
+        fastcgi_busy_buffers_size 256k;
+        fastcgi_temp_file_write_size 256k;
+        fastcgi_read_timeout 300s;
+        fastcgi_connect_timeout 60s;
+        fastcgi_send_timeout 300s;
+    }
+
+    # Block dotfiles
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Block sensitive files
+    location ~* \.(env|log|sql|sqlite|bak|backup|old|orig|save|swp|tmp)\$ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    
+    # Block access to sensitive directories
+    location ~* ^/(\.git|\.svn|\.hg|vendor|node_modules|storage/logs|storage/framework) {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Static files caching
+    location ~* \.(jpg|jpeg|png|gif|ico|webp|avif)\$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+    
+    location ~* \.(css|js)\$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+    
+    location ~* \.(svg|woff|woff2|ttf|eot|otf)\$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header Access-Control-Allow-Origin "*";
+        access_log off;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; expires 1y; }
+    location = /robots.txt { access_log off; log_not_found off; }
+}
+SSLCONF
+
+            # Add HTTP to HTTPS redirect to existing HTTP block
+            sed -i '/server_name/a\    return 301 https://\$server_name\$request_uri;' "$NGINX_CONF_FILE"
+            
+            # Test and reload Nginx
             if nginx -t > /dev/null 2>&1; then
                 systemctl reload nginx
-                print_success "SSL hardening applied"
+                print_success "SSL configured and Nginx reloaded"
+            else
+                print_error "Nginx configuration error! Restoring backup..."
+                mv "${NGINX_CONF_FILE}.bak" "$NGINX_CONF_FILE"
+                systemctl reload nginx
+                exit 1
             fi
         else
-            print_warning "SSL failed - run manually: sudo certbot --nginx $SSL_DOMAINS"
+            print_warning "SSL certificate request failed - run manually: sudo certbot certonly --webroot -w $APP_DIR/public $SSL_DOMAINS"
         fi
     fi
     
