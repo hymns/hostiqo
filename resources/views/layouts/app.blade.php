@@ -76,11 +76,16 @@
                 <a class="nav-link {{ request()->routeIs('cron-jobs.*') ? 'active' : '' }}" href="{{ route('cron-jobs.index') }}">
                     <i class="bi bi-clock-history me-2"></i> Cron Jobs
                 </a>
+
+                <!-- Process Manager Section -->
+                <div class="nav-section-title">
+                    Process Manager
+                </div>
                 <a class="nav-link {{ request()->routeIs('supervisor.*') ? 'active' : '' }}" href="{{ route('supervisor.index') }}">
                     <i class="bi bi-terminal me-2"></i> Supervisor
                 </a>
                 <a class="nav-link {{ request()->routeIs('systemd.*') ? 'active' : '' }}" href="{{ route('systemd.index') }}">
-                    <i class="bi bi-gear me-2"></i> Systemd
+                    <i class="bi bi-gear me-2"></i> System Daemon
                 </a>
 
                 <!-- Operation Section -->
