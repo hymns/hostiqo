@@ -492,11 +492,22 @@ JS;
             if ($result->failed()) {
                 return [
                     'success' => false,
-                    'error' => 'PM2 not available or not running'
+                    'error' => 'PM2 not available or not running',
+                    'apps' => []
                 ];
             }
 
             $processes = json_decode($result->output(), true);
+            
+            // Ensure $processes is an array
+            if (!is_array($processes)) {
+                return [
+                    'success' => false,
+                    'error' => 'Failed to parse PM2 process list',
+                    'apps' => []
+                ];
+            }
+            
             $apps = [];
 
             foreach ($processes as $process) {
@@ -527,7 +538,8 @@ JS;
 
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'apps' => []
             ];
         }
     }

@@ -28,6 +28,11 @@ class Pm2Controller extends Controller
         $apps = $result['apps'] ?? [];
         $error = $result['error'] ?? null;
 
+        // Ensure $apps is always an array
+        if (!is_array($apps)) {
+            $apps = [];
+        }
+
         // Get associated websites for each PM2 app
         $websites = Website::where('project_type', 'reverse-proxy')
             ->where('runtime', 'Node.js')
