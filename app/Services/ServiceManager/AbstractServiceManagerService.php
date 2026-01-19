@@ -45,10 +45,8 @@ abstract class AbstractServiceManagerService implements ServiceManagerInterface
             return $pool;
         });
 
-        $processedResults = $results($pool);
-
         // Process results
-        foreach ($processedResults as $key => $result) {
+        foreach ($results as $key => $result) {
             $output = $result->output();
             
             // Service doesn't exist if output contains these messages
