@@ -66,25 +66,38 @@
 
                             <!-- Service Info -->
                             <div class="service-info mb-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="bi bi-power text-muted me-2"></i>
-                                    <span class="text-muted me-2">Auto-start</span>
-                                    @if($service['enabled'] ?? false)
-                                        <span class="badge badge-pastel-green">Enabled</span>
-                                    @else
-                                        <span class="badge badge-pastel-yellow">Disabled</span>
-                                    @endif
-                                </div>
+                                <div class="row g-2">
+                                    <!-- Left Column: Auto-start -->
+                                    <div class="col-6 d-flex align-items-center justify-content-center">
+                                        <div class="text-center">
+                                            <div class="text-muted small mb-1">
+                                                <i class="bi bi-power me-1"></i> Auto-start
+                                            </div>
+                                            @if($service['enabled'] ?? false)
+                                                <span class="badge badge-pastel-green">Enabled</span>
+                                            @else
+                                                <span class="badge badge-pastel-yellow">Disabled</span>
+                                            @endif
+                                        </div>
+                                    </div>
 
-                                @if($service['running'] ?? false)
-                                    <div class="small text-muted ps-4">
-                                        <div><i class="bi bi-cpu me-1"></i> cpu: {{ $service['cpu'] ?? '0.0' }}%</div>
-                                        <div><i class="bi bi-memory me-1"></i> ram: {{ $service['memory'] ?? '0.0' }}%</div>
-                                        @if(!empty($service['pid']))
-                                            <div class="mt-1"><i class="bi bi-hash me-1"></i> pid: {{ $service['pid'] }}</div>
+                                    <!-- Right Column: CPU, RAM, PID -->
+                                    <div class="col-6">
+                                        @if($service['running'] ?? false)
+                                            <div class="small text-muted">
+                                                <div><i class="bi bi-cpu me-1"></i> cpu: {{ $service['cpu'] ?? '0.0' }}%</div>
+                                                <div><i class="bi bi-memory me-1"></i> ram: {{ $service['memory'] ?? '0.0' }}%</div>
+                                                <div><i class="bi bi-hash me-1"></i> pid: {{ $service['pid'] ?? '-' }}</div>
+                                            </div>
+                                        @else
+                                            <div class="small text-muted">
+                                                <div><i class="bi bi-cpu me-1"></i> cpu: -</div>
+                                                <div><i class="bi bi-memory me-1"></i> ram: -</div>
+                                                <div><i class="bi bi-hash me-1"></i> pid: -</div>
+                                            </div>
                                         @endif
                                     </div>
-                                @endif
+                                </div>
                             </div>
 
                             <!-- Action Buttons -->
