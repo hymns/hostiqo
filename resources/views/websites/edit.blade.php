@@ -135,17 +135,14 @@
                     </div>
                 </div>
 
+                @if($website->project_type === 'php' || $website->project_type === 'reverse-proxy')
                 <div class="card">
                     <div class="card-header">
                         <i class="bi bi-code-slash me-2"></i> 
                         @if($website->project_type === 'php')
                             PHP Configuration
-                        @elseif($website->project_type === 'reverse-proxy')
-                            Reverse Proxy Configuration
-                        @elseif($website->project_type === 'static')
-                            Static Site Configuration
                         @else
-                            Configuration
+                            Reverse Proxy Configuration
                         @endif
                     </div>
                     <div class="card-body">
@@ -222,6 +219,7 @@
                         @endif
                     </div>
                 </div>
+                @endif
 
                 @if($website->project_type === 'php')
                 <div class="card">
