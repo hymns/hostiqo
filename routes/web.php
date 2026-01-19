@@ -101,9 +101,6 @@ Route::middleware('auth')->group(function () {
     Route::post('pm2/{appName}/stop', [Pm2Controller::class, 'stop'])->name('pm2.stop');
     Route::post('pm2/{appName}/restart', [Pm2Controller::class, 'restart'])->name('pm2.restart');
     Route::delete('pm2/{appName}', [Pm2Controller::class, 'delete'])->name('pm2.delete');
-    Route::post('pm2/start-all', [Pm2Controller::class, 'startAll'])->name('pm2.start-all');
-    Route::post('pm2/stop-all', [Pm2Controller::class, 'stopAll'])->name('pm2.stop-all');
-    Route::post('pm2/restart-all', [Pm2Controller::class, 'restartAll'])->name('pm2.restart-all');
     
     // 1-Click App Deployment (Dynamic - supports WordPress, Drupal, etc)
     // Legacy WordPress routes (kept for backwards compatibility)

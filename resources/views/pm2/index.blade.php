@@ -4,24 +4,11 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0">
-                <i class="bi bi-hdd-rack me-2"></i>PM2 Process Manager
-            </h1>
-            <p class="text-muted mb-0">Manage all Node.js applications running with PM2</p>
-        </div>
-        <div class="btn-group" role="group">
-            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#startAllModal">
-                <i class="bi bi-play-circle me-1"></i> Start All
-            </button>
-            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#restartAllModal">
-                <i class="bi bi-arrow-clockwise me-1"></i> Restart All
-            </button>
-            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#stopAllModal">
-                <i class="bi bi-stop-circle me-1"></i> Stop All
-            </button>
-        </div>
+    <div class="mb-4">
+        <h1 class="h3 mb-0">
+            <i class="bi bi-hdd-rack me-2"></i>PM2 Process Manager
+        </h1>
+        <p class="text-muted mb-0">Manage all Node.js applications running with PM2</p>
     </div>
 
     @if(session('success'))
@@ -314,80 +301,6 @@
                     <p class="small mb-0">PM2 ecosystem configs are stored in:</p>
                     <code class="small">/etc/pm2/ecosystem.[app-name].config.js</code>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Start All Modal -->
-<div class="modal fade" id="startAllModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Start All Applications</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to start all PM2 applications?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ route('pm2.start-all') }}" method="POST" class="d-inline">
-                    @csrf
-                    <button type="submit" class="btn btn-success">Start All</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Restart All Modal -->
-<div class="modal fade" id="restartAllModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Restart All Applications</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to restart all PM2 applications?</p>
-                <p class="text-warning mb-0">
-                    <i class="bi bi-exclamation-triangle me-1"></i>
-                    This will cause brief downtime for all Node.js applications.
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ route('pm2.restart-all') }}" method="POST" class="d-inline">
-                    @csrf
-                    <button type="submit" class="btn btn-warning">Restart All</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Stop All Modal -->
-<div class="modal fade" id="stopAllModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Stop All Applications</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to stop all PM2 applications?</p>
-                <p class="text-danger mb-0">
-                    <i class="bi bi-exclamation-triangle me-1"></i>
-                    This will stop all Node.js applications and make them unavailable.
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ route('pm2.stop-all') }}" method="POST" class="d-inline">
-                    @csrf
-                    <button type="submit" class="btn btn-danger">Stop All</button>
-                </form>
             </div>
         </div>
     </div>
