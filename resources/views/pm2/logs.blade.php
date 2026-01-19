@@ -1,33 +1,27 @@
 @extends('layouts.app')
 
-@section('title', 'PM2 Logs - ' . $appName)
+@section('title', 'PM2 Logs - ' . $appName . ' - Hostiqo')
+@section('page-title', 'PM2 Logs')
+@section('page-description')
+    Application: <code>{{ $appName }}</code>
+    @if($website)
+        <span class="mx-2">|</span>
+        Domain: <strong>{{ $website->domain }}</strong>
+    @endif
+@endsection
+
+@section('page-actions')
+    <a href="{{ route('pm2.index') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Back to PM2
+    </a>
+    @if($website)
+        <a href="{{ route('websites.show', $website) }}" class="btn btn-outline-primary">
+            <i class="bi bi-box-arrow-up-right me-1"></i> View Website
+        </a>
+    @endif
+@endsection
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0">
-                <i class="bi bi-file-text me-2"></i>PM2 Logs
-            </h1>
-            <p class="text-muted mb-0">
-                Application: <code>{{ $appName }}</code>
-                @if($website)
-                    <span class="mx-2">|</span>
-                    Domain: <strong>{{ $website->domain }}</strong>
-                @endif
-            </p>
-        </div>
-        <div>
-            <a href="{{ route('pm2.index') }}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Back to PM2
-            </a>
-            @if($website)
-                <a href="{{ route('websites.show', $website) }}" class="btn btn-outline-primary">
-                    <i class="bi bi-box-arrow-up-right me-1"></i> View Website
-                </a>
-            @endif
-        </div>
-    </div>
 
     @if($error)
         <div class="alert alert-danger" role="alert">

@@ -1,15 +1,10 @@
 @extends('layouts.app')
 
-@section('title', 'PM2 Process Manager')
+@section('title', 'PM2 Process Manager - Hostiqo')
+@section('page-title', 'PM2 Process Manager')
+@section('page-description', 'Manage Node.js applications with PM2')
 
 @section('content')
-<div class="container-fluid">
-    <div class="mb-4">
-        <h1 class="h3 mb-0">
-            <i class="bi bi-hdd-rack me-2"></i>PM2 Process Manager
-        </h1>
-        <p class="text-muted mb-0">Manage all Node.js applications running with PM2</p>
-    </div>
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -32,77 +27,7 @@
         </div>
     @endif
 
-    <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-subtitle mb-2 text-white-50">Total Apps</h6>
-                            <h2 class="mb-0">{{ $totalApps }}</h2>
-                        </div>
-                        <div class="fs-1">
-                            <i class="bi bi-layers"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-subtitle mb-2 text-white-50">Running</h6>
-                            <h2 class="mb-0">{{ $runningApps }}</h2>
-                        </div>
-                        <div class="fs-1">
-                            <i class="bi bi-play-circle"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-secondary text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-subtitle mb-2 text-white-50">Stopped</h6>
-                            <h2 class="mb-0">{{ $stoppedApps }}</h2>
-                        </div>
-                        <div class="fs-1">
-                            <i class="bi bi-stop-circle"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-danger text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-subtitle mb-2 text-white-50">Errors</h6>
-                            <h2 class="mb-0">{{ $errorApps }}</h2>
-                        </div>
-                        <div class="fs-1">
-                            <i class="bi bi-exclamation-triangle"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- PM2 Applications Table -->
     <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="bi bi-list-ul me-2"></i>PM2 Applications
-            </h5>
-        </div>
         <div class="card-body">
             @if(count($apps) > 0)
                 <div class="table-responsive">
@@ -258,51 +183,12 @@
                 </div>
             @else
                 <div class="text-center py-5">
-                    <i class="bi bi-inbox display-1 text-muted"></i>
-                    <p class="text-muted mt-3 mb-0">No PM2 applications found</p>
+                    <i class="bi bi-hdd-rack text-muted" style="font-size: 4rem;"></i>
+                    <h4 class="mt-4">No PM2 applications yet</h4>
                     <p class="text-muted">Deploy a Node.js website to see PM2 processes here</p>
                 </div>
             @endif
         </div>
     </div>
 
-    <!-- Help Section -->
-    <div class="card mt-4">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="bi bi-info-circle me-2"></i>About PM2 Process Manager
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <h6>What is PM2?</h6>
-                    <p class="small">PM2 is a production process manager for Node.js applications with built-in load balancer, auto-restart, and monitoring capabilities.</p>
-                    
-                    <h6 class="mt-3">Features:</h6>
-                    <ul class="small">
-                        <li>Automatic application restart on crashes</li>
-                        <li>Cluster mode for load balancing</li>
-                        <li>Process monitoring (CPU, memory)</li>
-                        <li>Log management</li>
-                        <li>Zero-downtime reloads</li>
-                    </ul>
-                </div>
-                <div class="col-md-6">
-                    <h6>Status Indicators:</h6>
-                    <ul class="small">
-                        <li><span class="badge bg-success">Online</span> - Application is running</li>
-                        <li><span class="badge bg-secondary">Stopped</span> - Application is stopped</li>
-                        <li><span class="badge bg-danger">Errored</span> - Application crashed</li>
-                        <li><span class="badge bg-info">Launching</span> - Application is starting</li>
-                    </ul>
-                    
-                    <h6 class="mt-3">Configuration Files:</h6>
-                    <p class="small mb-0">PM2 ecosystem configs are stored in:</p>
-                    <code class="small">/etc/pm2/ecosystem.[app-name].config.js</code>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 @endsection

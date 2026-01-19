@@ -49,10 +49,6 @@ class Pm2Controller extends Controller
         return view('pm2.index', [
             'apps' => $apps,
             'error' => $error,
-            'totalApps' => count($apps),
-            'runningApps' => collect($apps)->where('status', 'online')->count(),
-            'stoppedApps' => collect($apps)->where('status', 'stopped')->count(),
-            'errorApps' => collect($apps)->whereIn('status', ['errored', 'error'])->count(),
         ]);
     }
 
