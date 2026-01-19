@@ -171,30 +171,33 @@
                     <h6>SSH vs HTTPS URLs</h6>
                     <p class="small">For private repositories, use SSH URLs and generate an SSH key. For public repos, HTTPS URLs work fine.</p>
 
-                    <h6 class="mt-3">Deploy Scripts</h6>
-                    <p class="small">Use post-deploy scripts to automate tasks like:</p>
-                    <ul class="small">
-                        <li>Installing dependencies</li>
-                        <li>Running migrations</li>
-                        <li>Building assets</li>
-                        <li>Clearing cache</li>
-                        <li>Restarting services</li>
-                    </ul>
+                    <h6 class="mt-3">Post-Deploy Script Examples</h6>
+                    
+                    <p class="small mb-1"><strong>PHP/Laravel:</strong></p>
+                    <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">/usr/bin/php8.3 /usr/local/bin/composer install --no-dev
+/usr/bin/php8.3 artisan migrate --force
+/usr/bin/php8.3 artisan config:cache</code>
 
-                    <h6 class="mt-3">PHP Paths by Version</h6>
-                    <p class="small">Use specific PHP version in deploy scripts:</p>
-                    <ul class="small mb-0" style="font-family: monospace; font-size: 0.8rem;">
-                        <li>/usr/bin/php7.4</li>
-                        <li>/usr/bin/php8.0</li>
-                        <li>/usr/bin/php8.1</li>
-                        <li>/usr/bin/php8.2</li>
-                        <li>/usr/bin/php8.3</li>
-                        <li>/usr/bin/php8.4</li>
-                    </ul>
-                    <p class="small mt-2 mb-0">Laravel Example:</p>
-                    <code class="small d-block bg-white p-2 rounded mb-2">/usr/bin/php8.3 artisan migrate</code>
-                    <p class="small mt-2 mb-0">Composer Example:</p>
-                    <code class="small d-block bg-white p-2 rounded">/usr/bin/php8.3 /usr/local/bin/composer install</code>
+                    <p class="small mb-1 mt-3"><strong>Node.js:</strong></p>
+                    <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">npm install
+npm run build
+pm2 restart ecosystem.config.js</code>
+
+                    <p class="small mb-1 mt-3"><strong>Python:</strong></p>
+                    <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">pip install -r requirements.txt
+python manage.py migrate
+supervisorctl restart myapp</code>
+
+                    <p class="small mb-1 mt-3"><strong>Go:</strong></p>
+                    <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">go mod download
+go build -o app
+systemctl restart myapp</code>
+
+                    <h6 class="mt-3">PHP Version Paths</h6>
+                    <p class="small mb-1">Use specific PHP binary:</p>
+                    <code class="small d-block bg-white p-2 rounded" style="white-space: pre-wrap;">/usr/bin/php8.3
+/usr/bin/php8.2
+/usr/bin/php8.1</code>
 
                     <h6 class="mt-3">Security</h6>
                     <p class="small">Each webhook gets a unique secret token for verification. Never share your webhook URLs publicly.</p>

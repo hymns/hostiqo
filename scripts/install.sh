@@ -1051,6 +1051,20 @@ www-data ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl restart *
 www-data ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl status
 www-data ALL=(ALL) NOPASSWD: /usr/bin/tail -n * /var/log/supervisor/*.log
 
+# Systemd Service File Management
+www-data ALL=(ALL) NOPASSWD: /bin/cp /tmp/[a-zA-Z0-9._-]* /etc/systemd/system/[a-zA-Z0-9._-]*.service
+www-data ALL=(ALL) NOPASSWD: /bin/chmod 644 /etc/systemd/system/[a-zA-Z0-9._-]*.service
+www-data ALL=(ALL) NOPASSWD: /bin/rm -f /etc/systemd/system/[a-zA-Z0-9._-]*.service
+
+# Systemd Service Control
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl daemon-reload
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl enable [a-zA-Z0-9._-]*
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl disable [a-zA-Z0-9._-]*
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl start [a-zA-Z0-9._-]*
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl stop [a-zA-Z0-9._-]*
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart [a-zA-Z0-9._-]*
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl reload [a-zA-Z0-9._-]*
+
 # Service Management
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl status *
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl is-active *
@@ -1171,6 +1185,20 @@ nginx ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl stop *
 nginx ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl restart *
 nginx ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl status
 nginx ALL=(ALL) NOPASSWD: /usr/bin/tail -n * /var/log/supervisor/*.log
+
+# Systemd Service File Management
+nginx ALL=(ALL) NOPASSWD: /usr/bin/cp /tmp/[a-zA-Z0-9._-]* /etc/systemd/system/[a-zA-Z0-9._-]*.service
+nginx ALL=(ALL) NOPASSWD: /usr/bin/chmod 644 /etc/systemd/system/[a-zA-Z0-9._-]*.service
+nginx ALL=(ALL) NOPASSWD: /usr/bin/rm -f /etc/systemd/system/[a-zA-Z0-9._-]*.service
+
+# Systemd Service Control
+nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl daemon-reload
+nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl enable [a-zA-Z0-9._-]*
+nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl disable [a-zA-Z0-9._-]*
+nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl start [a-zA-Z0-9._-]*
+nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop [a-zA-Z0-9._-]*
+nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart [a-zA-Z0-9._-]*
+nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload [a-zA-Z0-9._-]*
 
 # Service Management
 nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl status *

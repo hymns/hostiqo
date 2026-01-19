@@ -154,23 +154,33 @@
                     <h6 class="mt-3">Local Path</h6>
                     <p class="small">Changing local path requires manual file system changes. Make sure the new path exists and has proper permissions.</p>
 
-                    <h6 class="mt-3">Deploy Scripts</h6>
-                    <p class="small">Test your deploy scripts carefully. Errors in scripts can cause deployments to fail. Check deployment logs for debugging.</p>
+                    <h6 class="mt-3">Post-Deploy Script Examples</h6>
+                    
+                    <p class="small mb-1"><strong>PHP/Laravel:</strong></p>
+                    <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">/usr/bin/php8.3 /usr/local/bin/composer install --no-dev
+/usr/bin/php8.3 artisan migrate --force
+/usr/bin/php8.3 artisan config:cache</code>
 
-                    <h6 class="mt-3">PHP Paths by Version</h6>
-                    <p class="small">Use specific PHP version in deploy scripts:</p>
-                    <ul class="small mb-0" style="font-family: monospace; font-size: 0.8rem;">
-                        <li>/usr/bin/php7.4</li>
-                        <li>/usr/bin/php8.0</li>
-                        <li>/usr/bin/php8.1</li>
-                        <li>/usr/bin/php8.2</li>
-                        <li>/usr/bin/php8.3</li>
-                        <li>/usr/bin/php8.4</li>
-                    </ul>
-                    <p class="small mt-2 mb-0">Laravel Example:</p>
-                    <code class="small d-block bg-white p-2 rounded mb-2">/usr/bin/php8.3 artisan migrate</code>
-                    <p class="small mt-2 mb-0">Composer Example:</p>
-                    <code class="small d-block bg-white p-2 rounded">/usr/bin/php8.3 /usr/local/bin/composer install</code>
+                    <p class="small mb-1 mt-3"><strong>Node.js:</strong></p>
+                    <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">npm install
+npm run build
+pm2 restart ecosystem.config.js</code>
+
+                    <p class="small mb-1 mt-3"><strong>Python:</strong></p>
+                    <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">pip install -r requirements.txt
+python manage.py migrate
+supervisorctl restart myapp</code>
+
+                    <p class="small mb-1 mt-3"><strong>Go:</strong></p>
+                    <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">go mod download
+go build -o app
+systemctl restart myapp</code>
+
+                    <h6 class="mt-3">PHP Version Paths</h6>
+                    <p class="small mb-1">Use specific PHP binary:</p>
+                    <code class="small d-block bg-white p-2 rounded" style="white-space: pre-wrap;">/usr/bin/php8.3
+/usr/bin/php8.2
+/usr/bin/php8.1</code>
 
                     <h6 class="mt-3">SSH Key</h6>
                     <p class="small">The SSH key remains the same when editing. To regenerate, delete and recreate the webhook.</p>
