@@ -30,10 +30,25 @@ abstract class AbstractServiceManagerService implements ServiceManagerInterface
     public function getAvailableServices(): array
     {
         $services = [];
+        $pool = [];
 
+        // Prepare concurrent status checks for all services
         foreach ($this->supportedServices as $key => $info) {
-            // Check if service exists using systemctl status
-            $result = Process::run("systemctl status {$info['service']} 2>&1");
+            $pool[$key] = fn () => Process::run("systemctl status {$info['service']} 2>&1");
+        }
+
+        // Run all systemctl status commands concurrently
+        $results = Process::concurrently(function ($pool) {
+            foreach ($pool as $key => $command) {
+                $pool[$key] = $command();
+            }
+            return $pool;
+        });
+
+        $processedResults = $results($pool);
+
+        // Process results
+        foreach ($processedResults as $key => $result) {
             $output = $result->output();
             
             // Service doesn't exist if output contains these messages
@@ -42,8 +57,9 @@ abstract class AbstractServiceManagerService implements ServiceManagerInterface
                        str_contains($output, 'Unit') && str_contains($output, 'not found');
             
             if (!$notFound) {
-                $status = $this->getServiceStatus($key);
-                $services[$key] = array_merge($info, $status);
+                // Parse status from the result we already have
+                $status = $this->parseServiceStatus($output);
+                $services[$key] = array_merge($this->supportedServices[$key], $status);
             }
         }
 
@@ -73,6 +89,17 @@ abstract class AbstractServiceManagerService implements ServiceManagerInterface
         $result = Process::run("systemctl status {$serviceName} 2>&1");
         $output = $result->output();
         
+        return $this->parseServiceStatus($output);
+    }
+
+    /**
+     * Parse systemctl status output.
+     *
+     * @param string $output The systemctl status output
+     * @return array{running: bool, enabled: bool, status: string}
+     */
+    protected function parseServiceStatus(string $output): array
+    {
         // Parse status from output
         // Some services like UFW use 'exited' instead of 'running'
         $isRunning = str_contains($output, 'Active: active (running)') || 
