@@ -140,7 +140,16 @@
 
                 <div class="card">
                     <div class="card-header">
-                        <i class="bi bi-code-slash me-2"></i> @if($type === 'php') PHP @else Node.js @endif Configuration
+                        <i class="bi bi-code-slash me-2"></i> 
+                        @if($type === 'php')
+                            PHP Configuration
+                        @elseif($type === 'reverse-proxy')
+                            Reverse Proxy Configuration
+                        @elseif($type === 'static')
+                            Static Site Configuration
+                        @else
+                            Configuration
+                        @endif
                     </div>
                     <div class="card-body">
                         @if($type === 'php')
