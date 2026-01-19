@@ -15,6 +15,7 @@ use App\Http\Controllers\QueueController;
 use App\Http\Controllers\ServerHealthController;
 use App\Http\Controllers\ServiceManagerController;
 use App\Http\Controllers\SupervisorProgramController;
+use App\Http\Controllers\SystemdController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\WebhookHandlerController;
 use App\Http\Controllers\WebsiteController;
@@ -136,6 +137,12 @@ Route::middleware('auth')->group(function () {
     Route::post('supervisor/{supervisorProgram}/stop', [SupervisorProgramController::class, 'stop'])->name('supervisor.stop');
     Route::post('supervisor/{supervisorProgram}/restart', [SupervisorProgramController::class, 'restart'])->name('supervisor.restart');
     Route::post('supervisor/{supervisorProgram}/deploy', [SupervisorProgramController::class, 'deploy'])->name('supervisor.deploy');
+
+    // Systemd Services
+    Route::resource('systemd', SystemdController::class);
+    Route::post('systemd/{systemd}/start', [SystemdController::class, 'start'])->name('systemd.start');
+    Route::post('systemd/{systemd}/stop', [SystemdController::class, 'stop'])->name('systemd.stop');
+    Route::post('systemd/{systemd}/restart', [SystemdController::class, 'restart'])->name('systemd.restart');
 
     // Alerts
     Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
