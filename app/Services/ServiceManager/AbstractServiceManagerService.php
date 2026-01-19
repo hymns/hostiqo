@@ -120,11 +120,66 @@ abstract class AbstractServiceManagerService implements ServiceManagerInterface
             $status = 'unknown';
         }
 
-        return [
+        $statusData = [
             'running' => $isRunning,
             'enabled' => $isEnabled,
             'status' => $status,
         ];
+
+        // Extract PID and get resource usage if service is running
+        if ($isRunning && preg_match('/Main PID:\s+(\d+)/', $output, $matches)) {
+            $pid = (int) $matches[1];
+            $statusData['pid'] = $pid;
+            
+            // Get CPU and memory usage
+            $resourceUsage = $this->getProcessResourceUsage($pid);
+            if ($resourceUsage) {
+                $statusData['cpu'] = $resourceUsage['cpu'];
+                $statusData['memory'] = $resourceUsage['memory'];
+            }
+        }
+
+        // Extract uptime
+        if (preg_match('/Active: active \([^)]+\) since ([^;]+);/', $output, $matches)) {
+            $statusData['uptime'] = trim($matches[1]);
+        }
+
+        return $statusData;
+    }
+
+    /**
+     * Get CPU and memory usage for a process.
+     *
+     * @param int $pid The process ID
+     * @return array{cpu: string, memory: string}|null
+     */
+    protected function getProcessResourceUsage(int $pid): ?array
+    {
+        try {
+            // Use ps to get CPU and memory usage
+            $result = Process::run("ps -p {$pid} -o %cpu,%mem --no-headers 2>/dev/null");
+            
+            if (!$result->successful()) {
+                return null;
+            }
+
+            $output = trim($result->output());
+            if (empty($output)) {
+                return null;
+            }
+
+            $parts = preg_split('/\s+/', $output);
+            if (count($parts) >= 2) {
+                return [
+                    'cpu' => number_format((float) $parts[0], 1),
+                    'memory' => number_format((float) $parts[1], 1),
+                ];
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     /**

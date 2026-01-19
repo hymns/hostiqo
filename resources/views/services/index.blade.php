@@ -66,42 +66,25 @@
 
                             <!-- Service Info -->
                             <div class="service-info mb-3">
-                                <div class="row g-2 small">
-                                    @if(isset($service['cpu']) || isset($service['memory']))
-                                        <div class="col-6">
-                                            <div class="text-muted"><i class="bi bi-cpu"></i> CPU</div>
-                                            <div class="fw-semibold">{{ $service['cpu'] ?? '0.0' }}%</div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="text-muted"><i class="bi bi-memory"></i> RAM</div>
-                                            <div class="fw-semibold">{{ $service['memory'] ?? '0.0' }}%</div>
-                                        </div>
-                                    @endif
-                                    @if(!empty($service['pid']))
-                                        <div class="col-6">
-                                            <div class="text-muted"># PID</div>
-                                            <div class="fw-semibold">{{ $service['pid'] }}</div>
-                                        </div>
-                                    @endif
-                                    @if(!empty($service['uptime']))
-                                        <div class="col-6">
-                                            <div class="text-muted"><i class="bi bi-clock"></i> Since</div>
-                                            <div class="fw-semibold small">{{ $service['uptime'] }}</div>
-                                        </div>
-                                    @endif
-                                    @if(isset($service['enabled']))
-                                        <div class="col-12">
-                                            <div class="text-muted"><i class="bi bi-power"></i> Auto-start</div>
-                                            <div class="fw-semibold">
-                                                @if($service['enabled'] ?? false)
-                                                    <span class="badge badge-pastel-green">Enabled</span>
-                                                @else
-                                                    <span class="badge badge-pastel-yellow">Disabled</span>
-                                                @endif
-                                            </div>
-                                        </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-power text-muted me-2"></i>
+                                    <span class="text-muted me-2">Auto-start</span>
+                                    @if($service['enabled'] ?? false)
+                                        <span class="badge badge-pastel-green">Enabled</span>
+                                    @else
+                                        <span class="badge badge-pastel-yellow">Disabled</span>
                                     @endif
                                 </div>
+
+                                @if($service['running'] ?? false)
+                                    <div class="small text-muted ps-4">
+                                        <div><i class="bi bi-cpu me-1"></i> cpu: {{ $service['cpu'] ?? '0.0' }}%</div>
+                                        <div><i class="bi bi-memory me-1"></i> ram: {{ $service['memory'] ?? '0.0' }}%</div>
+                                        @if(!empty($service['pid']))
+                                            <div class="mt-1"><i class="bi bi-hash me-1"></i> pid: {{ $service['pid'] }}</div>
+                                        @endif
+                                    </div>
+                                @endif
                             </div>
 
                             <!-- Action Buttons -->
