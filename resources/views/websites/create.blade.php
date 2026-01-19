@@ -209,7 +209,7 @@
                                     min="1"
                                     max="65535"
                                 >
-                                <div class="form-text">Port where your Node.js application will run (Nginx will proxy to this port)</div>
+                                <div class="form-text">Port where your application will run (Nginx will proxy to this port)</div>
                                 @error('port')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

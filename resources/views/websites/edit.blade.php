@@ -137,7 +137,16 @@
 
                 <div class="card">
                     <div class="card-header">
-                        <i class="bi bi-code-slash me-2"></i> @if($website->project_type === 'php') PHP @else Node.js @endif Configuration
+                        <i class="bi bi-code-slash me-2"></i> 
+                        @if($website->project_type === 'php')
+                            PHP Configuration
+                        @elseif($website->project_type === 'reverse-proxy')
+                            Reverse Proxy Configuration
+                        @elseif($website->project_type === 'static')
+                            Static Site Configuration
+                        @else
+                            Configuration
+                        @endif
                     </div>
                     <div class="card-body">
                         @if($website->project_type === 'php')
@@ -205,7 +214,7 @@
                                     min="1"
                                     max="65535"
                                 >
-                                <div class="form-text">Port where your Node.js application will run (Nginx will proxy to this port)</div>
+                                <div class="form-text">Port where your application will run (Nginx will proxy to this port)</div>
                                 @error('port')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
