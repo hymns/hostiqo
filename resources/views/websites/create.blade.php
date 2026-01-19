@@ -166,28 +166,33 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                        @else
+                        @elseif($type === 'reverse-proxy')
                             <div class="mb-3">
-                                <label for="node_version" class="form-label">
-                                    Node.js Version
+                                <label for="runtime" class="form-label">
+                                    Runtime
                                 </label>
                                 <select
-                                    class="form-select @error('node_version') is-invalid @enderror"
-                                    id="node_version"
-                                    name="node_version"
+                                    class="form-select @error('runtime') is-invalid @enderror"
+                                    id="runtime"
+                                    name="runtime"
+                                    required
                                 >
-                                    <option value="">System Default</option>
-                                    @foreach($nodeVersions as $version)
-                                        <option value="{{ $version }}" {{ old('node_version') === $version ? 'selected' : '' }}>
-                                            Node.js {{ $version }}
-                                        </option>
-                                    @endforeach
+                                    <option value="">Select Runtime</option>
+                                    <option value="Node.js" {{ old('runtime') === 'Node.js' ? 'selected' : '' }}>Node.js</option>
+                                    <option value="Python" {{ old('runtime') === 'Python' ? 'selected' : '' }}>Python</option>
+                                    <option value="Go" {{ old('runtime') === 'Go' ? 'selected' : '' }}>Go</option>
+                                    <option value="Ruby" {{ old('runtime') === 'Ruby' ? 'selected' : '' }}>Ruby</option>
+                                    <option value="Java" {{ old('runtime') === 'Java' ? 'selected' : '' }}>Java</option>
+                                    <option value="Other" {{ old('runtime') === 'Other' ? 'selected' : '' }}>Other</option>
                                 </select>
-                                <div class="form-text">Select the Node.js version for this website</div>
-                                @error('node_version')
+                                <div class="form-text">Select the runtime/language for your application</div>
+                                @error('runtime')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
+                        @endif
+
+                        @if($type === 'reverse-proxy')
 
                             <!-- Port -->
                             <div class="mb-3">

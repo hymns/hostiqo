@@ -62,9 +62,9 @@ class WebsiteController extends Controller
             'domain' => ['required', 'string', 'max:255', 'unique:websites,domain'],
             'root_path' => ['nullable', 'string', 'max:500'],
             'working_directory' => ['nullable', 'string', 'max:500'],
-            'project_type' => ['required', 'in:php,node'],
+            'project_type' => ['required', 'in:php,static,reverse-proxy'],
             'php_version' => ['required_if:project_type,php', 'nullable', 'string', 'max:10'],
-            'node_version' => ['nullable', 'string', 'max:10'],
+            'runtime' => ['nullable', 'string', 'max:50'],
             'php_settings' => ['nullable', 'array'],
             'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'ssl_enabled' => ['boolean'],
@@ -162,9 +162,9 @@ class WebsiteController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'working_directory' => ['nullable', 'string', 'max:500'],
-            'project_type' => ['required', 'in:php,node'],
+            'project_type' => ['required', 'in:php,static,reverse-proxy'],
             'php_version' => ['required_if:project_type,php', 'nullable', 'string', 'max:10'],
-            'node_version' => ['nullable', 'string', 'max:10'],
+            'runtime' => ['nullable', 'string', 'max:50'],
             'php_settings' => ['nullable', 'array'],
             'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'ssl_enabled' => ['boolean'],
@@ -341,10 +341,10 @@ class WebsiteController extends Controller
      */
     public function pm2Start(Website $website, Pm2Service $pm2Service)
     {
-        if ($website->project_type !== 'node') {
+        if ($website->project_type !== 'reverse-proxy' || $website->runtime !== 'Node.js') {
             return redirect()
                 ->route('websites.show', $website)
-                ->with('error', 'PM2 control is only available for Node.js projects.');
+                ->with('error', 'PM2 control is only available for Node.js reverse proxy projects.');
         }
 
         $result = $pm2Service->startApp($website);
@@ -369,10 +369,10 @@ class WebsiteController extends Controller
      */
     public function pm2Stop(Website $website, Pm2Service $pm2Service)
     {
-        if ($website->project_type !== 'node') {
+        if ($website->project_type !== 'reverse-proxy' || $website->runtime !== 'Node.js') {
             return redirect()
                 ->route('websites.show', $website)
-                ->with('error', 'PM2 control is only available for Node.js projects.');
+                ->with('error', 'PM2 control is only available for Node.js reverse proxy projects.');
         }
 
         $result = $pm2Service->stopApp($website);
@@ -397,10 +397,10 @@ class WebsiteController extends Controller
      */
     public function pm2Restart(Website $website, Pm2Service $pm2Service)
     {
-        if ($website->project_type !== 'node') {
+        if ($website->project_type !== 'reverse-proxy' || $website->runtime !== 'Node.js') {
             return redirect()
                 ->route('websites.show', $website)
-                ->with('error', 'PM2 control is only available for Node.js projects.');
+                ->with('error', 'PM2 control is only available for Node.js reverse proxy projects.');
         }
 
         $result = $pm2Service->restartApp($website);

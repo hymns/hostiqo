@@ -19,7 +19,7 @@ class Website extends Model
         'project_type',
         'framework',
         'php_version',
-        'node_version',
+        'runtime',
         'php_settings',
         'php_pool_name',
         'port',
@@ -70,7 +70,8 @@ class Website extends Model
     {
         return match($this->project_type) {
             'php' => 'primary',
-            'node' => 'success',
+            'reverse-proxy' => 'success',
+            'static' => 'info',
             default => 'secondary',
         };
     }
@@ -82,9 +83,12 @@ class Website extends Model
      */
     public function getVersionDisplayAttribute(): string
     {
-        return $this->project_type === 'php' 
-            ? ($this->php_version ?? 'Default')
-            : ($this->node_version ?? 'Default');
+        return match($this->project_type) {
+            'php' => $this->php_version ?? 'Default',
+            'reverse-proxy' => $this->runtime ?? 'Not Set',
+            'static' => 'Static',
+            default => 'N/A',
+        };
     }
 
     /**

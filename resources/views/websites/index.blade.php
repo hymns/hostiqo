@@ -2,7 +2,7 @@
 
 @section('title', 'Websites - Hostiqo')
 @section('page-title', 'Websites')
-@section('page-description', 'Manage PHP and Node.js website configurations')
+@section('page-description', 'Manage PHP, Static, and Reverse Proxy website configurations')
 
 @section('page-actions')
     @if($type !== 'deployment')
@@ -19,9 +19,13 @@
            class="tab-btn text-decoration-none {{ $type === 'php' ? 'active' : '' }}">
             <i class="bi bi-code-slash me-1"></i> PHP Projects
         </a>
-        <a href="{{ route('websites.index', ['type' => 'node']) }}"
-           class="tab-btn text-decoration-none {{ $type === 'node' ? 'active' : '' }}">
-            <i class="bi bi-hexagon me-1"></i> Node Projects
+        <a href="{{ route('websites.index', ['type' => 'reverse-proxy']) }}"
+           class="tab-btn text-decoration-none {{ $type === 'reverse-proxy' ? 'active' : '' }}">
+            <i class="bi bi-arrow-left-right me-1"></i> Reverse Proxy
+        </a>
+        <a href="{{ route('websites.index', ['type' => 'static']) }}"
+           class="tab-btn text-decoration-none {{ $type === 'static' ? 'active' : '' }}">
+            <i class="bi bi-file-earmark me-1"></i> Static Sites
         </a>
         <a href="{{ route('websites.index', ['type' => 'deployment']) }}"
            class="tab-btn text-decoration-none {{ $type === 'deployment' ? 'active' : '' }}">
@@ -160,16 +164,35 @@
                         <div class="section-label">CONFIGURATION</div>
                         <div class="info-row">
                             <span class="info-label"><i class="bi bi-code-slash"></i> Type</span>
-                            <span class="info-value">{{ $website->project_type === 'php' ? 'PHP' : 'Node.js' }}</span>
+                            <span class="info-value">
+                                @if($website->project_type === 'php')
+                                    PHP
+                                @elseif($website->project_type === 'reverse-proxy')
+                                    Reverse Proxy
+                                @elseif($website->project_type === 'static')
+                                    Static Site
+                                @else
+                                    {{ ucfirst($website->project_type) }}
+                                @endif
+                            </span>
                         </div>
                         @if($website->project_type === 'php')
                             <div class="info-row">
-                                <span class="info-label"><i class="bi bi-gear"></i> PHP Version</span>
-                                <span class="info-value">{{ $website->php_version ?? 'System Default' }}</span>
+                                <span class="info-label"><i class="bi bi-braces"></i> PHP Version</span>
+                                <span class="info-value">{{ $website->php_version ?? '8.3' }}</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label"><i class="bi bi-layers"></i> FPM Pool</span>
-                                <span class="info-value">{{ $website->php_pool_name ?? 'www' }}</span>
+                                <span class="info-label"><i class="bi bi-gear"></i> PHP Pool</span>
+                                <span class="info-value">{{ $website->php_pool_name ?? str_replace('.', '_', $website->domain) }}</span>
+                            </div>
+                        @elseif($website->project_type === 'reverse-proxy')
+                            <div class="info-row">
+                                <span class="info-label"><i class="bi bi-cpu"></i> Runtime</span>
+                                <span class="info-value">{{ $website->runtime ?? 'Not Set' }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label"><i class="bi bi-ethernet"></i> Port</span>
+                                <span class="info-value">{{ $website->port ?? '3000' }}</span>
                             </div>
                         @else
                             <div class="info-row">

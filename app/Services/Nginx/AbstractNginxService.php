@@ -27,11 +27,12 @@ abstract class AbstractNginxService implements NginxInterface
      */
     public function generateConfig(Website $website): string
     {
-        if ($website->project_type === 'php') {
-            return $this->generatePhpConfig($website);
-        }
-        
-        return $this->generateStaticConfig($website);
+        return match($website->project_type) {
+            'php' => $this->generatePhpConfig($website),
+            'reverse-proxy' => $this->generateReverseProxyConfig($website),
+            'static' => $this->generateStaticConfig($website),
+            default => $this->generateStaticConfig($website),
+        };
     }
 
     /**
@@ -124,6 +125,88 @@ server {
         expires 30d;
         add_header Cache-Control "public, immutable";
         access_log off;
+    }
+}
+NGINX;
+    }
+
+    /**
+     * Generate reverse proxy configuration.
+     *
+     * @param Website $website The website model
+     * @return string The reverse proxy configuration
+     */
+    protected function generateReverseProxyConfig(Website $website): string
+    {
+        $workingDir = $website->working_directory ?? '';
+        $documentRoot = rtrim($website->root_path, '/') . ($workingDir ? '/' . $workingDir : '');
+        
+        $sslConfig = $website->ssl_enabled ? $this->getSslConfig($website->domain) : '';
+        $wwwRedirectConfig = $this->getWwwRedirectConfig($website);
+        $securityHeaders = $this->getSecurityHeaders();
+        $logDir = '/var/log/nginx';
+        $port = $website->port ?? 3000;
+        $runtime = $website->runtime ?? 'Unknown';
+
+        return <<<NGINX
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {$website->domain} www.{$website->domain};
+
+{$sslConfig}
+{$wwwRedirectConfig}
+
+    # Logging
+    access_log {$logDir}/{$website->domain}-access.log;
+    error_log {$logDir}/{$website->domain}-error.log;
+
+{$securityHeaders}
+
+    # Allow Let's Encrypt ACME challenge
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        root {$documentRoot};
+        try_files \$uri =404;
+    }
+
+    # Reverse Proxy to {$runtime} application
+    location / {
+        # Rate limiting with Cloudflare bypass (10 req/s, burst 20)
+        limit_req zone=cloudflare_bypass burst=20 nodelay;
+        
+        proxy_pass http://127.0.0.1:{$port};
+        proxy_http_version 1.1;
+        
+        # WebSocket support
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # Proxy headers
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Forwarded-Host \$host;
+        proxy_set_header X-Forwarded-Port \$server_port;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Buffering
+        proxy_buffering on;
+        proxy_buffer_size 4k;
+        proxy_buffers 8 4k;
+        proxy_busy_buffers_size 8k;
+    }
+
+    # Security: Deny access to hidden files (except .well-known)
+    location ~ /\.(?!well-known) {
+        deny all;
+        access_log off;
+        log_not_found off;
     }
 }
 NGINX;
