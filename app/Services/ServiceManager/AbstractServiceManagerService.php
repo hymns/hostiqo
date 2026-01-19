@@ -30,23 +30,10 @@ abstract class AbstractServiceManagerService implements ServiceManagerInterface
     public function getAvailableServices(): array
     {
         $services = [];
-        $pool = [];
 
-        // Prepare concurrent status checks for all services
         foreach ($this->supportedServices as $key => $info) {
-            $pool[$key] = fn () => Process::run("systemctl status {$info['service']} 2>&1");
-        }
-
-        // Run all systemctl status commands concurrently
-        $results = Process::concurrently(function ($pool) {
-            foreach ($pool as $key => $command) {
-                $pool[$key] = $command();
-            }
-            return $pool;
-        });
-
-        // Process results
-        foreach ($results as $key => $result) {
+            // Check if service exists using systemctl status
+            $result = Process::run("systemctl status {$info['service']} 2>&1");
             $output = $result->output();
             
             // Service doesn't exist if output contains these messages
@@ -55,9 +42,8 @@ abstract class AbstractServiceManagerService implements ServiceManagerInterface
                        str_contains($output, 'Unit') && str_contains($output, 'not found');
             
             if (!$notFound) {
-                // Parse status from the result we already have
-                $status = $this->parseServiceStatus($output);
-                $services[$key] = array_merge($this->supportedServices[$key], $status);
+                $status = $this->getServiceStatus($key);
+                $services[$key] = array_merge($info, $status);
             }
         }
 
