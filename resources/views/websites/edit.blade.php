@@ -113,8 +113,8 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                        @else
-                            <div class="mb-3">
+                        @elseif($website->project_type === 'reverse-proxy')
+                            <div class="mb-3" id="run-opt-field" style="display: {{ $website->runtime === 'Node.js' ? 'block' : 'none' }};">
                                 <label for="working_directory" class="form-label">
                                     Run opt
                                 </label>
@@ -126,7 +126,7 @@
                                     value="{{ old('working_directory', $website->working_directory) }}"
                                     placeholder="start"
                                 >
-                                <div class="form-text">Startup mode in package.json</div>
+                                <div class="form-text">Startup mode in package.json (Node.js only)</div>
                                 @error('working_directory')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -507,3 +507,22 @@
     </div>
 @endsection
 
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Show/hide Run opt field based on runtime selection
+    const runtimeSelect = document.getElementById('runtime');
+    const runOptField = document.getElementById('run-opt-field');
+    
+    if (runtimeSelect && runOptField) {
+        runtimeSelect.addEventListener('change', function() {
+            if (this.value === 'Node.js') {
+                runOptField.style.display = 'block';
+            } else {
+                runOptField.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+@endpush
