@@ -11,14 +11,18 @@
 @endsection
 
 @section('content')
-    @if($services->isEmpty())
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>
-            No systemd services found. Create your first service to get started.
-        </div>
-    @else
-        <div class="card">
-            <div class="card-body">
+    <div class="card">
+        <div class="card-body">
+            @if($services->isEmpty())
+                <div class="text-center py-5">
+                    <i class="bi bi-gear text-muted" style="font-size: 4rem;"></i>
+                    <h4 class="mt-4">No systemd services yet</h4>
+                    <p class="text-muted">Create your first systemd service to manage background processes like Python, Go, Ruby applications.</p>
+                    <a href="{{ route('systemd.create') }}" class="btn btn-primary mt-3">
+                        <i class="bi bi-plus-circle me-1"></i> Create Your First Service
+                    </a>
+                </div>
+            @else
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead>
@@ -88,7 +92,7 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
+            @endif
         </div>
-    @endif
+    </div>
 @endsection
