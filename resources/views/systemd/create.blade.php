@@ -122,7 +122,7 @@
                             <label for="environment" class="form-label">Environment Variables</label>
                             <textarea class="form-control font-monospace @error('environment') is-invalid @enderror" 
                                       id="environment" name="environment" rows="4" 
-                                      placeholder="PORT=3000&#10;NODE_ENV=production">{{ old('environment') }}</textarea>
+                                      placeholder="PORT=8000&#10;PYTHONUNBUFFERED=1&#10;DEBUG=False">{{ old('environment') }}</textarea>
                             <small class="form-text text-muted">One per line: KEY=value</small>
                             @error('environment')
                                 <div class="invalid-feedback">{{ $message }}</div>
