@@ -152,6 +152,10 @@ class SslService
         $certPath = "/etc/letsencrypt/live/{$primaryDomain}/fullchain.pem";
         $keyPath = "/etc/letsencrypt/live/{$primaryDomain}/privkey.pem";
         
-        return file_exists($certPath) && file_exists($keyPath);
+        // Use sudo to check file existence as /etc/letsencrypt is root-only
+        $certCheck = Process::run("sudo /usr/bin/test -f {$certPath}");
+        $keyCheck = Process::run("sudo /usr/bin/test -f {$keyPath}");
+        
+        return $certCheck->successful() && $keyCheck->successful();
     }
 }

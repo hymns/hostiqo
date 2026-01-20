@@ -989,6 +989,8 @@ www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart nginx
 # Certbot - SSL Certificate Management
 www-data ALL=(ALL) NOPASSWD: /usr/bin/certbot
 www-data ALL=(ALL) NOPASSWD: /snap/bin/certbot
+www-data ALL=(ALL) NOPASSWD: /usr/bin/test -f /etc/letsencrypt/live/*/fullchain.pem
+www-data ALL=(ALL) NOPASSWD: /usr/bin/test -f /etc/letsencrypt/live/*/privkey.pem
 
 # PHP-FPM Pool Management
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl start php*-fpm
@@ -1134,6 +1136,8 @@ nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx
 
 # Certbot - SSL Certificate Management
 nginx ALL=(ALL) NOPASSWD: /usr/bin/certbot
+nginx ALL=(ALL) NOPASSWD: /usr/bin/test -f /etc/letsencrypt/live/*/fullchain.pem
+nginx ALL=(ALL) NOPASSWD: /usr/bin/test -f /etc/letsencrypt/live/*/privkey.pem
 
 # PHP-FPM Pool Management (Remi style)
 nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl start php*-php-fpm
