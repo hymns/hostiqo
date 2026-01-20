@@ -16,7 +16,7 @@ class HostiqoUpdate extends Command
     protected $signature = 'hostiqo:update 
                             {--force : Force update without confirmation}
                             {--no-backup : Skip database backup}
-                            {--sudoers : Refresh sudoers configuration after update (requires sudo/root)}';
+                            {--sudoers : Refresh sudoers configuration after update}';
 
     /**
      * The console command description.
@@ -128,26 +128,34 @@ class HostiqoUpdate extends Command
         Artisan::call('view:cache');
         $this->info('✓ Application optimized');
 
-        if ($this->option('sudoers')) {
-            $this->info('');
-            $this->warn('Extra Step: Refreshing sudoers configuration...');
-
-            $result = Process::path(base_path())->run('sudo bash scripts/install.sh --phase2');
-
-            if ($result->successful()) {
-                $this->info('✓ Sudoers configuration refreshed');
-            } else {
-                $this->warn('⚠ Failed to refresh sudoers automatically. Please run "sudo bash scripts/install.sh --phase2" manually.');
-                $errorOutput = trim($result->errorOutput());
-                if (!empty($errorOutput)) {
-                    $this->line($errorOutput);
-                }
-            }
-        }
-
         // Disable maintenance mode
         Artisan::call('up');
         
+        // Sudoers refresh (requires root password)
+        if ($this->option('sudoers')) {
+            $this->info('');
+            $this->warn('Refreshing sudoers configuration...');
+            
+            $script = base_path('scripts/install.sh');
+            $password = $this->secret('Enter root/sudo password');
+            
+            if ($password) {
+                // Pipe password to sudo via stdin
+                $result = Process::input($password . "\n")
+                    ->run("sudo -S bash {$script} --phase2 2>&1");
+                
+                if ($result->successful()) {
+                    $this->info('✓ Sudoers configuration refreshed');
+                } else {
+                    $this->warn('⚠ Sudoers refresh failed:');
+                    $this->line($result->output());
+                }
+            } else {
+                $this->warn('⚠ Password not provided. Run manually:');
+                $this->line("  sudo bash {$script} --phase2");
+            }
+        }
+
         $this->info('');
         $this->info('╔══════════════════════════════════════════╗');
         $this->info('║     ✓ Hostiqo updated successfully!      ║');
