@@ -23,7 +23,32 @@ class HostiqoUpdate extends Command
      *
      * @var string
      */
-    protected $description = 'Update Hostiqo to the latest version';
+    protected $description = 'Update Hostiqo to the latest version (run with sudo)';
+
+    /**
+     * Get the web user based on OS.
+     */
+    protected function getWebUser(): string
+    {
+        // Check if nginx user exists (RHEL-based)
+        $result = Process::run('id -u nginx 2>/dev/null');
+        if ($result->successful()) {
+            return 'nginx';
+        }
+        
+        return 'www-data';
+    }
+
+    /**
+     * Run command as web user.
+     */
+    protected function runAsWebUser(string $command, ?string $path = null): \Illuminate\Contracts\Process\ProcessResult
+    {
+        $webUser = $this->getWebUser();
+        $path = $path ?? base_path();
+        
+        return Process::path($path)->run("sudo -u {$webUser} {$command}");
+    }
 
     /**
      * Execute the console command.
@@ -36,6 +61,10 @@ class HostiqoUpdate extends Command
         $this->info('╔══════════════════════════════════════════╗');
         $this->info('║       Hostiqo Update Utility             ║');
         $this->info('╚══════════════════════════════════════════╝');
+        $this->info('');
+
+        $webUser = $this->getWebUser();
+        $this->info("Web user: {$webUser}");
         $this->info('');
 
         if (!$this->option('force') && !$this->confirm('This will update Hostiqo to the latest version. Continue?')) {
@@ -55,6 +84,7 @@ class HostiqoUpdate extends Command
             $backupPath = storage_path('backups');
             if (!is_dir($backupPath)) {
                 mkdir($backupPath, 0755, true);
+                chown($backupPath, $webUser);
             }
             $backupFile = $backupPath . '/backup_' . date('Y-m-d_His') . '.sql';
             
@@ -82,9 +112,9 @@ class HostiqoUpdate extends Command
             $this->info('Step 2/7: Skipping database backup (--no-backup flag)');
         }
 
-        // Step 3: Pull latest code
+        // Step 3: Pull latest code (as web user)
         $this->warn('Step 3/7: Pulling latest code from repository...');
-        $result = Process::path(base_path())->run('git pull origin master');
+        $result = $this->runAsWebUser('git pull origin master');
         
         if ($result->failed()) {
             $this->error('✗ Git pull failed:');
@@ -94,9 +124,9 @@ class HostiqoUpdate extends Command
         }
         $this->info('✓ Code updated successfully');
 
-        // Step 4: Install/update dependencies
+        // Step 4: Install/update dependencies (as web user)
         $this->warn('Step 4/7: Updating Composer dependencies...');
-        $result = Process::path(base_path())->run('composer install --no-dev --optimize-autoloader');
+        $result = $this->runAsWebUser('composer install --no-dev --optimize-autoloader --no-interaction');
         
         if ($result->failed()) {
             $this->warn('⚠ Composer install had issues, check manually');
@@ -104,15 +134,15 @@ class HostiqoUpdate extends Command
             $this->info('✓ Composer dependencies updated');
         }
 
-        // Step 5: Run migrations
+        // Step 5: Run migrations (as web user)
         $this->warn('Step 5/7: Running database migrations...');
-        Artisan::call('migrate', ['--force' => true]);
+        $this->runAsWebUser('php artisan migrate --force');
         $this->info('✓ Migrations completed');
 
-        // Step 6: Build assets
+        // Step 6: Build assets (as web user)
         $this->warn('Step 6/7: Building frontend assets...');
-        Process::path(base_path())->run('npm install');
-        $result = Process::path(base_path())->run('npm run build');
+        $this->runAsWebUser('npm install');
+        $result = $this->runAsWebUser('npm run build');
         
         if ($result->successful()) {
             $this->info('✓ Frontend assets built');
@@ -120,39 +150,30 @@ class HostiqoUpdate extends Command
             $this->warn('⚠ Asset build had issues, check manually');
         }
 
-        // Step 7: Clear and optimize caches
+        // Step 7: Clear and optimize caches (as web user)
         $this->warn('Step 7/7: Optimizing application...');
-        Artisan::call('optimize:clear');
-        Artisan::call('config:cache');
-        Artisan::call('route:cache');
-        Artisan::call('view:cache');
+        $this->runAsWebUser('php artisan optimize:clear');
+        $this->runAsWebUser('php artisan config:cache');
+        $this->runAsWebUser('php artisan route:cache');
+        $this->runAsWebUser('php artisan view:cache');
         $this->info('✓ Application optimized');
 
         // Disable maintenance mode
         Artisan::call('up');
         
-        // Sudoers refresh (requires root password)
+        // Sudoers refresh (already running as root)
         if ($this->option('sudoers')) {
             $this->info('');
             $this->warn('Refreshing sudoers configuration...');
             
             $script = base_path('scripts/install.sh');
-            $password = $this->secret('Enter root/sudo password');
+            $result = Process::path(base_path())->run("bash {$script} --phase2");
             
-            if ($password) {
-                // Pipe password to sudo via stdin
-                $result = Process::input($password . "\n")
-                    ->run("sudo -S bash {$script} --phase2 2>&1");
-                
-                if ($result->successful()) {
-                    $this->info('✓ Sudoers configuration refreshed');
-                } else {
-                    $this->warn('⚠ Sudoers refresh failed:');
-                    $this->line($result->output());
-                }
+            if ($result->successful()) {
+                $this->info('✓ Sudoers configuration refreshed');
             } else {
-                $this->warn('⚠ Password not provided. Run manually:');
-                $this->line("  sudo bash {$script} --phase2");
+                $this->warn('⚠ Sudoers refresh failed:');
+                $this->line($result->errorOutput());
             }
         }
 
