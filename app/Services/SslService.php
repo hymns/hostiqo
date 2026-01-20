@@ -39,7 +39,11 @@ class SslService
             $domainArgs = implode(' -d ', $domains);
 
             // Use certbot with webroot plugin
-            $command = "sudo /usr/bin/certbot certonly --webroot -w {$webroot} -d {$domainArgs} --non-interactive --agree-tos --email admin@{$domain} --expand";
+            // --certonly: Only obtain certificate, don't install/modify Nginx configs
+            // --webroot: Use webroot authentication method
+            // --no-redirect: Don't add redirect rules to Nginx (Hostiqo manages this)
+            // --expand: Expand existing certificate with new domains if needed
+            $command = "sudo /usr/bin/certbot certonly --webroot -w {$webroot} -d {$domainArgs} --non-interactive --agree-tos --email admin@{$domain} --expand --no-redirect";
             
             Log::info('Requesting SSL certificate', [
                 'domain' => $domain,
@@ -132,5 +136,19 @@ class SslService
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Check if SSL certificate exists for a domain.
+     *
+     * @param string $domain The domain to check
+     * @return bool True if certificate exists, false otherwise
+     */
+    public function certificateExists(string $domain): bool
+    {
+        $certPath = "/etc/letsencrypt/live/{$domain}/fullchain.pem";
+        $keyPath = "/etc/letsencrypt/live/{$domain}/privkey.pem";
+        
+        return file_exists($certPath) && file_exists($keyPath);
     }
 }

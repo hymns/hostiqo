@@ -58,7 +58,17 @@ class RequestSslCertificate implements ShouldQueue
             $result = $sslService->requestCertificate($this->website);
 
             if ($result['success']) {
-                Log::info('SSL certificate installed successfully', [
+                Log::info('SSL certificate obtained from certbot', [
+                    'website_id' => $this->website->id,
+                    'domain' => $this->website->domain
+                ]);
+
+                // Verify certificate actually exists before enabling SSL
+                if (!$sslService->certificateExists($this->website->domain)) {
+                    throw new \Exception('SSL certificate files not found after certbot request. Certificate may not have been issued.');
+                }
+
+                Log::info('SSL certificate files verified', [
                     'website_id' => $this->website->id,
                     'domain' => $this->website->domain
                 ]);
@@ -69,7 +79,13 @@ class RequestSslCertificate implements ShouldQueue
                     'ssl_enabled' => true
                 ]);
 
-                // Redeploy Nginx config with SSL
+                // IMPORTANT: Re-deploy Nginx config with SSL to overwrite any certbot modifications
+                // Certbot may have modified the config with wrong certificate paths
+                Log::info('Re-deploying Nginx config to ensure correct SSL certificate paths', [
+                    'website_id' => $this->website->id,
+                    'domain' => $this->website->domain
+                ]);
+                
                 dispatch(new DeployNginxConfig($this->website));
             } else {
                 throw new \Exception($result['error'] ?? 'Unknown error');
