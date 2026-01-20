@@ -1003,12 +1003,17 @@ www-data ALL=(ALL) NOPASSWD: /bin/cp /tmp/[a-zA-Z0-9._-]* /etc/php/[78].[0-9]*/f
 www-data ALL=(ALL) NOPASSWD: /bin/chmod 644 /etc/php/[78].[0-9]*/fpm/pool.d/[a-zA-Z0-9._-]*.conf
 www-data ALL=(ALL) NOPASSWD: /bin/rm -f /etc/php/[78].[0-9]*/fpm/pool.d/[a-zA-Z0-9._-]*.conf
 
-# File Management - Nginx Config Files
+# File Management - Nginx Config Files (sites-available)
 www-data ALL=(ALL) NOPASSWD: /bin/cp /tmp/[a-zA-Z0-9._-]* /etc/nginx/sites-available/[a-zA-Z0-9._-]*
 www-data ALL=(ALL) NOPASSWD: /bin/chmod 644 /etc/nginx/sites-available/[a-zA-Z0-9._-]*
 www-data ALL=(ALL) NOPASSWD: /bin/ln -sf /etc/nginx/sites-available/[a-zA-Z0-9._-]* /etc/nginx/sites-enabled/[a-zA-Z0-9._-]*
 www-data ALL=(ALL) NOPASSWD: /bin/rm -f /etc/nginx/sites-available/[a-zA-Z0-9._-]*
 www-data ALL=(ALL) NOPASSWD: /bin/rm -f /etc/nginx/sites-enabled/[a-zA-Z0-9._-]*
+
+# File Management - Nginx Config Files (conf.d)
+www-data ALL=(ALL) NOPASSWD: /bin/cp /tmp/[a-zA-Z0-9._-]* /etc/nginx/conf.d/[a-zA-Z0-9._-]*
+www-data ALL=(ALL) NOPASSWD: /bin/chmod 644 /etc/nginx/conf.d/[a-zA-Z0-9._-]*
+www-data ALL=(ALL) NOPASSWD: /bin/rm -f /etc/nginx/conf.d/[a-zA-Z0-9._-]*
 
 # Webroot Directory Management
 www-data ALL=(ALL) NOPASSWD: /bin/mkdir -p /var/www/[a-zA-Z0-9._-]*
