@@ -491,16 +491,16 @@ limit_req_zone $limit_key zone=cloudflare_bypass:10m rate=10r/s;
 RATELIMIT;
 
         try {
-            // Ensure directory exists
+            // Ensure directory exists (use full path for sudoers)
             if (!File::isDirectory('/etc/nginx/conf.d')) {
-                Process::run('sudo mkdir -p /etc/nginx/conf.d');
+                Process::run('sudo /bin/mkdir -p /etc/nginx/conf.d');
             }
 
-            // Write the configuration
+            // Write the configuration (use full path for sudoers)
             $tempFile = tempnam(sys_get_temp_dir(), 'rate-limit-');
             File::put($tempFile, $rateLimitConfig);
             
-            $result = Process::run("sudo cp {$tempFile} {$rateLimitFile}");
+            $result = Process::run("sudo /bin/cp {$tempFile} {$rateLimitFile}");
             unlink($tempFile);
 
             if ($result->failed()) {
