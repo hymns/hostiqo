@@ -30,9 +30,9 @@ class SslService
             Process::run("sudo /bin/chmod 755 {$acmeDir}");
             Process::run("sudo /bin/chown -R www-data:www-data {$webroot}/.well-known");
 
-            // Build domain list - only add www if www_redirect is configured
+            // Build domain list - only add www if redirect is configured (not for 'none'/subdomains)
             $domains = [$domain];
-            if (in_array($website->www_redirect, ['to_www', 'none'])) {
+            if (in_array($website->www_redirect, ['to_www', 'to_non_www'])) {
                 $domains[] = "www.{$domain}";
             }
             
@@ -146,8 +146,11 @@ class SslService
      */
     public function certificateExists(string $domain): bool
     {
-        $certPath = "/etc/letsencrypt/live/{$domain}/fullchain.pem";
-        $keyPath = "/etc/letsencrypt/live/{$domain}/privkey.pem";
+        // Certbot uses the primary domain (without www) as the directory name
+        $primaryDomain = preg_replace('/^www\./', '', $domain);
+        
+        $certPath = "/etc/letsencrypt/live/{$primaryDomain}/fullchain.pem";
+        $keyPath = "/etc/letsencrypt/live/{$primaryDomain}/privkey.pem";
         
         return file_exists($certPath) && file_exists($keyPath);
     }

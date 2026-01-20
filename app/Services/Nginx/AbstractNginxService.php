@@ -20,6 +20,18 @@ abstract class AbstractNginxService implements NginxInterface
     abstract protected function getFastcgiConfig(): string;
 
     /**
+     * Get config filename for a website.
+     * Override in subclass if needed (e.g., Debian doesn't use .conf extension).
+     *
+     * @param Website $website The website model
+     * @return string The config filename
+     */
+    protected function getConfigFilename(Website $website): string
+    {
+        return $website->domain . '.conf';
+    }
+
+    /**
      * Generate Nginx configuration for a website.
      *
      * @param Website $website The website model
@@ -281,7 +293,7 @@ NGINX;
     {
         try {
             $config = $this->generateConfig($website);
-            $filename = $website->domain . '.conf';
+            $filename = $this->getConfigFilename($website);
             $filepath = "{$this->sitesAvailable}/{$filename}";
 
             // Write to temporary file first
@@ -325,7 +337,7 @@ NGINX;
     public function deleteConfig(Website $website): array
     {
         try {
-            $filename = $website->domain . '.conf';
+            $filename = $this->getConfigFilename($website);
             
             // Remove from sites-enabled first
             $this->disableSite($website);
@@ -354,7 +366,7 @@ NGINX;
      */
     public function enableSite(Website $website): array
     {
-        $filename = $website->domain . '.conf';
+        $filename = $this->getConfigFilename($website);
         $source = "{$this->sitesAvailable}/{$filename}";
         $target = "{$this->sitesEnabled}/{$filename}";
 
@@ -380,7 +392,7 @@ NGINX;
      */
     public function disableSite(Website $website): array
     {
-        $filename = $website->domain . '.conf';
+        $filename = $this->getConfigFilename($website);
         $target = "{$this->sitesEnabled}/{$filename}";
 
         // If sites-available and sites-enabled are the same (RHEL), don't remove
@@ -620,11 +632,11 @@ SSL;
      */
     protected function getWwwRedirectConfig(Website $website): string
     {
-        if (!$website->www_redirect) {
+        if (!$website->www_redirect || $website->www_redirect === 'none') {
             return '';
         }
 
-        $redirectTo = $website->www_redirect === 'www' 
+        $redirectTo = $website->www_redirect === 'to_www' 
             ? "www.{$website->domain}" 
             : $website->domain;
 

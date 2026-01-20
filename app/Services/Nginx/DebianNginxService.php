@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Services\Nginx;
+use App\Models\Website;
 
 class DebianNginxService extends AbstractNginxService
 {
@@ -40,5 +41,13 @@ class DebianNginxService extends AbstractNginxService
     protected function getFastcgiConfig(): string
     {
         return '        include snippets/fastcgi-php.conf;';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getConfigFilename(Website $website): string
+    {
+        return $website->domain;
     }
 }
