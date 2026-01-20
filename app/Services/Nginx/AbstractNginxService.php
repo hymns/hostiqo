@@ -429,6 +429,98 @@ NGINX;
     }
 
     /**
+     * Ensure rate-limit configuration exists.
+     *
+     * @return array{success: bool, message?: string, error?: string}
+     */
+    protected function ensureRateLimitConfig(): array
+    {
+        $rateLimitFile = '/etc/nginx/conf.d/rate-limit.conf';
+        
+        // Check if file exists and is not empty
+        if (File::exists($rateLimitFile) && File::size($rateLimitFile) > 0) {
+            return ['success' => true];
+        }
+
+        Log::warning('Rate-limit configuration missing or empty, creating it');
+
+        $rateLimitConfig = <<<'RATELIMIT'
+# Rate Limiting Zone - 10MB zone can store ~160k IP addresses
+# Limit: 10 requests per second per IP (burst of 20)
+limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+
+# Cloudflare IP allowlist - bypass rate limiting for Cloudflare IPs
+geo $cloudflare_ip {
+    default 0;
+    
+    # Cloudflare IPv4 ranges
+    173.245.48.0/20 1;
+    103.21.244.0/22 1;
+    103.22.200.0/22 1;
+    103.31.4.0/22 1;
+    141.101.64.0/18 1;
+    108.162.192.0/18 1;
+    190.93.240.0/20 1;
+    188.114.96.0/20 1;
+    197.234.240.0/22 1;
+    198.41.128.0/17 1;
+    162.158.0.0/15 1;
+    104.16.0.0/13 1;
+    104.24.0.0/14 1;
+    172.64.0.0/13 1;
+    131.0.72.0/22 1;
+    
+    # Cloudflare IPv6 ranges
+    2400:cb00::/32 1;
+    2606:4700::/32 1;
+    2803:f800::/32 1;
+    2405:b500::/32 1;
+    2405:8100::/32 1;
+    2a06:98c0::/29 1;
+    2c0f:f248::/32 1;
+}
+
+# Map to determine if rate limiting should be applied
+map $cloudflare_ip $limit_key {
+    0 $binary_remote_addr;  # Apply rate limiting
+    1 "";                   # Bypass rate limiting for Cloudflare
+}
+
+# Rate limiting zone using the mapped key
+limit_req_zone $limit_key zone=cloudflare_bypass:10m rate=10r/s;
+RATELIMIT;
+
+        try {
+            // Ensure directory exists
+            if (!File::isDirectory('/etc/nginx/conf.d')) {
+                Process::run('sudo mkdir -p /etc/nginx/conf.d');
+            }
+
+            // Write the configuration
+            $tempFile = tempnam(sys_get_temp_dir(), 'rate-limit-');
+            File::put($tempFile, $rateLimitConfig);
+            
+            $result = Process::run("sudo cp {$tempFile} {$rateLimitFile}");
+            unlink($tempFile);
+
+            if ($result->failed()) {
+                return [
+                    'success' => false,
+                    'error' => 'Failed to create rate-limit configuration: ' . $result->errorOutput()
+                ];
+            }
+
+            Log::info('Rate-limit configuration created successfully');
+            return ['success' => true];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'error' => 'Failed to create rate-limit configuration: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
      * Deploy website configuration (write, enable, test, reload).
      *
      * @param Website $website The website model
@@ -437,6 +529,12 @@ NGINX;
     public function deploy(Website $website): array
     {
         try {
+            // Ensure rate-limit configuration exists
+            $rateLimitResult = $this->ensureRateLimitConfig();
+            if (!$rateLimitResult['success']) {
+                return $rateLimitResult;
+            }
+
             // Write config
             $writeResult = $this->writeConfig($website);
             if (!$writeResult['success']) {
