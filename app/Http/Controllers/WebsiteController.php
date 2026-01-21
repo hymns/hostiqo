@@ -10,6 +10,7 @@ use App\Services\Pm2Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Process;
 
 class WebsiteController extends Controller
 {
@@ -87,24 +88,8 @@ class WebsiteController extends Controller
         $validated['www_redirect'] = $request->input('www_redirect', 'none');
         $validated['is_active'] = $request->boolean('is_active', true);
 
-        // Check if SSL is enabled and directories don't exist yet
-        if ($validated['ssl_enabled']) {
-            $fullPath = rtrim($validated['root_path'], '/') . '/' . ltrim($validated['working_directory'] ?? '/', '/');
-            
-            if (!file_exists($validated['root_path']) || !file_exists($fullPath)) {
-                // Disable SSL for now, user needs to deploy first
-                $validated['ssl_enabled'] = false;
-                
-                $website = Website::create($validated);
-                
-                // Dispatch job to deploy Nginx configuration
-                dispatch(new DeployNginxConfig($website));
-                
-                return redirect()
-                    ->route('websites.index', ['type' => $website->project_type])
-                    ->with('warning', 'Website created successfully! SSL was disabled because application directories do not exist yet. Please deploy your application first using webhook or file manager, then enable SSL.');
-            }
-        }
+        // Create directory structure and welcome page if not exists
+        $this->createWebsiteStructure($validated['root_path'], $validated['working_directory'], $validated['project_type'], $validated['domain']);
 
         $website = Website::create($validated);
 
@@ -432,6 +417,143 @@ class WebsiteController extends Controller
         
         // Default path (you can customize this)
         return '/var/www/' . $path;
+    }
+
+    /**
+     * Create website directory structure and welcome page.
+     *
+     * @param string $rootPath The root path
+     * @param string $workingDirectory The working directory
+     * @param string $projectType The project type
+     * @param string $domain The domain name
+     * @return void
+     */
+    protected function createWebsiteStructure(string $rootPath, string $workingDirectory, string $projectType, string $domain): void
+    {
+        try {
+            $fullPath = rtrim($rootPath, '/') . '/' . ltrim($workingDirectory, '/');
+            $fullPath = rtrim($fullPath, '/');
+
+            // Create directory if not exists
+            if (!file_exists($fullPath)) {
+                Process::run("sudo /bin/mkdir -p {$fullPath}");
+                Process::run("sudo /bin/chown -R www-data:www-data {$rootPath}");
+                Process::run("sudo /bin/chmod -R 755 {$rootPath}");
+            }
+
+            // Create welcome page if directory is empty
+            $indexFile = $fullPath . '/index.html';
+            if (!file_exists($indexFile)) {
+                $welcomeContent = $this->getWelcomePageContent($domain, $projectType);
+                
+                // Write to temp file then move with sudo
+                $tempFile = tempnam(sys_get_temp_dir(), 'hostiqo_welcome_');
+                file_put_contents($tempFile, $welcomeContent);
+                
+                Process::run("sudo /bin/cp {$tempFile} {$indexFile}");
+                Process::run("sudo /bin/chown www-data:www-data {$indexFile}");
+                Process::run("sudo /bin/chmod 644 {$indexFile}");
+                
+                @unlink($tempFile);
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to create website structure', [
+                'domain' => $domain,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get welcome page content.
+     *
+     * @param string $domain The domain name
+     * @param string $projectType The project type
+     * @return string The welcome page HTML content
+     */
+    protected function getWelcomePageContent(string $domain, string $projectType): string
+    {
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to {$domain}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 60px 40px;
+            max-width: 600px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+        .domain {
+            color: #667eea;
+            font-weight: 800;
+        }
+        p {
+            color: #666;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 12px;
+        }
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+            color: #999;
+            font-size: 0.9rem;
+        }
+        .emoji {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="emoji">🎉</div>
+        <h1>Welcome to <span class="domain">{$domain}</span></h1>
+        <p>Your website is successfully configured and ready to go!</p>
+        <p>This is a default welcome page. Replace this file with your application files to get started.</p>
+        <span class="badge">{$projectType} Site</span>
+        <div class="footer">
+            Powered by <a href="https://hostiqo.dev" target="_blank">Hostiqo.dev</a>
+        </div>
+    </div>
+</body>
+</html>
+HTML;
     }
 
     /**
