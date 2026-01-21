@@ -108,7 +108,7 @@ class CheckAlertsJob implements ShouldQueue
             $result = Process::run("systemctl is-active {$serviceName}");
             return trim($result->output()) === 'active' ? 1.0 : 0.0;
         } catch (\Exception $e) {
-            Log::error("Failed to check service status: {$serviceName}", [
+            Log::channel('alerts')->error("Failed to check service status: {$serviceName}", [
                 'error' => $e->getMessage()
             ]);
             return null;
@@ -222,7 +222,7 @@ class CheckAlertsJob implements ShouldQueue
 
             $alert->update(['notification_sent' => true]);
         } catch (\Exception $e) {
-            Log::error('Failed to send alert notifications', [
+            Log::channel('alerts')->error('Failed to send alert notifications', [
                 'alert_id' => $alert->id,
                 'error' => $e->getMessage()
             ]);
@@ -255,7 +255,7 @@ class CheckAlertsJob implements ShouldQueue
                 }
             );
         } catch (\Exception $e) {
-            Log::error('Failed to send email alert', [
+            Log::channel('alerts')->error('Failed to send email alert', [
                 'alert_id' => $alert->id,
                 'error' => $e->getMessage()
             ]);
@@ -294,7 +294,7 @@ class CheckAlertsJob implements ShouldQueue
                 ]]
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to send Slack alert', [
+            Log::channel('alerts')->error('Failed to send Slack alert', [
                 'alert_id' => $alert->id,
                 'error' => $e->getMessage()
             ]);

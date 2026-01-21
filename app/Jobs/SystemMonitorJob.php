@@ -28,9 +28,9 @@ class SystemMonitorJob implements ShouldQueue
             $retentionHours = config('monitoring.retention_hours', 24);
             SystemMetric::deleteOldMetrics($retentionHours);
 
-            Log::info('System metrics recorded successfully');
+            Log::channel('monitoring')->info('System metrics recorded successfully');
         } catch (\Exception $e) {
-            Log::error('Failed to record system metrics: ' . $e->getMessage());
+            Log::channel('monitoring')->error('Failed to record system metrics: ' . $e->getMessage());
             throw $e;
         }
     }
