@@ -5,6 +5,7 @@ A simple self-managed server panel built with Laravel for automating Git deploym
 ![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=flat-square&logo=laravel)
 ![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=flat-square&logo=php)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?style=flat-square&logo=bootstrap)
+[![License](https://img.shields.io/badge/License-MIT%20%2B%20CommonsClause-blue.svg)](LICENSE)
 
 ## ✨ Features
 
@@ -868,7 +869,20 @@ Contributions are welcome! Please ensure your code:
 
 ## 📄 License
 
-This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is licensed under the **MIT License + Commons Clause**.
+
+### Summary
+- ✅ Free for personal, educational, or hobby use
+- ❌ Commercial use (selling, distribution as part of a paid product, or use by a company for profit) requires prior written permission or a commercial license  
+
+For commercial licensing inquiries, please contact: hello@hamizi.net
+
+### Examples
+
+- A solo developer can fork, modify, and use Hostiqo.dev for their own learning projects or small client work **as long as it is not sold as software**.  
+- A company or freelancer who wants to **sell or include it in a commercial product** must contact for licensing.
+
+See the [LICENSE](LICENSE) file for full details.
 
 ## 💬 Support
 

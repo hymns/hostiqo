@@ -4,7 +4,7 @@
     "type": "project",
     "description": "The skeleton application for the Laravel framework.",
     "keywords": ["laravel", "framework"],
-    "license": "MIT",
+    "license": "MIT + Commons Clause",
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0",
