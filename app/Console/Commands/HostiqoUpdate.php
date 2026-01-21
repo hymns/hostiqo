@@ -182,6 +182,21 @@ class HostiqoUpdate extends Command
         $this->info('║     ✓ Hostiqo updated successfully!      ║');
         $this->info('╚══════════════════════════════════════════╝');
         $this->info('');
+        
+        $this->line('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        $this->info('');
+        $this->info('💖 Support Hostiqo Development');
+        $this->line('');
+        $this->line('Hostiqo.dev is maintained by a solo developer.');
+        $this->line('Donations help ensure long-term stability, security fixes, and faster updates.');
+        $this->line('');
+        $this->line('If you\'re using Hostiqo in production, we do offer sponsor tiers');
+        $this->line('for SLA & priority fixes.');
+        $this->line('');
+        $this->comment('Sponsor: https://toyyibpay.com/sponsor-hostiqo');
+        $this->info('');
+        $this->line('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        $this->info('');
 
         return 0;
     }

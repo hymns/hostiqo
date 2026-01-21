@@ -2033,6 +2033,20 @@ main() {
         print_info "Access your panel at: http://$DOMAIN_NAME"
     fi
     echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    print_info "💖 Support Hostiqo Development"
+    echo ""
+    echo "Hostiqo.dev is maintained by a solo developer."
+    echo "Donations help ensure long-term stability, security fixes, and faster updates."
+    echo ""
+    echo "If you're using Hostiqo in production, we do offer sponsor tiers"
+    echo "for SLA & priority fixes."
+    echo ""
+    echo "Sponsor: https://toyyibpay.com/sponsor-hostiqo"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
 }
 
 # Parse command line arguments
