@@ -160,31 +160,75 @@ const createForm = (action, service) => {
 };
 
 async function startService(service, name) {
-    if (!confirm(`Start ${name}?`)) return;
+    const result = await Swal.fire({
+        title: 'Start Service',
+        text: `Start ${name}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, start it',
+        cancelButtonText: 'Cancel'
+    });
 
-    const form = createForm('{{ route("services.start") }}', service);
-    form.submit();
+    if (result.isConfirmed) {
+        const form = createForm('{{ route("services.start") }}', service);
+        form.submit();
+    }
 }
 
 async function stopService(service, name) {
-    if (!confirm(`Stop ${name}? This may affect running applications.`)) return;
+    const result = await Swal.fire({
+        title: 'Stop Service',
+        text: `Stop ${name}? This may affect running applications.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, stop it',
+        cancelButtonText: 'Cancel'
+    });
 
-    const form = createForm('{{ route("services.stop") }}', service);
-    form.submit();
+    if (result.isConfirmed) {
+        const form = createForm('{{ route("services.stop") }}', service);
+        form.submit();
+    }
 }
 
 async function restartService(service, name) {
-    if (!confirm(`Restart ${name}?`)) return;
+    const result = await Swal.fire({
+        title: 'Restart Service',
+        text: `Restart ${name}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0dcaf0',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, restart it',
+        cancelButtonText: 'Cancel'
+    });
 
-    const form = createForm('{{ route("services.restart") }}', service);
-    form.submit();
+    if (result.isConfirmed) {
+        const form = createForm('{{ route("services.restart") }}', service);
+        form.submit();
+    }
 }
 
 async function reloadService(service, name) {
-    if (!confirm(`Reload ${name} configuration?`)) return;
+    const result = await Swal.fire({
+        title: 'Reload Configuration',
+        text: `Reload ${name} configuration?`,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#198754',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, reload it',
+        cancelButtonText: 'Cancel'
+    });
 
-    const form = createForm('{{ route("services.reload") }}', service);
-    form.submit();
+    if (result.isConfirmed) {
+        const form = createForm('{{ route("services.reload") }}', service);
+        form.submit();
+    }
 }
 </script>
 @endpush
