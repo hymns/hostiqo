@@ -1586,6 +1586,12 @@ setup_webserver() {
     # Create Nginx config
     print_info "Creating Nginx configuration..."
     
+    # Ensure nginx config directories exist
+    mkdir -p "$NGINX_CONF_DIR"
+    if [ -n "$NGINX_ENABLED_DIR" ]; then
+        mkdir -p "$NGINX_ENABLED_DIR"
+    fi
+    
     # Determine config file path
     if [ "$OS_FAMILY" = "debian" ]; then
         NGINX_CONF_FILE="$NGINX_CONF_DIR/hostiqo"
