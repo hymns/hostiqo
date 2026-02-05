@@ -393,12 +393,36 @@ OPCACHE
     done
     print_success "PHP OPcache + JIT configured"
     
+    # Node.js version selection with whiptail
+    print_info "Select Node.js version to install..."
+    NODE_VERSION=$(whiptail --title "Node.js Version Selection" --radiolist \
+        "Select Node.js LTS version to install:" 12 60 3 \
+        "20" "Node.js 20 LTS (Recommended)" ON \
+        "22" "Node.js 22 LTS" OFF \
+        "24" "Node.js 24 LTS (Latest)" OFF \
+        3>&1 1>&2 2>&3)
+    
+    # Default to 20 if cancelled
+    if [ $? -ne 0 ] || [ -z "$NODE_VERSION" ]; then
+        print_warning "No Node.js version selected, defaulting to Node.js 20"
+        NODE_VERSION="20"
+    fi
+    
     # Install Node.js
-    print_info "Adding NodeSource repository for Node.js 20..."
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
-    print_info "Installing Node.js 20..."
+    print_info "Adding NodeSource repository for Node.js ${NODE_VERSION}..."
+    curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - > /dev/null 2>&1
+    print_info "Installing Node.js ${NODE_VERSION}..."
     apt-get install -y nodejs > /dev/null 2>&1
     print_success "Node.js $(node -v) installed"
+    
+    # Update config.json with Node.js version
+    if [ -f /etc/hostiqo/config.json ]; then
+        # Add node_version to existing config
+        TMP_CONFIG=$(mktemp)
+        cat /etc/hostiqo/config.json | sed 's/}$/,"node_version":"'"${NODE_VERSION}"'"}/' > "$TMP_CONFIG"
+        mv "$TMP_CONFIG" /etc/hostiqo/config.json
+        chmod 644 /etc/hostiqo/config.json
+    fi
     
     # Install Redis
     print_info "Installing Redis..."
@@ -790,12 +814,36 @@ OPCACHE
     done
     print_success "PHP OPcache + JIT configured"
 
+    # Node.js version selection with whiptail
+    print_info "Select Node.js version to install..."
+    NODE_VERSION=$(whiptail --title "Node.js Version Selection" --radiolist \
+        "Select Node.js LTS version to install:" 12 60 3 \
+        "20" "Node.js 20 LTS (Recommended)" ON \
+        "22" "Node.js 22 LTS" OFF \
+        "24" "Node.js 24 LTS (Latest)" OFF \
+        3>&1 1>&2 2>&3)
+    
+    # Default to 20 if cancelled
+    if [ $? -ne 0 ] || [ -z "$NODE_VERSION" ]; then
+        print_warning "No Node.js version selected, defaulting to Node.js 20"
+        NODE_VERSION="20"
+    fi
+    
     # Install Node.js
-    print_info "Adding NodeSource repository for Node.js 20..."
-    curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
-    print_info "Installing Node.js 20..."
+    print_info "Adding NodeSource repository for Node.js ${NODE_VERSION}..."
+    curl -fsSL https://rpm.nodesource.com/setup_${NODE_VERSION}.x | bash - > /dev/null 2>&1
+    print_info "Installing Node.js ${NODE_VERSION}..."
     $PKG_MANAGER install -y nodejs > /dev/null 2>&1
     print_success "Node.js $(node -v) installed"
+    
+    # Update config.json with Node.js version
+    if [ -f /etc/hostiqo/config.json ]; then
+        # Add node_version to existing config
+        TMP_CONFIG=$(mktemp)
+        cat /etc/hostiqo/config.json | sed 's/}$/,"node_version":"'"${NODE_VERSION}"'"}/' > "$TMP_CONFIG"
+        mv "$TMP_CONFIG" /etc/hostiqo/config.json
+        chmod 644 /etc/hostiqo/config.json
+    fi
 
     # Install Redis
     print_info "Installing Redis..."
