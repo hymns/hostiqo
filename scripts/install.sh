@@ -1762,6 +1762,16 @@ setup_webserver() {
         SETUP_SSL="n"
         INCLUDE_WWW="n"
         
+        # Open custom port in firewall
+        if command -v ufw &> /dev/null; then
+            ufw allow $CUSTOM_PORT/tcp > /dev/null 2>&1 || true
+            print_success "Firewall: Port $CUSTOM_PORT opened (ufw)"
+        elif command -v firewall-cmd &> /dev/null; then
+            firewall-cmd --permanent --add-port=$CUSTOM_PORT/tcp > /dev/null 2>&1 || true
+            firewall-cmd --reload > /dev/null 2>&1 || true
+            print_success "Firewall: Port $CUSTOM_PORT opened (firewalld)"
+        fi
+        
         print_info "Hostiqo will be accessible at: http://$SERVER_IP:$CUSTOM_PORT"
     else
         # Domain mode
@@ -2242,12 +2252,21 @@ main() {
     print_info "Web user: $WEB_USER"
     echo ""
     print_info "Installed components:"
-    if [ "$OS_FAMILY" = "debian" ]; then
-        echo "  • Nginx, PHP 7.4-8.4, MySQL, Redis"
+    # Read installed versions from config
+    if [ -f /etc/hostiqo/config.json ]; then
+        INSTALLED_PHP=$(cat /etc/hostiqo/config.json | grep -o '"php_versions":\s*\[[^]]*\]' | grep -o '\["[^"]*"' | tr -d '[]"' | tr ',' ', ' 2>/dev/null || echo "8.2, 8.3")
+        INSTALLED_NODE=$(cat /etc/hostiqo/config.json | grep -o '"node_version":\s*"[^"]*"' | grep -o '"[0-9]*"' | tr -d '"' 2>/dev/null || echo "20")
     else
-        echo "  • Nginx, PHP 7.4-8.4, MariaDB, Redis"
+        INSTALLED_PHP="8.2, 8.3"
+        INSTALLED_NODE="20"
     fi
-    echo "  • Composer, Node.js 20, PM2"
+    
+    if [ "$OS_FAMILY" = "debian" ]; then
+        echo "  • Nginx, PHP ${INSTALLED_PHP}, MySQL, Redis"
+    else
+        echo "  • Nginx, PHP ${INSTALLED_PHP}, MariaDB, Redis"
+    fi
+    echo "  • Composer, Node.js ${INSTALLED_NODE}, PM2"
     echo "  • Supervisor, Certbot, fail2ban"
     echo ""
     print_info "Important files:"
