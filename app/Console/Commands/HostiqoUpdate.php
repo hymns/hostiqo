@@ -26,14 +26,27 @@ class HostiqoUpdate extends Command
     protected $description = 'Update Hostiqo to the latest version (run with sudo)';
 
     /**
-     * Get the web user based on OS.
+     * Get the web user based on nginx configuration or OS.
      */
     protected function getWebUser(): string
     {
-        // Check if nginx user exists (RHEL-based)
-        $result = Process::run('id -u nginx 2>/dev/null');
+        // Try to get user from nginx -T output (requires nginx binary)
+        $result = Process::run('nginx -T 2>/dev/null | grep -m1 "^user"');
+        
+        if ($result->successful() && preg_match('/user\s+([a-zA-Z0-9_-]+)/', $result->output(), $matches)) {
+            return trim($matches[1]);
+        }
+        
+        // Fallback: Check OS type
+        $result = Process::run('cat /etc/os-release 2>/dev/null');
+        
         if ($result->successful()) {
-            return 'nginx';
+            $output = $result->output();
+            if (stripos($output, 'rhel') !== false || 
+                stripos($output, 'centos') !== false || 
+                stripos($output, 'fedora') !== false) {
+                return 'nginx';
+            }
         }
         
         return 'www-data';
