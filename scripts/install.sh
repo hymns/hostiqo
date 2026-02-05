@@ -178,15 +178,16 @@ install_prerequisites_debian() {
         curl wget git net-tools unzip build-essential gnupg2 lsb-release > /dev/null 2>&1
     print_success "Basic dependencies installed"
     
+    # TODO: Fix nginx.org repo for different distros (Ubuntu/Debian)
     # Add official Nginx repository
-    print_info "Adding official Nginx repository..."
-    curl -fsSL https://nginx.org/keys/nginx_signing.key | gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg > /dev/null 2>&1
-    echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/ubuntu $(lsb_release -cs) nginx" > /etc/apt/sources.list.d/nginx.list
-    apt-get update -y > /dev/null 2>&1
-    print_success "Nginx repository added"
+    # print_info "Adding official Nginx repository..."
+    # curl -fsSL https://nginx.org/keys/nginx_signing.key | gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg > /dev/null 2>&1
+    # echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/ubuntu $(lsb_release -cs) nginx" > /etc/apt/sources.list.d/nginx.list
+    # apt-get update -y > /dev/null 2>&1
+    # print_success "Nginx repository added"
     
     # Install Nginx
-    print_info "Installing Nginx from official repository..."
+    print_info "Installing Nginx..."
     apt-get install -y nginx > /dev/null 2>&1
     systemctl enable nginx > /dev/null 2>&1
     systemctl start nginx > /dev/null 2>&1
@@ -471,21 +472,22 @@ install_prerequisites_rhel() {
         gcc gcc-c++ make gnupg2 openssl-devel > /dev/null 2>&1
     print_success "Basic dependencies installed"
 
+    # TODO: Fix nginx.org repo for different distros (Rocky/Alma/CentOS)
     # Add official Nginx repository
-    print_info "Adding official Nginx repository..."
-    cat > /etc/yum.repos.d/nginx.repo << 'NGINXREPO'
-[nginx-stable]
-name=nginx stable repo
-baseurl=http://nginx.org/packages/centos/$releasever/$basearch/
-gpgcheck=1
-enabled=1
-gpgkey=https://nginx.org/keys/nginx_signing.key
-module_hotfixes=true
-NGINXREPO
-    print_success "Nginx repository added"
+    # print_info "Adding official Nginx repository..."
+    # cat > /etc/yum.repos.d/nginx.repo << 'NGINXREPO'
+# [nginx-stable]
+# name=nginx stable repo
+# baseurl=http://nginx.org/packages/centos/$releasever/$basearch/
+# gpgcheck=1
+# enabled=1
+# gpgkey=https://nginx.org/keys/nginx_signing.key
+# module_hotfixes=true
+# NGINXREPO
+    # print_success "Nginx repository added"
 
     # Install Nginx
-    print_info "Installing Nginx from official repository..."
+    print_info "Installing Nginx..."
     $PKG_MANAGER install -y nginx > /dev/null 2>&1
     systemctl enable nginx > /dev/null 2>&1
     systemctl start nginx > /dev/null 2>&1
