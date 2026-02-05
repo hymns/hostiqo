@@ -58,7 +58,6 @@ abstract class AbstractNginxService implements NginxInterface
         $workingDir = $website->working_directory ?? '';
         $documentRoot = rtrim($website->root_path, '/') . ($workingDir ? '/' . $workingDir : '');
         
-        $sslConfig = $website->ssl_enabled ? $this->getSslConfig($website->domain) : '';
         $wwwRedirectConfig = $this->getWwwRedirectConfig($website);
         $securityHeaders = $this->getSecurityHeaders();
         
@@ -69,13 +68,110 @@ abstract class AbstractNginxService implements NginxInterface
 
         $serverName = $this->getServerName($website);
 
+        // If SSL is enabled, create separate HTTP redirect block and HTTPS block
+        if ($website->ssl_enabled) {
+            $sslConfig = $this->getSslConfig($website->domain);
+            
+            return <<<NGINX
+# HTTP to HTTPS redirect
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {$serverName};
+
+    # Allow Let's Encrypt ACME challenge
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        root {$documentRoot};
+        try_files \$uri =404;
+    }
+
+    # Redirect all other requests to HTTPS
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+# HTTPS server
+server {
+{$sslConfig}
+    server_name {$serverName};
+
+{$wwwRedirectConfig}
+
+    root {$documentRoot};
+    index index.php index.html index.htm;
+
+    # Logging
+    access_log {$logDir}/{$website->domain}-access.log;
+    error_log {$logDir}/{$website->domain}-error.log;
+
+    # Security: Limit request body size
+    client_max_body_size 100M;
+    client_body_buffer_size 128k;
+
+    # Security: Timeouts
+    client_body_timeout 12;
+    client_header_timeout 12;
+    keepalive_timeout 15;
+    send_timeout 10;
+
+{$securityHeaders}
+
+    # Allow Let's Encrypt ACME challenge
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        root {$documentRoot};
+        try_files \$uri =404;
+    }
+
+    # Main location
+    location / {
+        # Rate limiting with Cloudflare bypass (10 req/s, burst 20)
+        limit_req zone=cloudflare_bypass burst=20 nodelay;
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    # PHP processing
+    location ~ \.php$ {
+{$fastcgiConfig}
+        fastcgi_pass unix:{$socketPath};
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
+        fastcgi_read_timeout 300;
+    }
+
+    # Security: Deny access to hidden files (except .well-known)
+    location ~ /\.(?!well-known) {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Security: Deny access to sensitive files
+    location ~* \.(env|log|md|sql|sqlite|conf|ini|bak|old|tmp|swp)$ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Cache static files
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|pdf|txt|tar|gz|woff|woff2|ttf|svg|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+}
+NGINX;
+        }
+
+        // HTTP only (no SSL)
         return <<<NGINX
 server {
     listen 80;
     listen [::]:80;
     server_name {$serverName};
 
-{$sslConfig}
 {$wwwRedirectConfig}
 
     root {$documentRoot};
@@ -155,7 +251,6 @@ NGINX;
         $workingDir = $website->working_directory ?? '';
         $documentRoot = rtrim($website->root_path, '/') . ($workingDir ? '/' . $workingDir : '');
         
-        $sslConfig = $website->ssl_enabled ? $this->getSslConfig($website->domain) : '';
         $wwwRedirectConfig = $this->getWwwRedirectConfig($website);
         $securityHeaders = $this->getSecurityHeaders();
         $logDir = '/var/log/nginx';
@@ -163,13 +258,99 @@ NGINX;
         $runtime = $website->runtime ?? 'Unknown';
         $serverName = $this->getServerName($website);
 
+        // If SSL is enabled, create separate HTTP redirect block and HTTPS block
+        if ($website->ssl_enabled) {
+            $sslConfig = $this->getSslConfig($website->domain);
+            
+            return <<<NGINX
+# HTTP to HTTPS redirect
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {$serverName};
+
+    # Allow Let's Encrypt ACME challenge
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        root {$documentRoot};
+        try_files \$uri =404;
+    }
+
+    # Redirect all other requests to HTTPS
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+# HTTPS server
+server {
+{$sslConfig}
+    server_name {$serverName};
+
+{$wwwRedirectConfig}
+
+    # Logging
+    access_log {$logDir}/{$website->domain}-access.log;
+    error_log {$logDir}/{$website->domain}-error.log;
+
+{$securityHeaders}
+
+    # Allow Let's Encrypt ACME challenge
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        root {$documentRoot};
+        try_files \$uri =404;
+    }
+
+    # Reverse Proxy to {$runtime} application
+    location / {
+        # Rate limiting with Cloudflare bypass (10 req/s, burst 20)
+        limit_req zone=cloudflare_bypass burst=20 nodelay;
+        
+        proxy_pass http://127.0.0.1:{$port};
+        proxy_http_version 1.1;
+        
+        # WebSocket support
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # Proxy headers
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Forwarded-Host \$host;
+        proxy_set_header X-Forwarded-Port \$server_port;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Buffering
+        proxy_buffering on;
+        proxy_buffer_size 4k;
+        proxy_buffers 8 4k;
+        proxy_busy_buffers_size 8k;
+    }
+
+    # Security: Deny access to hidden files (except .well-known)
+    location ~ /\.(?!well-known) {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+}
+NGINX;
+        }
+
+        // HTTP only (no SSL)
         return <<<NGINX
 server {
     listen 80;
     listen [::]:80;
     server_name {$serverName};
 
-{$sslConfig}
 {$wwwRedirectConfig}
 
     # Logging
@@ -238,19 +419,83 @@ NGINX;
         $workingDir = $website->working_directory ?? '';
         $documentRoot = rtrim($website->root_path, '/') . ($workingDir ? '/' . $workingDir : '');
         
-        $sslConfig = $website->ssl_enabled ? $this->getSslConfig($website->domain) : '';
         $wwwRedirectConfig = $this->getWwwRedirectConfig($website);
         $securityHeaders = $this->getSecurityHeaders();
         $logDir = '/var/log/nginx';
         $serverName = $this->getServerName($website);
 
+        // If SSL is enabled, create separate HTTP redirect block and HTTPS block
+        if ($website->ssl_enabled) {
+            $sslConfig = $this->getSslConfig($website->domain);
+            
+            return <<<NGINX
+# HTTP to HTTPS redirect
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {$serverName};
+
+    # Allow Let's Encrypt ACME challenge
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        root {$documentRoot};
+        try_files \$uri =404;
+    }
+
+    # Redirect all other requests to HTTPS
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+# HTTPS server
+server {
+{$sslConfig}
+    server_name {$serverName};
+
+{$wwwRedirectConfig}
+
+    root {$documentRoot};
+    index index.html index.htm;
+
+    # Logging
+    access_log {$logDir}/{$website->domain}-access.log;
+    error_log {$logDir}/{$website->domain}-error.log;
+
+{$securityHeaders}
+
+    # Allow Let's Encrypt ACME challenge
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        root {$documentRoot};
+        try_files \$uri =404;
+    }
+
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+
+    # Security: Deny access to hidden files (except .well-known)
+    location ~ /\.(?!well-known) {
+        deny all;
+    }
+
+    # Cache static files
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|pdf|txt|tar|gz|woff|woff2|ttf|svg|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+}
+NGINX;
+        }
+
+        // HTTP only (no SSL)
         return <<<NGINX
 server {
     listen 80;
     listen [::]:80;
     server_name {$serverName};
 
-{$sslConfig}
 {$wwwRedirectConfig}
 
     root {$documentRoot};
