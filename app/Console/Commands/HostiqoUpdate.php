@@ -154,9 +154,10 @@ class HostiqoUpdate extends Command
 
         // Step 6: Build assets (as web user)
         $this->warn('Step 6/7: Building frontend assets...');
-        $this->runAsWebUser('npm install');
-        // Fix node_modules binaries permission (vite, etc)
-        Process::run('chmod -R +x ' . base_path('node_modules/.bin/') . ' 2>/dev/null');
+        $webUser = $this->getWebUser();
+        // Run npm install as root then fix ownership
+        Process::path(base_path())->run('npm install');
+        Process::run("chown -R {$webUser}:{$webUser} " . base_path('node_modules/'));
         $result = $this->runAsWebUser('npm run build');
         
         if ($result->successful()) {
