@@ -67,11 +67,13 @@ abstract class AbstractNginxService implements NginxInterface
         $logDir = '/var/log/nginx';
         $fastcgiConfig = $this->getFastcgiConfig();
 
+        $serverName = $this->getServerName($website);
+
         return <<<NGINX
 server {
     listen 80;
     listen [::]:80;
-    server_name {$website->domain} www.{$website->domain};
+    server_name {$serverName};
 
 {$sslConfig}
 {$wwwRedirectConfig}
@@ -159,12 +161,13 @@ NGINX;
         $logDir = '/var/log/nginx';
         $port = $website->port ?? 3000;
         $runtime = $website->runtime ?? 'Unknown';
+        $serverName = $this->getServerName($website);
 
         return <<<NGINX
 server {
     listen 80;
     listen [::]:80;
-    server_name {$website->domain} www.{$website->domain};
+    server_name {$serverName};
 
 {$sslConfig}
 {$wwwRedirectConfig}
@@ -239,12 +242,13 @@ NGINX;
         $wwwRedirectConfig = $this->getWwwRedirectConfig($website);
         $securityHeaders = $this->getSecurityHeaders();
         $logDir = '/var/log/nginx';
+        $serverName = $this->getServerName($website);
 
         return <<<NGINX
 server {
     listen 80;
     listen [::]:80;
-    server_name {$website->domain} www.{$website->domain};
+    server_name {$serverName};
 
 {$sslConfig}
 {$wwwRedirectConfig}
@@ -621,6 +625,26 @@ RATELIMIT;
     resolver 1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 valid=300s;
     resolver_timeout 5s;
 SSL;
+    }
+
+    /**
+     * Get server_name directive based on www_redirect setting.
+     * Only includes www variant if redirect is configured.
+     *
+     * @param Website $website The website model
+     * @return string The server_name value (e.g., "example.com" or "example.com www.example.com")
+     */
+    protected function getServerName(Website $website): string
+    {
+        $domain = $website->domain;
+        
+        // Only include www if redirect is configured (to_www or to_non_www)
+        if (in_array($website->www_redirect, ['to_www', 'to_non_www'])) {
+            return "{$domain} www.{$domain}";
+        }
+        
+        // For 'none' or subdomains, only use the domain itself
+        return $domain;
     }
 
     /**

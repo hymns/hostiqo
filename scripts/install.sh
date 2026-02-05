@@ -178,20 +178,54 @@ install_prerequisites_debian() {
         curl wget git net-tools unzip build-essential gnupg2 lsb-release > /dev/null 2>&1
     print_success "Basic dependencies installed"
     
-    # TODO: Fix nginx.org repo for different distros (Ubuntu/Debian)
     # Add official Nginx repository
-    # print_info "Adding official Nginx repository..."
-    # curl -fsSL https://nginx.org/keys/nginx_signing.key | gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg > /dev/null 2>&1
-    # echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/ubuntu $(lsb_release -cs) nginx" > /etc/apt/sources.list.d/nginx.list
-    # apt-get update -y > /dev/null 2>&1
-    # print_success "Nginx repository added"
+    print_info "Adding official Nginx repository..."
+    curl -fsSL https://nginx.org/keys/nginx_signing.key | gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg > /dev/null 2>&1
+    echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/ubuntu $(lsb_release -cs) nginx" > /etc/apt/sources.list.d/nginx.list
+    apt-get update -y > /dev/null 2>&1
+    print_success "Nginx repository added"
     
     # Install Nginx
-    print_info "Installing Nginx..."
+    print_info "Installing Nginx from official repository..."
     apt-get install -y nginx > /dev/null 2>&1
     systemctl enable nginx > /dev/null 2>&1
     systemctl start nginx > /dev/null 2>&1
     print_success "Nginx installed and started"
+    
+    # Configure nginx for Debian-style sites-available/sites-enabled
+    print_info "Configuring Nginx directories and user..."
+    mkdir -p /etc/nginx/sites-available
+    mkdir -p /etc/nginx/sites-enabled
+    
+    # Update nginx.conf: set user to www-data and add sites-enabled include
+    sed -i 's/^user  nginx;/user  www-data;/' /etc/nginx/nginx.conf
+    
+    # Add include for sites-enabled if not exists
+    if ! grep -q "include /etc/nginx/sites-enabled/" /etc/nginx/nginx.conf; then
+        sed -i '/include \/etc\/nginx\/conf\.d\/\*\.conf;/a\    include /etc/nginx/sites-enabled/*;' /etc/nginx/nginx.conf
+    fi
+    print_success "Nginx configured with www-data user and sites-enabled"
+    
+    # Create logrotate config for nginx (nginx.org package may not include it)
+    if [ ! -f /etc/logrotate.d/nginx ]; then
+        print_info "Creating logrotate config for Nginx..."
+        cat > /etc/logrotate.d/nginx << 'LOGROTATEEOF'
+/var/log/nginx/*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data adm
+    sharedscripts
+    postrotate
+        [ -f /var/run/nginx.pid ] && kill -USR1 $(cat /var/run/nginx.pid)
+    endscript
+}
+LOGROTATEEOF
+        print_success "Logrotate config created"
+    fi
     
     # Configure rate limiting with Cloudflare IP allowlist
     print_info "Configuring Nginx rate limiting with Cloudflare IP allowlist..."
@@ -472,26 +506,58 @@ install_prerequisites_rhel() {
         gcc gcc-c++ make gnupg2 openssl-devel > /dev/null 2>&1
     print_success "Basic dependencies installed"
 
-    # TODO: Fix nginx.org repo for different distros (Rocky/Alma/CentOS)
     # Add official Nginx repository
-    # print_info "Adding official Nginx repository..."
-    # cat > /etc/yum.repos.d/nginx.repo << 'NGINXREPO'
-# [nginx-stable]
-# name=nginx stable repo
-# baseurl=http://nginx.org/packages/centos/$releasever/$basearch/
-# gpgcheck=1
-# enabled=1
-# gpgkey=https://nginx.org/keys/nginx_signing.key
-# module_hotfixes=true
-# NGINXREPO
-    # print_success "Nginx repository added"
+    print_info "Adding official Nginx repository..."
+    cat > /etc/yum.repos.d/nginx.repo << 'NGINXREPO'
+[nginx-stable]
+name=nginx stable repo
+baseurl=http://nginx.org/packages/centos/$releasever/$basearch/
+gpgcheck=1
+enabled=1
+gpgkey=https://nginx.org/keys/nginx_signing.key
+module_hotfixes=true
+NGINXREPO
+    print_success "Nginx repository added"
 
     # Install Nginx
-    print_info "Installing Nginx..."
+    print_info "Installing Nginx from official repository..."
     $PKG_MANAGER install -y nginx > /dev/null 2>&1
     systemctl enable nginx > /dev/null 2>&1
     systemctl start nginx > /dev/null 2>&1
     print_success "Nginx installed and started"
+    
+    # Configure nginx for sites-available/sites-enabled style (like Debian)
+    print_info "Configuring Nginx directories and user..."
+    mkdir -p /etc/nginx/sites-available
+    mkdir -p /etc/nginx/sites-enabled
+    
+    # Update nginx.conf: set user to nginx (RHEL web user) - already default, but ensure consistency
+    # Add include for sites-enabled if not exists
+    if ! grep -q "include /etc/nginx/sites-enabled/" /etc/nginx/nginx.conf; then
+        sed -i '/include \/etc\/nginx\/conf\.d\/\*\.conf;/a\    include /etc/nginx/sites-enabled/*;' /etc/nginx/nginx.conf
+    fi
+    print_success "Nginx configured with sites-enabled"
+    
+    # Create logrotate config for nginx (nginx.org package may not include it)
+    if [ ! -f /etc/logrotate.d/nginx ]; then
+        print_info "Creating logrotate config for Nginx..."
+        cat > /etc/logrotate.d/nginx << 'LOGROTATEEOF'
+/var/log/nginx/*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 nginx adm
+    sharedscripts
+    postrotate
+        [ -f /var/run/nginx.pid ] && kill -USR1 $(cat /var/run/nginx.pid)
+    endscript
+}
+LOGROTATEEOF
+        print_success "Logrotate config created"
+    fi
     
     # Configure rate limiting with Cloudflare IP allowlist
     print_info "Configuring Nginx rate limiting with Cloudflare IP allowlist..."
