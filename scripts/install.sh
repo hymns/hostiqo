@@ -286,9 +286,35 @@ RATELIMITEOF
     apt-get update -y > /dev/null 2>&1
     print_success "PHP repository added"
     
-    # Install multiple PHP versions
-    print_info "Installing PHP versions (7.4, 8.0, 8.1, 8.2, 8.3, 8.4)..."
-    for version in 7.4 8.0 8.1 8.2 8.3 8.4; do
+    # Install whiptail if not available
+    if ! command -v whiptail &> /dev/null; then
+        apt-get install -y whiptail > /dev/null 2>&1
+    fi
+    
+    # PHP version selection with whiptail
+    print_info "Select PHP versions to install..."
+    PHP_SELECTIONS=$(whiptail --title "PHP Version Selection" --checklist \
+        "Select PHP versions to install (use SPACE to select, ENTER to confirm):" 18 60 6 \
+        "7.4" "PHP 7.4 (Legacy)" OFF \
+        "8.0" "PHP 8.0" OFF \
+        "8.1" "PHP 8.1" OFF \
+        "8.2" "PHP 8.2 (Recommended)" ON \
+        "8.3" "PHP 8.3 (Latest Stable)" ON \
+        "8.4" "PHP 8.4 (Cutting Edge)" OFF \
+        3>&1 1>&2 2>&3)
+    
+    # Check if user cancelled
+    if [ $? -ne 0 ] || [ -z "$PHP_SELECTIONS" ]; then
+        print_warning "No PHP version selected, defaulting to PHP 8.2 and 8.3"
+        PHP_SELECTIONS='"8.2" "8.3"'
+    fi
+    
+    # Convert selections to array (remove quotes)
+    PHP_VERSIONS=$(echo "$PHP_SELECTIONS" | tr -d '"')
+    
+    # Install selected PHP versions
+    print_info "Installing PHP versions: $PHP_VERSIONS"
+    for version in $PHP_VERSIONS; do
         print_info "Installing PHP $version..."
         apt-get install -y \
             php${version}-fpm \
@@ -310,6 +336,13 @@ RATELIMITEOF
         print_success "PHP $version installed"
     done
     
+    # Save installed PHP versions to config
+    mkdir -p /etc/hostiqo
+    PHP_JSON_ARRAY=$(echo "$PHP_VERSIONS" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd ',' | sed 's/^/[/;s/$/]/')
+    echo "{\"php_versions\": $PHP_JSON_ARRAY}" > /etc/hostiqo/config.json
+    chmod 644 /etc/hostiqo/config.json
+    print_success "PHP versions saved to /etc/hostiqo/config.json"
+    
     # Configure PHP
     print_info "Configuring PHP..."
     TOTAL_RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
@@ -319,7 +352,7 @@ RATELIMITEOF
     JIT_BUFFER=$((OPCACHE_MEM / 4))
     [ $JIT_BUFFER -lt 32 ] && JIT_BUFFER=32
     
-    for version in 7.4 8.0 8.1 8.2 8.3 8.4; do
+    for version in $PHP_VERSIONS; do
         if [ -d "/etc/php/$version" ]; then
             cat > "/etc/php/$version/mods-available/opcache-hostiqo.ini" << OPCACHE
 [opcache]
@@ -627,10 +660,36 @@ RATELIMITEOF
     if command -v dnf &> /dev/null; then
         dnf module reset php -y > /dev/null 2>&1 || true
     fi
-
-    # Install multiple PHP versions
-    print_info "Installing PHP versions (7.4, 8.0, 8.1, 8.2, 8.3, 8.4)..."
-    for version in 74 80 81 82 83 84; do
+    
+    # Install newt for whiptail if not available
+    if ! command -v whiptail &> /dev/null; then
+        $PKG_MANAGER install -y newt > /dev/null 2>&1
+    fi
+    
+    # PHP version selection with whiptail
+    print_info "Select PHP versions to install..."
+    PHP_SELECTIONS=$(whiptail --title "PHP Version Selection" --checklist \
+        "Select PHP versions to install (use SPACE to select, ENTER to confirm):" 18 60 6 \
+        "74" "PHP 7.4 (Legacy)" OFF \
+        "80" "PHP 8.0" OFF \
+        "81" "PHP 8.1" OFF \
+        "82" "PHP 8.2 (Recommended)" ON \
+        "83" "PHP 8.3 (Latest Stable)" ON \
+        "84" "PHP 8.4 (Cutting Edge)" OFF \
+        3>&1 1>&2 2>&3)
+    
+    # Check if user cancelled
+    if [ $? -ne 0 ] || [ -z "$PHP_SELECTIONS" ]; then
+        print_warning "No PHP version selected, defaulting to PHP 8.2 and 8.3"
+        PHP_SELECTIONS='"82" "83"'
+    fi
+    
+    # Convert selections to array (remove quotes)
+    PHP_VERSIONS_NODOT=$(echo "$PHP_SELECTIONS" | tr -d '"')
+    
+    # Install selected PHP versions
+    print_info "Installing selected PHP versions..."
+    for version in $PHP_VERSIONS_NODOT; do
         version_dot="${version:0:1}.${version:1}"
         print_info "Installing PHP $version_dot..."
         $PKG_MANAGER install -y \
@@ -668,10 +727,18 @@ RATELIMITEOF
         systemctl start php${version}-php-fpm > /dev/null 2>&1
         print_success "PHP $version_dot installed"
     done
+    
+    # Save installed PHP versions to config (convert 82 -> 8.2 format)
+    mkdir -p /etc/hostiqo
+    PHP_JSON_ARRAY=$(echo "$PHP_VERSIONS_NODOT" | tr ' ' '\n' | while read v; do echo "\"${v:0:1}.${v:1}\""; done | paste -sd ',' | sed 's/^/[/;s/$/]/')
+    echo "{\"php_versions\": $PHP_JSON_ARRAY}" > /etc/hostiqo/config.json
+    chmod 644 /etc/hostiqo/config.json
+    print_success "PHP versions saved to /etc/hostiqo/config.json"
 
-    # Create symlink for default PHP
-    if [ ! -f /usr/bin/php ]; then
-        ln -sf /opt/remi/php84/root/usr/bin/php /usr/bin/php
+    # Create symlink for default PHP (use highest installed version)
+    HIGHEST_PHP=$(echo "$PHP_VERSIONS_NODOT" | tr ' ' '\n' | sort -rn | head -1)
+    if [ ! -f /usr/bin/php ] && [ -n "$HIGHEST_PHP" ]; then
+        ln -sf /opt/remi/php${HIGHEST_PHP}/root/usr/bin/php /usr/bin/php
     fi
 
     # Configure PHP OPcache + JIT
@@ -683,7 +750,7 @@ RATELIMITEOF
     JIT_BUFFER=$((OPCACHE_MEM / 4))
     [ $JIT_BUFFER -lt 32 ] && JIT_BUFFER=32
     
-    for version in 74 80 81 82 83 84; do
+    for version in $PHP_VERSIONS_NODOT; do
         version_dot="${version:0:1}.${version:1}"
         REMI_PHP_DIR="/etc/opt/remi/php${version}"
         if [ -d "$REMI_PHP_DIR" ]; then

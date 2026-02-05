@@ -41,8 +41,8 @@ class WebsiteController extends Controller
     {
         $type = $request->get('type', 'php');
         
-        // Get available PHP versions (you can customize this list)
-        $phpVersions = ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4'];
+        // Get installed PHP versions from system config
+        $phpVersions = $this->getInstalledPhpVersions();
         
         // Get available Node versions (you can customize this list)
         $nodeVersions = ['16.x', '18.x', '20.x', '21.x'];
@@ -125,8 +125,8 @@ class WebsiteController extends Controller
      */
     public function edit(Website $website)
     {
-        // Get available PHP versions
-        $phpVersions = ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4'];
+        // Get installed PHP versions from system config
+        $phpVersions = $this->getInstalledPhpVersions();
         
         // Get available Node versions
         $nodeVersions = ['16.x', '18.x', '20.x', '21.x'];
@@ -674,5 +674,26 @@ HTML;
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Get installed PHP versions from system config.
+     *
+     * @return array The list of installed PHP versions
+     */
+    protected function getInstalledPhpVersions(): array
+    {
+        $configFile = '/etc/hostiqo/config.json';
+        
+        // Try to read from config file
+        if (file_exists($configFile)) {
+            $config = json_decode(file_get_contents($configFile), true);
+            if (isset($config['php_versions']) && is_array($config['php_versions'])) {
+                return $config['php_versions'];
+            }
+        }
+        
+        // Fallback: return default versions
+        return ['8.2', '8.3'];
     }
 }
