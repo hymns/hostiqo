@@ -1542,30 +1542,57 @@ EOF
 setup_webserver() {
     print_header "Phase 4: Web Server Configuration"
     
-    # Get domain
-    read_input -p "Enter your domain name (e.g., hostiqo.example.com): " DOMAIN_NAME
-    if [ -z "$DOMAIN_NAME" ]; then
-        print_error "Domain name is required!"
-        exit 1
-    fi
+    # Ask if user wants to use domain or IP-only mode
+    read_input -p "Do you have a domain name ready? (y/n, default: y): " HAS_DOMAIN
+    HAS_DOMAIN=${HAS_DOMAIN:-y}
     
-    read_input -p "Include www subdomain? (y/n, default: n): " INCLUDE_WWW
-    INCLUDE_WWW=${INCLUDE_WWW:-n}
-    
-    if [[ "$INCLUDE_WWW" =~ ^[Yy]$ ]]; then
-        SERVER_NAME="$DOMAIN_NAME www.$DOMAIN_NAME"
-        SSL_DOMAINS="-d $DOMAIN_NAME -d www.$DOMAIN_NAME"
+    if [[ "$HAS_DOMAIN" =~ ^[Nn]$ ]]; then
+        # IP-only mode with custom port
+        read_input -p "Enter custom port for Hostiqo (default: 8000): " CUSTOM_PORT
+        CUSTOM_PORT=${CUSTOM_PORT:-8000}
+        
+        # Get server IP
+        SERVER_IP=$(hostname -I | awk '{print $1}')
+        if [ -z "$SERVER_IP" ]; then
+            SERVER_IP="_"
+        fi
+        
+        SERVER_NAME="$SERVER_IP"
+        LISTEN_PORT="$CUSTOM_PORT"
+        USE_CUSTOM_PORT=true
+        SETUP_SSL="n"
+        INCLUDE_WWW="n"
+        
+        print_info "Hostiqo will be accessible at: http://$SERVER_IP:$CUSTOM_PORT"
     else
-        SERVER_NAME="$DOMAIN_NAME"
-        SSL_DOMAINS="-d $DOMAIN_NAME"
-    fi
-    
-    read_input -p "Setup SSL certificate? (y/n, default: y): " SETUP_SSL
-    SETUP_SSL=${SETUP_SSL:-y}
-    
-    if [[ "$SETUP_SSL" =~ ^[Yy]$ ]]; then
-        read_input -p "Email for SSL notifications: " SSL_EMAIL
-        SSL_EMAIL=${SSL_EMAIL:-admin@$DOMAIN_NAME}
+        # Domain mode
+        read_input -p "Enter your domain name (e.g., hostiqo.example.com): " DOMAIN_NAME
+        if [ -z "$DOMAIN_NAME" ]; then
+            print_error "Domain name is required!"
+            exit 1
+        fi
+        
+        read_input -p "Include www subdomain? (y/n, default: n): " INCLUDE_WWW
+        INCLUDE_WWW=${INCLUDE_WWW:-n}
+        
+        if [[ "$INCLUDE_WWW" =~ ^[Yy]$ ]]; then
+            SERVER_NAME="$DOMAIN_NAME www.$DOMAIN_NAME"
+            SSL_DOMAINS="-d $DOMAIN_NAME -d www.$DOMAIN_NAME"
+        else
+            SERVER_NAME="$DOMAIN_NAME"
+            SSL_DOMAINS="-d $DOMAIN_NAME"
+        fi
+        
+        LISTEN_PORT="80"
+        USE_CUSTOM_PORT=false
+        
+        read_input -p "Setup SSL certificate? (y/n, default: y): " SETUP_SSL
+        SETUP_SSL=${SETUP_SSL:-y}
+        
+        if [[ "$SETUP_SSL" =~ ^[Yy]$ ]]; then
+            read_input -p "Email for SSL notifications: " SSL_EMAIL
+            SSL_EMAIL=${SSL_EMAIL:-admin@$DOMAIN_NAME}
+        fi
     fi
     
     # Detect PHP version and socket path based on OS
@@ -1601,8 +1628,8 @@ setup_webserver() {
 
     cat > "$NGINX_CONF_FILE" << EOF
 server {
-    listen 80;
-    listen [::]:80;
+    listen $LISTEN_PORT;
+    listen [::]:$LISTEN_PORT;
     server_name $SERVER_NAME;
     root $APP_DIR/public;
 
@@ -2033,7 +2060,12 @@ main() {
     fi
     echo "  • App logs: $APP_DIR/storage/logs/"
     echo ""
-    if [[ "$SETUP_SSL" =~ ^[Yy]$ ]]; then
+    if [ "$USE_CUSTOM_PORT" = true ]; then
+        print_info "Access your panel at: http://$SERVER_IP:$CUSTOM_PORT"
+        echo ""
+        print_info "Note: You can later switch to domain mode by re-running:"
+        echo "  sudo bash $APP_DIR/scripts/install.sh --phase4"
+    elif [[ "$SETUP_SSL" =~ ^[Yy]$ ]]; then
         print_info "Access your panel at: https://$DOMAIN_NAME"
     else
         print_info "Access your panel at: http://$DOMAIN_NAME"
