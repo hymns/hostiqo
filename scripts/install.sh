@@ -991,12 +991,28 @@ LOGROTATE
 install_common_tools() {
     # Install Composer (install to /usr/bin for better sudo compatibility)
     print_info "Installing Composer..."
-    curl -sS https://getcomposer.org/installer | php > /dev/null 2>&1
-    mv composer.phar /usr/local/bin/composer
-    chmod +x /usr/local/bin/composer
-    # Create symlink in /usr/bin for sudo access
-    ln -sf /usr/local/bin/composer /usr/bin/composer 2>/dev/null || true
-    print_success "Composer installed"
+    cd /tmp
+    EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
+    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+    ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
+    
+    if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+        print_warning "Composer installer checksum mismatch, trying direct download..."
+        curl -sS https://getcomposer.org/download/latest-stable/composer.phar -o composer.phar
+    else
+        php composer-setup.php --quiet
+        rm -f composer-setup.php
+    fi
+    
+    if [ -f composer.phar ]; then
+        mv composer.phar /usr/local/bin/composer
+        chmod +x /usr/local/bin/composer
+        # Create symlink in /usr/bin for sudo access
+        ln -sf /usr/local/bin/composer /usr/bin/composer 2>/dev/null || true
+        print_success "Composer installed"
+    else
+        print_warning "Failed to install Composer, please install manually later"
+    fi
 
     # Install PM2
     print_info "Installing PM2..."
