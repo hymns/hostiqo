@@ -44,16 +44,13 @@ class ArtisanController extends Controller
             ->get();
         
         foreach ($websites as $website) {
-            $fullPath = rtrim($website->root_path, '/');
-            if ($website->working_directory && $website->working_directory !== '/') {
-                $fullPath .= '/' . ltrim($website->working_directory, '/');
-            }
+            $rootPath = rtrim($website->root_path, '/');
             
-            // Check if artisan file exists
-            if (File::exists($fullPath . '/artisan')) {
+            // Check if artisan file exists in root_path (working_directory is usually public)
+            if (File::exists($rootPath . '/artisan')) {
                 $sites[$website->id] = [
                     'name' => $website->domain,
-                    'path' => $fullPath,
+                    'path' => $rootPath,
                 ];
             }
         }
