@@ -40,7 +40,6 @@ class ArtisanController extends Controller
         
         // Scan websites from database
         $websites = Website::where('project_type', 'php')
-            ->whereIn('framework', ['laravel', 'Laravel'])
             ->where('is_active', true)
             ->get();
         
