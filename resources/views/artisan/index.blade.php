@@ -63,8 +63,8 @@
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-bordered mb-0">
-                <thead class="table-light">
+            <table class="table mb-0">
+                <thead>
                     <tr>
                         <th style="width: 30%">Category</th>
                         <th style="width: 35%">Cache</th>
