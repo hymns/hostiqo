@@ -320,4 +320,35 @@ class DatabaseService
         
         return $result[0]->count ?? 0;
     }
+
+    /**
+     * Get all database stats in a single query (prefetch).
+     *
+     * @return array<string, array{size_mb: float, table_count: int}> Keyed by database name
+     */
+    public function getAllDatabaseStats(): array
+    {
+        $systemDatabases = ['information_schema', 'mysql', 'performance_schema', 'sys'];
+        $placeholders = implode(',', array_fill(0, count($systemDatabases), '?'));
+        
+        $results = DB::select("
+            SELECT 
+                table_schema as db_name,
+                ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb,
+                COUNT(*) as table_count
+            FROM information_schema.tables 
+            WHERE table_schema NOT IN ({$placeholders})
+            GROUP BY table_schema
+        ", $systemDatabases);
+        
+        $stats = [];
+        foreach ($results as $row) {
+            $stats[$row->db_name] = [
+                'size_mb' => (float) ($row->size_mb ?? 0),
+                'table_count' => (int) $row->table_count,
+            ];
+        }
+        
+        return $stats;
+    }
 }

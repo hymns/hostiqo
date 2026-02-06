@@ -38,15 +38,15 @@ class DatabaseController extends Controller
     {
         $databases = Database::latest()->paginate(15);
         
-        // Get MySQL databases list
-        $mysqlDatabases = $this->databaseService->listDatabases();
+        // Prefetch all database stats in single query
+        $dbStats = $this->databaseService->getAllDatabaseStats();
         
         // Enhance database records with MySQL info
         foreach ($databases as $database) {
-            $database->exists_in_mysql = in_array($database->name, $mysqlDatabases);
+            $database->exists_in_mysql = isset($dbStats[$database->name]);
             if ($database->exists_in_mysql) {
-                $database->size_mb = $this->databaseService->getDatabaseSize($database->name);
-                $database->table_count = $this->databaseService->getTableCount($database->name);
+                $database->size_mb = $dbStats[$database->name]['size_mb'];
+                $database->table_count = $dbStats[$database->name]['table_count'];
             }
         }
         
