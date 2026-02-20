@@ -34,7 +34,7 @@
                         <i class="bi bi-arrow-clockwise"></i> Restart
                     </button>
                 </form>
-                <form action="{{ route('fail2ban.stop') }}" method="POST" class="d-inline">
+                <form action="{{ route('fail2ban.stop') }}" method="POST" class="d-inline ms-1">
                     @csrf
                     <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Stop fail2ban service?')">
                         <i class="bi bi-stop-circle"></i> Stop
