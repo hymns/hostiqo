@@ -6,7 +6,7 @@
 #
 # Author: Muhammad Hamizi Jaminan
 # Website: https://hostiqo.dev
-# License: MIT
+# License: MIT + Commons Clause (see LICENSE file)
 #
 # Run with: sudo bash scripts/install.sh
 #########################################################
