@@ -70,14 +70,22 @@
                 <a class="nav-link {{ request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('services.index') }}">
                     <i class="bi bi-gear-fill me-2"></i> Services
                 </a>
-                <a class="nav-link {{ request()->routeIs('firewall.*') ? 'active' : '' }}" href="{{ route('firewall.index') }}">
-                    <i class="bi bi-shield-check me-2"></i> Firewall
-                </a>
                 <a class="nav-link {{ request()->routeIs('server-health') ? 'active' : '' }}" href="{{ route('server-health') }}">
                     <i class="bi bi-heart-pulse me-2"></i> Server Health
                 </a>
                 <a class="nav-link {{ request()->routeIs('cron-jobs.*') ? 'active' : '' }}" href="{{ route('cron-jobs.index') }}">
                     <i class="bi bi-clock-history me-2"></i> Cron Jobs
+                </a>
+
+                <!-- Security Section -->
+                <div class="nav-section-title">
+                    Security
+                </div>
+                <a class="nav-link {{ request()->routeIs('firewall.*') ? 'active' : '' }}" href="{{ route('firewall.index') }}">
+                    <i class="bi bi-shield-check me-2"></i> Firewall
+                </a>
+                <a class="nav-link {{ request()->routeIs('fail2ban.*') ? 'active' : '' }}" href="{{ route('fail2ban.index') }}">
+                    <i class="bi bi-shield-lock me-2"></i> Fail2ban
                 </a>
 
                 <!-- Process Manager Section -->

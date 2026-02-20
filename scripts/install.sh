@@ -1447,6 +1447,24 @@ www-data ALL=(ALL) NOPASSWD: /bin/systemctl start fail2ban
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl stop fail2ban
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart fail2ban
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl reload fail2ban
+
+# Fail2ban Client Management
+www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client status
+www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client status *
+www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client set * banip *
+www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client set * unbanip *
+www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client start *
+www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client stop *
+www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client reload
+www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client get * ignoreip
+www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client get * bantime
+www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client get * maxretry
+www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client get * findtime
+www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client banned
+www-data ALL=(ALL) NOPASSWD: /bin/cat /etc/fail2ban/jail.local
+www-data ALL=(ALL) NOPASSWD: /bin/cp /tmp/jail.local /etc/fail2ban/jail.local
+www-data ALL=(ALL) NOPASSWD: /bin/chmod 644 /etc/fail2ban/jail.local
+
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl start ufw
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl stop ufw
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart ufw
@@ -1581,6 +1599,23 @@ nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl start fail2ban
 nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop fail2ban
 nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart fail2ban
 nginx ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload fail2ban
+
+# Fail2ban Client Management
+nginx ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client status
+nginx ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client status *
+nginx ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client set * banip *
+nginx ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client set * unbanip *
+nginx ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client start *
+nginx ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client stop *
+nginx ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client reload
+nginx ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client get * ignoreip
+nginx ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client get * bantime
+nginx ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client get * maxretry
+nginx ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client get * findtime
+nginx ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client banned
+nginx ALL=(ALL) NOPASSWD: /usr/bin/cat /etc/fail2ban/jail.local
+nginx ALL=(ALL) NOPASSWD: /usr/bin/cp /tmp/jail.local /etc/fail2ban/jail.local
+nginx ALL=(ALL) NOPASSWD: /usr/bin/chmod 644 /etc/fail2ban/jail.local
 
 # Firewalld
 nginx ALL=(ALL) NOPASSWD: /usr/bin/firewall-cmd

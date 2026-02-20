@@ -1,0 +1,187 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\Fail2banService;
+use Illuminate\Http\Request;
+
+class Fail2banController extends Controller
+{
+    protected Fail2banService $fail2banService;
+
+    public function __construct(Fail2banService $fail2banService)
+    {
+        $this->fail2banService = $fail2banService;
+    }
+
+    /**
+     * Display fail2ban dashboard
+     */
+    public function index()
+    {
+        $serviceStatus = $this->fail2banService->getServiceStatus();
+        $summary = $this->fail2banService->getSummary();
+        $jails = $this->fail2banService->getAllJailsStatus();
+        
+        return view('fail2ban.index', compact('serviceStatus', 'summary', 'jails'));
+    }
+
+    /**
+     * Show banned IPs
+     */
+    public function banned()
+    {
+        $bannedIps = $this->fail2banService->getAllBannedIps();
+        $status = $this->fail2banService->getStatus();
+        
+        return view('fail2ban.banned', compact('bannedIps', 'status'));
+    }
+
+    /**
+     * Show jail details
+     */
+    public function showJail(string $jail)
+    {
+        $jailStatus = $this->fail2banService->getJailStatus($jail);
+        $whitelist = $this->fail2banService->getWhitelist($jail);
+        
+        return view('fail2ban.jail', compact('jailStatus', 'whitelist', 'jail'));
+    }
+
+    /**
+     * Ban an IP
+     */
+    public function banIp(Request $request)
+    {
+        $request->validate([
+            'jail' => 'required|string',
+            'ip' => 'required|ip',
+        ]);
+        
+        $result = $this->fail2banService->banIp($request->jail, $request->ip);
+        
+        if ($result['success']) {
+            return back()->with('success', $result['message']);
+        }
+        
+        return back()->with('error', $result['message']);
+    }
+
+    /**
+     * Unban an IP
+     */
+    public function unbanIp(Request $request)
+    {
+        $request->validate([
+            'jail' => 'required|string',
+            'ip' => 'required|ip',
+        ]);
+        
+        $result = $this->fail2banService->unbanIp($request->jail, $request->ip);
+        
+        if ($result['success']) {
+            return back()->with('success', $result['message']);
+        }
+        
+        return back()->with('error', $result['message']);
+    }
+
+    /**
+     * Start a jail
+     */
+    public function startJail(Request $request)
+    {
+        $request->validate(['jail' => 'required|string']);
+        
+        $result = $this->fail2banService->startJail($request->jail);
+        
+        if ($result['success']) {
+            return back()->with('success', $result['message']);
+        }
+        
+        return back()->with('error', $result['message']);
+    }
+
+    /**
+     * Stop a jail
+     */
+    public function stopJail(Request $request)
+    {
+        $request->validate(['jail' => 'required|string']);
+        
+        $result = $this->fail2banService->stopJail($request->jail);
+        
+        if ($result['success']) {
+            return back()->with('success', $result['message']);
+        }
+        
+        return back()->with('error', $result['message']);
+    }
+
+    /**
+     * Reload fail2ban
+     */
+    public function reload()
+    {
+        $result = $this->fail2banService->reload();
+        
+        if ($result['success']) {
+            return back()->with('success', $result['message']);
+        }
+        
+        return back()->with('error', $result['message']);
+    }
+
+    /**
+     * Start fail2ban service
+     */
+    public function startService()
+    {
+        $result = $this->fail2banService->startService();
+        
+        if ($result['success']) {
+            return back()->with('success', $result['message']);
+        }
+        
+        return back()->with('error', $result['message']);
+    }
+
+    /**
+     * Stop fail2ban service
+     */
+    public function stopService()
+    {
+        $result = $this->fail2banService->stopService();
+        
+        if ($result['success']) {
+            return back()->with('success', $result['message']);
+        }
+        
+        return back()->with('error', $result['message']);
+    }
+
+    /**
+     * Restart fail2ban service
+     */
+    public function restartService()
+    {
+        $result = $this->fail2banService->restartService();
+        
+        if ($result['success']) {
+            return back()->with('success', $result['message']);
+        }
+        
+        return back()->with('error', $result['message']);
+    }
+
+    /**
+     * View fail2ban logs
+     */
+    public function logs(Request $request)
+    {
+        $lines = $request->get('lines', 100);
+        $log = $this->fail2banService->getLog($lines);
+        
+        return view('fail2ban.logs', compact('log', 'lines'));
+    }
+}

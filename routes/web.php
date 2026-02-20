@@ -9,6 +9,7 @@ use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\FileManagerController;
+use App\Http\Controllers\Fail2banController;
 use App\Http\Controllers\FirewallController;
 use App\Http\Controllers\LogViewerController;
 use App\Http\Controllers\Pm2Controller;
@@ -133,6 +134,20 @@ Route::middleware('auth')->group(function () {
     Route::post('firewall/enable', [FirewallController::class, 'enable'])->name('firewall.enable');
     Route::post('firewall/disable', [FirewallController::class, 'disable'])->name('firewall.disable');
     Route::post('firewall/reset', [FirewallController::class, 'reset'])->name('firewall.reset');
+
+    // Fail2ban Management
+    Route::get('fail2ban', [Fail2banController::class, 'index'])->name('fail2ban.index');
+    Route::get('fail2ban/banned', [Fail2banController::class, 'banned'])->name('fail2ban.banned');
+    Route::get('fail2ban/logs', [Fail2banController::class, 'logs'])->name('fail2ban.logs');
+    Route::get('fail2ban/jail/{jail}', [Fail2banController::class, 'showJail'])->name('fail2ban.jail');
+    Route::post('fail2ban/ban', [Fail2banController::class, 'banIp'])->name('fail2ban.ban');
+    Route::post('fail2ban/unban', [Fail2banController::class, 'unbanIp'])->name('fail2ban.unban');
+    Route::post('fail2ban/jail/start', [Fail2banController::class, 'startJail'])->name('fail2ban.jail.start');
+    Route::post('fail2ban/jail/stop', [Fail2banController::class, 'stopJail'])->name('fail2ban.jail.stop');
+    Route::post('fail2ban/reload', [Fail2banController::class, 'reload'])->name('fail2ban.reload');
+    Route::post('fail2ban/start', [Fail2banController::class, 'startService'])->name('fail2ban.start');
+    Route::post('fail2ban/stop', [Fail2banController::class, 'stopService'])->name('fail2ban.stop');
+    Route::post('fail2ban/restart', [Fail2banController::class, 'restartService'])->name('fail2ban.restart');
 
     // Cron Jobs
     Route::resource('cron-jobs', CronJobController::class);
