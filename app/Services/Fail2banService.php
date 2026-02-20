@@ -149,47 +149,27 @@ class Fail2banService
      */
     public function getAllBannedIps(): array
     {
-        $result = Process::run('sudo /usr/bin/fail2ban-client banned');
+        // Always use the reliable method: iterate through each jail
+        $status = $this->getStatus();
+        $allBanned = [];
         
-        if (!$result->successful()) {
-            // Fallback: get from each jail
-            $status = $this->getStatus();
-            $allBanned = [];
-            
-            foreach ($status['jails'] as $jail) {
-                $jailStatus = $this->getJailStatus($jail);
-                if (!empty($jailStatus['banned_ips'])) {
-                    foreach ($jailStatus['banned_ips'] as $ip) {
-                        $allBanned[] = [
-                            'ip' => $ip,
-                            'jail' => $jail,
-                        ];
-                    }
-                }
-            }
-            
-            return $allBanned;
+        if (!$status['running']) {
+            return [];
         }
         
-        // Parse banned output (JSON format in newer versions)
-        $output = trim($result->output());
-        $banned = [];
-        
-        // Try JSON parse first
-        $decoded = json_decode($output, true);
-        if (is_array($decoded)) {
-            foreach ($decoded as $jailData) {
-                if (is_array($jailData)) {
-                    foreach ($jailData as $jail => $ips) {
-                        foreach ($ips as $ip) {
-                            $banned[] = ['ip' => $ip, 'jail' => $jail];
-                        }
-                    }
+        foreach ($status['jails'] as $jail) {
+            $jailStatus = $this->getJailStatus($jail);
+            if (!empty($jailStatus['banned_ips'])) {
+                foreach ($jailStatus['banned_ips'] as $ip) {
+                    $allBanned[] = [
+                        'ip' => $ip,
+                        'jail' => $jail,
+                    ];
                 }
             }
         }
         
-        return $banned;
+        return $allBanned;
     }
 
     /**
