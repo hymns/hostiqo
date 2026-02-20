@@ -91,6 +91,161 @@ PHP_FPM_SERVICE="" # php8.x-fpm or php-fpm
 SYSTEMCTL="/bin/systemctl"
 
 #########################################################
+# PRE-FLIGHT CHECKS
+#########################################################
+preflight_check() {
+    print_header "Pre-flight Checks"
+    
+    local errors=0
+    
+    # 1. Check internet connectivity
+    print_info "Checking internet connectivity..."
+    if curl -s --connect-timeout 10 https://google.com > /dev/null 2>&1; then
+        print_success "Internet connectivity OK"
+    elif curl -s --connect-timeout 10 https://cloudflare.com > /dev/null 2>&1; then
+        print_success "Internet connectivity OK"
+    elif wget -q --timeout=10 -O /dev/null https://google.com 2>/dev/null; then
+        print_success "Internet connectivity OK"
+    else
+        print_error "No internet connectivity. Please check your network."
+        errors=$((errors + 1))
+    fi
+    
+    # 2. Check disk space (minimum 5GB free)
+    print_info "Checking disk space..."
+    DISK_FREE=$(df -BG / 2>/dev/null | awk 'NR==2 {gsub(/G/,"",$4); print $4}')
+    if [ -z "$DISK_FREE" ]; then
+        DISK_FREE=$(df -k / | awk 'NR==2 {print int($4/1024/1024)}')
+    fi
+    if [ "$DISK_FREE" -ge 5 ] 2>/dev/null; then
+        print_success "Disk space OK (${DISK_FREE}GB free)"
+    else
+        print_error "Insufficient disk space. Need at least 5GB free (have ${DISK_FREE}GB)."
+        errors=$((errors + 1))
+    fi
+    
+    # 3. Check RAM (minimum 1GB recommended)
+    print_info "Checking memory..."
+    TOTAL_RAM_MB=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')
+    if [ -z "$TOTAL_RAM_MB" ]; then
+        TOTAL_RAM_MB=$(cat /proc/meminfo | grep MemTotal | awk '{print int($2/1024)}')
+    fi
+    if [ "$TOTAL_RAM_MB" -ge 1024 ] 2>/dev/null; then
+        print_success "Memory OK (${TOTAL_RAM_MB}MB total)"
+    elif [ "$TOTAL_RAM_MB" -ge 512 ] 2>/dev/null; then
+        print_warning "Low memory (${TOTAL_RAM_MB}MB). Recommended: 1GB+. Installation may be slow."
+    else
+        print_error "Insufficient memory (${TOTAL_RAM_MB}MB). Minimum: 512MB."
+        errors=$((errors + 1))
+    fi
+    
+    # 4. Check if running in container (warning only)
+    print_info "Checking environment..."
+    if [ -f /.dockerenv ] || grep -q docker /proc/1/cgroup 2>/dev/null; then
+        print_warning "Running in Docker container. Some features may not work (systemd, fail2ban)."
+    elif [ -f /run/systemd/container ] || systemd-detect-virt --container > /dev/null 2>&1; then
+        CONTAINER_TYPE=$(systemd-detect-virt --container 2>/dev/null || cat /run/systemd/container 2>/dev/null || echo "unknown")
+        print_warning "Running in container ($CONTAINER_TYPE). Some features may be limited."
+    else
+        print_success "Environment OK (bare metal/VM)"
+    fi
+    
+    # 5. Check systemd availability
+    print_info "Checking systemd..."
+    if command -v systemctl &> /dev/null && systemctl --version > /dev/null 2>&1; then
+        print_success "Systemd available"
+    else
+        print_error "Systemd not available. Hostiqo requires systemd for service management."
+        errors=$((errors + 1))
+    fi
+    
+    # 6. Install essential tools if missing
+    print_info "Checking essential tools..."
+    ESSENTIAL_TOOLS="curl wget"
+    MISSING_TOOLS=""
+    
+    for tool in $ESSENTIAL_TOOLS; do
+        if ! command -v $tool &> /dev/null; then
+            MISSING_TOOLS="$MISSING_TOOLS $tool"
+        fi
+    done
+    
+    if [ -n "$MISSING_TOOLS" ]; then
+        print_info "Installing missing tools:$MISSING_TOOLS"
+        if command -v apt-get &> /dev/null; then
+            apt-get update -y > /dev/null 2>&1
+            apt-get install -y $MISSING_TOOLS > /dev/null 2>&1
+        elif command -v dnf &> /dev/null; then
+            dnf install -y $MISSING_TOOLS > /dev/null 2>&1
+        elif command -v yum &> /dev/null; then
+            yum install -y $MISSING_TOOLS > /dev/null 2>&1
+        fi
+        
+        # Verify installation
+        for tool in $MISSING_TOOLS; do
+            if command -v $tool &> /dev/null; then
+                print_success "$tool installed"
+            else
+                print_error "Failed to install $tool"
+                errors=$((errors + 1))
+            fi
+        done
+    else
+        print_success "Essential tools available (curl, wget)"
+    fi
+    
+    # 7. Check GPG for repository keys
+    print_info "Checking GPG..."
+    if command -v gpg &> /dev/null; then
+        print_success "GPG available"
+    else
+        print_info "Installing GPG..."
+        if command -v apt-get &> /dev/null; then
+            apt-get install -y gnupg2 > /dev/null 2>&1
+        elif command -v dnf &> /dev/null; then
+            dnf install -y gnupg2 > /dev/null 2>&1
+        elif command -v yum &> /dev/null; then
+            yum install -y gnupg2 > /dev/null 2>&1
+        fi
+        
+        if command -v gpg &> /dev/null; then
+            print_success "GPG installed"
+        else
+            print_error "Failed to install GPG. Repository key verification may fail."
+            errors=$((errors + 1))
+        fi
+    fi
+    
+    # 8. Check if ports 80/443 are available
+    print_info "Checking port availability..."
+    PORTS_IN_USE=""
+    if command -v ss &> /dev/null; then
+        ss -tlnp 2>/dev/null | grep -q ':80 ' && PORTS_IN_USE="$PORTS_IN_USE 80"
+        ss -tlnp 2>/dev/null | grep -q ':443 ' && PORTS_IN_USE="$PORTS_IN_USE 443"
+    elif command -v netstat &> /dev/null; then
+        netstat -tlnp 2>/dev/null | grep -q ':80 ' && PORTS_IN_USE="$PORTS_IN_USE 80"
+        netstat -tlnp 2>/dev/null | grep -q ':443 ' && PORTS_IN_USE="$PORTS_IN_USE 443"
+    fi
+    
+    if [ -n "$PORTS_IN_USE" ]; then
+        print_warning "Ports in use:$PORTS_IN_USE. Existing web server will be replaced."
+    else
+        print_success "Ports 80/443 available"
+    fi
+    
+    echo ""
+    
+    # Final verdict
+    if [ $errors -gt 0 ]; then
+        print_error "Pre-flight checks failed with $errors error(s). Please fix the issues above."
+        exit 1
+    fi
+    
+    print_success "All pre-flight checks passed!"
+    echo ""
+}
+
+#########################################################
 # OS DETECTION
 #########################################################
 detect_os() {
@@ -2235,6 +2390,9 @@ main() {
         exit 0
     fi
     
+    # Run pre-flight checks first
+    preflight_check
+    
     # Run all phases
     setup_repository
     install_prerequisites
@@ -2307,8 +2465,13 @@ main() {
 
 # Parse command line arguments
 case "${1:-}" in
+    --preflight|--check)
+        check_root
+        preflight_check
+        ;;
     --phase1|--prerequisites)
         check_root
+        preflight_check
         detect_os
         install_prerequisites
         ;;
@@ -2340,6 +2503,7 @@ case "${1:-}" in
         echo ""
         echo "Options:"
         echo "  (no option)      Run full installation"
+        echo "  --preflight      Run pre-flight checks only"
         echo "  --phase1         Install system prerequisites only"
         echo "  --phase2         Configure sudoers only"
         echo "  --phase3 [path]  Setup Laravel application only"
