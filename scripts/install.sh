@@ -1347,10 +1347,16 @@ tune_database() {
     MAX_BUFFER_MB=$((TOTAL_RAM_MB * 80 / 100))
     [ $BUFFER_POOL_MB -gt $MAX_BUFFER_MB ] && BUFFER_POOL_MB=$MAX_BUFFER_MB
     
-    # Buffer pool instances (1 per GB, min 1, max 8)
-    BUFFER_POOL_INSTANCES=$((BUFFER_POOL_MB / 1024))
-    [ $BUFFER_POOL_INSTANCES -lt 1 ] && BUFFER_POOL_INSTANCES=1
-    [ $BUFFER_POOL_INSTANCES -gt 8 ] && BUFFER_POOL_INSTANCES=8
+    # Buffer pool instances (power of 2: 1, 2, 4, 8 based on buffer pool size)
+    if [ $BUFFER_POOL_MB -ge 8192 ]; then
+        BUFFER_POOL_INSTANCES=8
+    elif [ $BUFFER_POOL_MB -ge 4096 ]; then
+        BUFFER_POOL_INSTANCES=4
+    elif [ $BUFFER_POOL_MB -ge 2048 ]; then
+        BUFFER_POOL_INSTANCES=2
+    else
+        BUFFER_POOL_INSTANCES=1
+    fi
     
     # InnoDB log file size (25% of buffer pool, min 48M, max 2G)
     LOG_FILE_MB=$((BUFFER_POOL_MB * 25 / 100))
@@ -1371,10 +1377,11 @@ tune_database() {
     [ $TMP_TABLE_MB -lt 32 ] && TMP_TABLE_MB=32
     [ $TMP_TABLE_MB -gt 256 ] && TMP_TABLE_MB=256
     
-    # Max connections (50 + RAM_GB * 25)
-    MAX_CONNECTIONS=$((50 + TOTAL_RAM_GB * 25))
+    # Max connections (conservative: 50 + RAM_GB * 10, cap at 300)
+    # Higher values can spike RAM due to per-connection buffers
+    MAX_CONNECTIONS=$((50 + TOTAL_RAM_GB * 10))
     [ $MAX_CONNECTIONS -lt 50 ] && MAX_CONNECTIONS=50
-    [ $MAX_CONNECTIONS -gt 500 ] && MAX_CONNECTIONS=500
+    [ $MAX_CONNECTIONS -gt 300 ] && MAX_CONNECTIONS=300
     
     # Thread cache size (CPU cores * 2, min 8, max 64)
     THREAD_CACHE=$((CPU_CORES * 2))
@@ -1404,18 +1411,21 @@ tune_database() {
         IO_CAPACITY_MAX=400
     fi
     
-    # Join/Sort buffer (based on RAM)
-    if [ $TOTAL_RAM_MB -ge 4096 ]; then
-        SORT_BUFFER_MB=4
-        JOIN_BUFFER_MB=4
+    # Join/Sort buffer (per-connection, keep conservative to avoid RAM spikes)
+    # These are allocated per-connection, so lower is safer for high connection counts
+    # Using KB for all to keep consistent output format
+    if [ $TOTAL_RAM_MB -ge 8192 ]; then
+        SORT_BUFFER_KB=2048
+        JOIN_BUFFER_KB=2048
         READ_BUFFER_KB=512
-    elif [ $TOTAL_RAM_MB -ge 2048 ]; then
-        SORT_BUFFER_MB=2
-        JOIN_BUFFER_MB=2
+    elif [ $TOTAL_RAM_MB -ge 4096 ]; then
+        SORT_BUFFER_KB=1024
+        JOIN_BUFFER_KB=1024
         READ_BUFFER_KB=256
     else
-        SORT_BUFFER_MB=1
-        JOIN_BUFFER_MB=1
+        # Default conservative values (256KB each)
+        SORT_BUFFER_KB=256
+        JOIN_BUFFER_KB=256
         READ_BUFFER_KB=128
     fi
     
@@ -1486,8 +1496,8 @@ table_definition_cache = 1400
 # ==============================================
 # Query & Execution
 # ==============================================
-join_buffer_size = ${JOIN_BUFFER_MB}M
-sort_buffer_size = ${SORT_BUFFER_MB}M
+join_buffer_size = ${JOIN_BUFFER_KB}K
+sort_buffer_size = ${SORT_BUFFER_KB}K
 read_buffer_size = ${READ_BUFFER_KB}K
 read_rnd_buffer_size = ${READ_BUFFER_KB}K
 
