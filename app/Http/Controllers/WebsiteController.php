@@ -94,12 +94,8 @@ class WebsiteController extends Controller
         $website = Website::create($validated);
 
         // Dispatch job to deploy Nginx configuration
-        dispatch(new DeployNginxConfig($website));
-
-        // If SSL is enabled, dispatch SSL certificate request
-        if ($website->ssl_enabled) {
-            dispatch(new RequestSslCertificate($website));
-        }
+        // If SSL is enabled, pass requestSslAfter=true so SSL is requested AFTER nginx is ready
+        dispatch(new DeployNginxConfig($website, $website->ssl_enabled));
 
         return redirect()
             ->route('websites.index', ['type' => $website->project_type])

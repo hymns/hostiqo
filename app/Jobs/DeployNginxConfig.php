@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Contracts\NginxInterface;
 use App\Contracts\PhpFpmInterface;
+use App\Jobs\RequestSslCertificate;
 use App\Models\Website;
 use App\Services\Pm2Service;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,9 +22,11 @@ class DeployNginxConfig implements ShouldQueue
      * Create a new job instance.
      *
      * @param Website $website The website to deploy config for
+     * @param bool $requestSslAfter Whether to request SSL certificate after deployment
      */
     public function __construct(
-        public Website $website
+        public Website $website,
+        public bool $requestSslAfter = false
     ) {}
 
     /**
@@ -106,6 +109,16 @@ class DeployNginxConfig implements ShouldQueue
                 $this->website->update([
                     'nginx_status' => 'active'
                 ]);
+
+                // If SSL was requested during website creation, dispatch SSL job now
+                // This ensures nginx config is ready before SSL certificate is requested
+                if ($this->requestSslAfter && $this->website->ssl_enabled) {
+                    Log::info('Dispatching SSL certificate request after nginx deployment', [
+                        'website_id' => $this->website->id,
+                        'domain' => $this->website->domain
+                    ]);
+                    dispatch(new RequestSslCertificate($this->website));
+                }
             } else {
                 throw new \Exception($result['error'] ?? 'Unknown error');
             }
