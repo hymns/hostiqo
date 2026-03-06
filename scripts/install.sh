@@ -1344,7 +1344,7 @@ tune_database() {
     # Calculate InnoDB buffer pool size (25% of RAM, min 128M, max 70% RAM)
     BUFFER_POOL_MB=$((TOTAL_RAM_MB * 25 / 100))
     [ $BUFFER_POOL_MB -lt 128 ] && BUFFER_POOL_MB=128
-    MAX_BUFFER_MB=$((TOTAL_RAM_MB * 70 / 100))
+    MAX_BUFFER_MB=$((TOTAL_RAM_MB * 80 / 100))
     [ $BUFFER_POOL_MB -gt $MAX_BUFFER_MB ] && BUFFER_POOL_MB=$MAX_BUFFER_MB
     
     # Buffer pool instances (1 per GB, min 1, max 8)
@@ -2746,6 +2746,11 @@ case "${1:-}" in
         APP_DIR="${2:-/var/www/hostiqo}"
         setup_webserver
         ;;
+    --phase5|--tune-database)
+        check_root
+        detect_os
+        tune_database
+        ;;
     --help|-h)
         echo "Hostiqo Installer"
         echo ""
@@ -2762,6 +2767,7 @@ case "${1:-}" in
         echo "  --phase2         Configure sudoers only"
         echo "  --phase3 [path]  Setup Laravel application only"
         echo "  --phase4 [path]  Configure web server only"
+        echo "  --phase5         Tune MySQL/MariaDB based on server RAM/CPU"
         echo "  --help           Show this help"
         echo ""
         ;;

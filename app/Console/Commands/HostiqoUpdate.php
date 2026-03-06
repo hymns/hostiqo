@@ -16,7 +16,8 @@ class HostiqoUpdate extends Command
     protected $signature = 'hostiqo:update 
                             {--force : Force update without confirmation}
                             {--no-backup : Skip database backup}
-                            {--sudoers : Refresh sudoers configuration after update}';
+                            {--sudoers : Refresh sudoers configuration after update}
+                            {--tune-db : Tune MySQL/MariaDB based on server RAM/CPU}';
 
     /**
      * The console command description.
@@ -189,6 +190,22 @@ class HostiqoUpdate extends Command
                 $this->info('✓ Sudoers configuration refreshed');
             } else {
                 $this->warn('⚠ Sudoers refresh failed:');
+                $this->line($result->errorOutput());
+            }
+        }
+        
+        // Database tuning (already running as root)
+        if ($this->option('tune-db')) {
+            $this->info('');
+            $this->warn('Tuning MySQL/MariaDB based on server resources...');
+            
+            $script = base_path('scripts/install.sh');
+            $result = Process::path(base_path())->run("bash {$script} --phase5");
+            
+            if ($result->successful()) {
+                $this->info('✓ Database tuning applied');
+            } else {
+                $this->warn('⚠ Database tuning failed:');
                 $this->line($result->errorOutput());
             }
         }
