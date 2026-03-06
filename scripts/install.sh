@@ -1255,8 +1255,9 @@ configure_ufw() {
         ufw default deny incoming > /dev/null 2>&1
         ufw default allow outgoing > /dev/null 2>&1
         ufw allow ssh > /dev/null 2>&1
-        ufw allow 'Nginx Full' > /dev/null 2>&1
-        print_success "UFW firewall configured"
+        ufw allow 80/tcp > /dev/null 2>&1
+        ufw allow 443/tcp > /dev/null 2>&1
+        print_success "UFW firewall configured (SSH, HTTP, HTTPS)"
     fi
 }
 
