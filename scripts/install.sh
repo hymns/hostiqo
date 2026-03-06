@@ -61,17 +61,16 @@ ensure_jail() {
     # Check fail2ban installed
     command -v fail2ban-client >/dev/null 2>&1 || return 0
 
-    # Check jail exists
-    fail2ban-client status 2>/dev/null | grep -q "$jail" || return 0
-
     # Idempotent: do nothing if file already exists
     [ -f "$file" ] && return 0
 
+    # Create jail config (fail2ban will validate on restart)
     cat > "$file" <<EOF
 [$jail]
 enabled = true
 ${extra}
 EOF
+    print_info "Enabled fail2ban jail: $jail"
 }
 
 # Default installation path
@@ -1635,7 +1634,7 @@ ignoreip = 127.0.0.1/8 ::1
         ensure_jail 10 sshd
         ensure_jail 20 nginx-botsearch
         ensure_jail 21 nginx-http-auth
-        ensure_jail 22 nginx-http-flood
+        ensure_jail 22 nginx-limit-req
     fi
     systemctl enable fail2ban > /dev/null 2>&1
     systemctl restart fail2ban > /dev/null 2>&1
