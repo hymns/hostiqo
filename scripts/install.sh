@@ -352,14 +352,121 @@ install_prerequisites_debian() {
     mkdir -p /etc/nginx/sites-available
     mkdir -p /etc/nginx/sites-enabled
     
-    # Update nginx.conf: set user to www-data and add sites-enabled include
-    sed -i 's/^user  nginx;/user  www-data;/' /etc/nginx/nginx.conf
+    # ==============================================
+    # Dynamic Nginx Tuning based on CPU/RAM
+    # ==============================================
+    TOTAL_RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
+    CPU_CORES=$(nproc)
     
-    # Add include for sites-enabled if not exists
-    if ! grep -q "include /etc/nginx/sites-enabled/" /etc/nginx/nginx.conf; then
-        sed -i '/include \/etc\/nginx\/conf\.d\/\*\.conf;/a\    include /etc/nginx/sites-enabled/*;' /etc/nginx/nginx.conf
+    # worker_processes = CPU cores (auto is also good)
+    NGINX_WORKERS=$CPU_CORES
+    
+    # worker_connections based on RAM (each connection ~1KB)
+    # Formula: (RAM_MB * 256) / workers, min 512, max 4096
+    WORKER_CONNECTIONS=$((TOTAL_RAM_MB * 256 / NGINX_WORKERS))
+    [ $WORKER_CONNECTIONS -lt 512 ] && WORKER_CONNECTIONS=512
+    [ $WORKER_CONNECTIONS -gt 4096 ] && WORKER_CONNECTIONS=4096
+    
+    # Client body buffer based on RAM
+    if [ $TOTAL_RAM_MB -ge 4096 ]; then
+        CLIENT_BODY_BUFFER="128k"
+        CLIENT_MAX_BODY="512M"
+    elif [ $TOTAL_RAM_MB -ge 2048 ]; then
+        CLIENT_BODY_BUFFER="64k"
+        CLIENT_MAX_BODY="256M"
+    else
+        CLIENT_BODY_BUFFER="32k"
+        CLIENT_MAX_BODY="128M"
     fi
-    print_success "Nginx configured with www-data user and sites-enabled"
+    
+    print_info "Nginx tuning: ${NGINX_WORKERS} workers, ${WORKER_CONNECTIONS} connections, ${CLIENT_MAX_BODY} max body"
+    
+    # Backup original nginx.conf before replacing
+    cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup
+    
+    # Create optimized nginx.conf
+    cat > /etc/nginx/nginx.conf << NGINXCONF
+# Hostiqo Nginx Configuration
+# Auto-tuned for ${TOTAL_RAM_MB}MB RAM, ${CPU_CORES} CPU cores
+# Generated on: $(date)
+
+user www-data;
+worker_processes ${NGINX_WORKERS};
+pid /run/nginx.pid;
+error_log /var/log/nginx/error.log warn;
+
+# Worker settings
+worker_rlimit_nofile 65535;
+
+events {
+    worker_connections ${WORKER_CONNECTIONS};
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    # Basic Settings
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    server_tokens off;
+    
+    # MIME types
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    
+    # Logging
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+    
+    # Gzip Compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_min_length 1000;
+    gzip_types text/plain text/css text/xml application/json application/javascript application/xml application/xml+rss text/javascript application/x-javascript image/svg+xml;
+    
+    # Buffer Settings
+    client_body_buffer_size ${CLIENT_BODY_BUFFER};
+    client_max_body_size ${CLIENT_MAX_BODY};
+    client_header_buffer_size 1k;
+    large_client_header_buffers 4 16k;
+    
+    # Timeouts
+    client_body_timeout 60;
+    client_header_timeout 60;
+    send_timeout 60;
+    
+    # Open file cache
+    open_file_cache max=10000 inactive=30s;
+    open_file_cache_valid 60s;
+    open_file_cache_min_uses 2;
+    open_file_cache_errors on;
+    
+    # SSL Session Cache (global)
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1440m;
+    
+    # Include configs
+    include /etc/nginx/conf.d/*.conf;
+    include /etc/nginx/sites-enabled/*;
+}
+NGINXCONF
+    
+    # Test nginx configuration
+    if nginx -t > /dev/null 2>&1; then
+        print_success "Nginx configured with dynamic tuning"
+        systemctl reload nginx > /dev/null 2>&1 || true
+        rm -f /etc/nginx/nginx.conf.backup
+    else
+        print_error "Nginx config test failed! Rolling back..."
+        cp /etc/nginx/nginx.conf.backup /etc/nginx/nginx.conf
+        nginx -t
+        print_warning "Restored original nginx.conf"
+    fi
     
     # Create logrotate config for nginx (nginx.org package may not include it)
     if [ ! -f /etc/logrotate.d/nginx ]; then
@@ -935,12 +1042,120 @@ NGINXREPO
     mkdir -p /etc/nginx/sites-available
     mkdir -p /etc/nginx/sites-enabled
     
-    # Update nginx.conf: set user to nginx (RHEL web user) - already default, but ensure consistency
-    # Add include for sites-enabled if not exists
-    if ! grep -q "include /etc/nginx/sites-enabled/" /etc/nginx/nginx.conf; then
-        sed -i '/include \/etc\/nginx\/conf\.d\/\*\.conf;/a\    include /etc/nginx/sites-enabled/*;' /etc/nginx/nginx.conf
+    # ==============================================
+    # Dynamic Nginx Tuning based on CPU/RAM
+    # ==============================================
+    TOTAL_RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
+    CPU_CORES=$(nproc)
+    
+    # worker_processes = CPU cores
+    NGINX_WORKERS=$CPU_CORES
+    
+    # worker_connections based on RAM
+    WORKER_CONNECTIONS=$((TOTAL_RAM_MB * 256 / NGINX_WORKERS))
+    [ $WORKER_CONNECTIONS -lt 512 ] && WORKER_CONNECTIONS=512
+    [ $WORKER_CONNECTIONS -gt 4096 ] && WORKER_CONNECTIONS=4096
+    
+    # Client body buffer based on RAM
+    if [ $TOTAL_RAM_MB -ge 4096 ]; then
+        CLIENT_BODY_BUFFER="128k"
+        CLIENT_MAX_BODY="512M"
+    elif [ $TOTAL_RAM_MB -ge 2048 ]; then
+        CLIENT_BODY_BUFFER="64k"
+        CLIENT_MAX_BODY="256M"
+    else
+        CLIENT_BODY_BUFFER="32k"
+        CLIENT_MAX_BODY="128M"
     fi
-    print_success "Nginx configured with sites-enabled"
+    
+    print_info "Nginx tuning: ${NGINX_WORKERS} workers, ${WORKER_CONNECTIONS} connections, ${CLIENT_MAX_BODY} max body"
+    
+    # Backup original nginx.conf before replacing
+    cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup
+    
+    # Create optimized nginx.conf
+    cat > /etc/nginx/nginx.conf << NGINXCONF
+# Hostiqo Nginx Configuration
+# Auto-tuned for ${TOTAL_RAM_MB}MB RAM, ${CPU_CORES} CPU cores
+# Generated on: $(date)
+
+user nginx;
+worker_processes ${NGINX_WORKERS};
+pid /run/nginx.pid;
+error_log /var/log/nginx/error.log warn;
+
+# Worker settings
+worker_rlimit_nofile 65535;
+
+events {
+    worker_connections ${WORKER_CONNECTIONS};
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    # Basic Settings
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    server_tokens off;
+    
+    # MIME types
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    
+    # Logging
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+    
+    # Gzip Compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_min_length 1000;
+    gzip_types text/plain text/css text/xml application/json application/javascript application/xml application/xml+rss text/javascript application/x-javascript image/svg+xml;
+    
+    # Buffer Settings
+    client_body_buffer_size ${CLIENT_BODY_BUFFER};
+    client_max_body_size ${CLIENT_MAX_BODY};
+    client_header_buffer_size 1k;
+    large_client_header_buffers 4 16k;
+    
+    # Timeouts
+    client_body_timeout 60;
+    client_header_timeout 60;
+    send_timeout 60;
+    
+    # Open file cache
+    open_file_cache max=10000 inactive=30s;
+    open_file_cache_valid 60s;
+    open_file_cache_min_uses 2;
+    open_file_cache_errors on;
+    
+    # SSL Session Cache (global)
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1440m;
+    
+    # Include configs
+    include /etc/nginx/conf.d/*.conf;
+    include /etc/nginx/sites-enabled/*;
+}
+NGINXCONF
+    
+    # Test nginx configuration
+    if nginx -t > /dev/null 2>&1; then
+        print_success "Nginx configured with dynamic tuning"
+        systemctl reload nginx > /dev/null 2>&1 || true
+        rm -f /etc/nginx/nginx.conf.backup
+    else
+        print_error "Nginx config test failed! Rolling back..."
+        cp /etc/nginx/nginx.conf.backup /etc/nginx/nginx.conf
+        nginx -t
+        print_warning "Restored original nginx.conf"
+    fi
     
     # Create logrotate config for nginx (nginx.org package may not include it)
     if [ ! -f /etc/logrotate.d/nginx ]; then
