@@ -2089,7 +2089,13 @@ server {
         fastcgi_send_timeout 300s;
     }
 
-    # Block dotfiles
+    # Allow ACME challenge for SSL certificate renewal
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        root $APP_DIR/public;
+    }
+
+    # Block dotfiles (except .well-known above)
     location ~ /\. {
         deny all;
         access_log off;
@@ -2259,7 +2265,13 @@ server {
         fastcgi_send_timeout 300s;
     }
 
-    # Block dotfiles
+    # Allow ACME challenge for SSL certificate renewal
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        root $APP_DIR/public;
+    }
+
+    # Block dotfiles (except .well-known above)
     location ~ /\. {
         deny all;
         access_log off;
