@@ -2192,9 +2192,30 @@ SSLEOF
             # Backup current config
             cp "$NGINX_CONF_FILE" "${NGINX_CONF_FILE}.bak"
             
-            # Add SSL server block
-            cat >> "$NGINX_CONF_FILE" << SSLCONF
+            # Create new config with HTTP redirect + SSL block
+            cat > "$NGINX_CONF_FILE" << HTTPREDIRECT
+# HTTP to HTTPS redirect
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $SERVER_NAME;
+    
+    # Allow ACME challenge for SSL certificate renewal
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        root $APP_DIR/public;
+    }
+    
+    # Redirect all other requests to HTTPS
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
 
+HTTPREDIRECT
+
+            # Append the SSL block back
+            cat >> "$NGINX_CONF_FILE" << SSLCONF2
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
@@ -2292,20 +2313,8 @@ server {
         log_not_found off;
     }
 
-    # Static files caching
-    location ~* \.(jpg|jpeg|png|gif|ico|webp|avif)\$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-    
-    location ~* \.(css|js)\$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-    
-    location ~* \.(svg|woff|woff2|ttf|eot|otf)\$ {
+    # Static file caching
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|woff|woff2|ttf|svg|eot)\$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
         add_header Access-Control-Allow-Origin "*";
@@ -2315,10 +2324,7 @@ server {
     location = /favicon.ico { access_log off; log_not_found off; expires 1y; }
     location = /robots.txt { access_log off; log_not_found off; }
 }
-SSLCONF
-
-            # Add HTTP to HTTPS redirect to existing HTTP block
-            sed -i '/server_name/a\    return 301 https://\$server_name\$request_uri;' "$NGINX_CONF_FILE"
+SSLCONF2
             
             # Test and reload Nginx
             if nginx -t > /dev/null 2>&1; then
