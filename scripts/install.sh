@@ -1243,6 +1243,9 @@ ignoreip = 127.0.0.1/8 ::1
     
     # Secure MySQL/MariaDB
     secure_database
+    
+    # Tune MySQL/MariaDB performance based on server resources
+    tune_database
 }
 
 #########################################################
@@ -1322,6 +1325,203 @@ _EOF_
     echo "$MYSQL_ROOT_PASS" > /root/.mysql_root_password
     chmod 600 /root/.mysql_root_password
     print_success "Database secured (root password: /root/.mysql_root_password)"
+}
+
+#########################################################
+# MySQL/MariaDB Performance Tuning (Dynamic based on RAM/CPU)
+#########################################################
+tune_database() {
+    print_info "Tuning database performance based on server resources..."
+    
+    # Detect system resources
+    TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    TOTAL_RAM_MB=$((TOTAL_RAM_KB / 1024))
+    TOTAL_RAM_GB=$((TOTAL_RAM_MB / 1024))
+    CPU_CORES=$(nproc)
+    
+    print_info "Detected: ${TOTAL_RAM_MB}MB RAM, ${CPU_CORES} CPU cores"
+    
+    # Calculate InnoDB buffer pool size (25% of RAM, min 128M, max 70% RAM)
+    BUFFER_POOL_MB=$((TOTAL_RAM_MB * 25 / 100))
+    [ $BUFFER_POOL_MB -lt 128 ] && BUFFER_POOL_MB=128
+    MAX_BUFFER_MB=$((TOTAL_RAM_MB * 70 / 100))
+    [ $BUFFER_POOL_MB -gt $MAX_BUFFER_MB ] && BUFFER_POOL_MB=$MAX_BUFFER_MB
+    
+    # Buffer pool instances (1 per GB, min 1, max 8)
+    BUFFER_POOL_INSTANCES=$((BUFFER_POOL_MB / 1024))
+    [ $BUFFER_POOL_INSTANCES -lt 1 ] && BUFFER_POOL_INSTANCES=1
+    [ $BUFFER_POOL_INSTANCES -gt 8 ] && BUFFER_POOL_INSTANCES=8
+    
+    # InnoDB log file size (25% of buffer pool, min 48M, max 2G)
+    LOG_FILE_MB=$((BUFFER_POOL_MB * 25 / 100))
+    [ $LOG_FILE_MB -lt 48 ] && LOG_FILE_MB=48
+    [ $LOG_FILE_MB -gt 2048 ] && LOG_FILE_MB=2048
+    
+    # InnoDB log buffer size (based on RAM)
+    if [ $TOTAL_RAM_MB -ge 4096 ]; then
+        LOG_BUFFER_MB=64
+    elif [ $TOTAL_RAM_MB -ge 2048 ]; then
+        LOG_BUFFER_MB=32
+    else
+        LOG_BUFFER_MB=16
+    fi
+    
+    # Temp table size (2% of RAM, min 32M, max 256M)
+    TMP_TABLE_MB=$((TOTAL_RAM_MB * 2 / 100))
+    [ $TMP_TABLE_MB -lt 32 ] && TMP_TABLE_MB=32
+    [ $TMP_TABLE_MB -gt 256 ] && TMP_TABLE_MB=256
+    
+    # Max connections (50 + RAM_GB * 25)
+    MAX_CONNECTIONS=$((50 + TOTAL_RAM_GB * 25))
+    [ $MAX_CONNECTIONS -lt 50 ] && MAX_CONNECTIONS=50
+    [ $MAX_CONNECTIONS -gt 500 ] && MAX_CONNECTIONS=500
+    
+    # Thread cache size (CPU cores * 2, min 8, max 64)
+    THREAD_CACHE=$((CPU_CORES * 2))
+    [ $THREAD_CACHE -lt 8 ] && THREAD_CACHE=8
+    [ $THREAD_CACHE -gt 64 ] && THREAD_CACHE=64
+    
+    # IO threads (based on CPU cores, min 2, max 8)
+    IO_THREADS=$CPU_CORES
+    [ $IO_THREADS -lt 2 ] && IO_THREADS=2
+    [ $IO_THREADS -gt 8 ] && IO_THREADS=8
+    
+    # Detect if SSD or HDD for IO capacity
+    ROOT_DISK=$(df / | tail -1 | awk '{print $1}' | sed 's/[0-9]*$//' | sed 's/p$//')
+    ROOT_DISK_NAME=$(basename "$ROOT_DISK")
+    if [ -f "/sys/block/${ROOT_DISK_NAME}/queue/rotational" ]; then
+        IS_SSD=$(cat "/sys/block/${ROOT_DISK_NAME}/queue/rotational")
+        if [ "$IS_SSD" = "0" ]; then
+            IO_CAPACITY=1000
+            IO_CAPACITY_MAX=2000
+        else
+            IO_CAPACITY=200
+            IO_CAPACITY_MAX=400
+        fi
+    else
+        # Default to HDD values if can't detect
+        IO_CAPACITY=200
+        IO_CAPACITY_MAX=400
+    fi
+    
+    # Join/Sort buffer (based on RAM)
+    if [ $TOTAL_RAM_MB -ge 4096 ]; then
+        SORT_BUFFER_MB=4
+        JOIN_BUFFER_MB=4
+        READ_BUFFER_KB=512
+    elif [ $TOTAL_RAM_MB -ge 2048 ]; then
+        SORT_BUFFER_MB=2
+        JOIN_BUFFER_MB=2
+        READ_BUFFER_KB=256
+    else
+        SORT_BUFFER_MB=1
+        JOIN_BUFFER_MB=1
+        READ_BUFFER_KB=128
+    fi
+    
+    # Key buffer for MyISAM (small, mainly for system tables)
+    KEY_BUFFER_MB=$((TOTAL_RAM_MB * 2 / 100))
+    [ $KEY_BUFFER_MB -lt 16 ] && KEY_BUFFER_MB=16
+    [ $KEY_BUFFER_MB -gt 128 ] && KEY_BUFFER_MB=128
+    
+    # Determine config file location
+    if [ "$OS_FAMILY" = "debian" ]; then
+        MYSQL_CONF_DIR="/etc/mysql/mysql.conf.d"
+        mkdir -p "$MYSQL_CONF_DIR"
+        MYSQL_CONF_FILE="$MYSQL_CONF_DIR/hostiqo-tuning.cnf"
+    else
+        MYSQL_CONF_DIR="/etc/my.cnf.d"
+        mkdir -p "$MYSQL_CONF_DIR"
+        MYSQL_CONF_FILE="$MYSQL_CONF_DIR/hostiqo-tuning.cnf"
+    fi
+    
+    # Create slow query log directory
+    mkdir -p /var/log/mysql
+    if [ "$OS_FAMILY" = "debian" ]; then
+        chown mysql:mysql /var/log/mysql
+    else
+        chown mysql:mysql /var/log/mysql
+    fi
+    
+    # Write tuning configuration
+    cat > "$MYSQL_CONF_FILE" << MYSQLCONF
+# Hostiqo MySQL/MariaDB Performance Tuning
+# Auto-generated based on server resources: ${TOTAL_RAM_MB}MB RAM, ${CPU_CORES} CPU cores
+# Generated on: $(date)
+
+[mysqld]
+# ==============================================
+# Memory & Buffer Settings
+# ==============================================
+innodb_buffer_pool_size = ${BUFFER_POOL_MB}M
+innodb_buffer_pool_instances = ${BUFFER_POOL_INSTANCES}
+innodb_log_buffer_size = ${LOG_BUFFER_MB}M
+key_buffer_size = ${KEY_BUFFER_MB}M
+tmp_table_size = ${TMP_TABLE_MB}M
+max_heap_table_size = ${TMP_TABLE_MB}M
+
+# ==============================================
+# InnoDB Settings
+# ==============================================
+innodb_file_per_table = ON
+innodb_flush_log_at_trx_commit = 2
+innodb_flush_method = O_DIRECT
+innodb_log_file_size = ${LOG_FILE_MB}M
+innodb_read_io_threads = ${IO_THREADS}
+innodb_write_io_threads = ${IO_THREADS}
+innodb_io_capacity = ${IO_CAPACITY}
+innodb_io_capacity_max = ${IO_CAPACITY_MAX}
+
+# ==============================================
+# Connection Settings
+# ==============================================
+max_connections = ${MAX_CONNECTIONS}
+max_connect_errors = 100000
+wait_timeout = 600
+interactive_timeout = 600
+thread_cache_size = ${THREAD_CACHE}
+table_open_cache = 2000
+table_definition_cache = 1400
+
+# ==============================================
+# Query & Execution
+# ==============================================
+join_buffer_size = ${JOIN_BUFFER_MB}M
+sort_buffer_size = ${SORT_BUFFER_MB}M
+read_buffer_size = ${READ_BUFFER_KB}K
+read_rnd_buffer_size = ${READ_BUFFER_KB}K
+
+# ==============================================
+# Logging & Monitoring
+# ==============================================
+slow_query_log = ON
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2
+log_queries_not_using_indexes = ON
+
+# ==============================================
+# Character Set & Collation
+# ==============================================
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# ==============================================
+# Security
+# ==============================================
+local_infile = OFF
+symbolic-links = 0
+MYSQLCONF
+
+    print_success "Database tuning applied: ${BUFFER_POOL_MB}M buffer pool, ${MAX_CONNECTIONS} max connections, IO capacity ${IO_CAPACITY}"
+    
+    # Restart database to apply changes
+    if [ "$OS_FAMILY" = "debian" ]; then
+        systemctl restart mysql > /dev/null 2>&1 || true
+    else
+        systemctl restart mariadb > /dev/null 2>&1 || true
+    fi
+    
+    print_success "Database restarted with new tuning configuration"
 }
 
 #########################################################
