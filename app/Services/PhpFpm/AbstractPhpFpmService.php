@@ -78,6 +78,62 @@ abstract class AbstractPhpFpmService implements PhpFpmInterface
     }
 
     /**
+     * Get total system RAM in MB.
+     *
+     * @return int Total RAM in MB
+     */
+    protected function getTotalRamMb(): int
+    {
+        try {
+            if (PHP_OS_FAMILY === 'Darwin') {
+                // macOS
+                $result = Process::run(['sysctl', '-n', 'hw.memsize']);
+                if ($result->successful()) {
+                    $bytes = (int) trim($result->output());
+                    return intval($bytes / 1024 / 1024);
+                }
+            } else {
+                // Linux - same method as SystemMonitorService
+                $result = Process::run(['grep', 'MemTotal', '/proc/meminfo']);
+                if ($result->successful()) {
+                    if (preg_match('/MemTotal:\s+(\d+)/', $result->output(), $matches)) {
+                        return intval($matches[1] / 1024); // Convert KB to MB
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to get total RAM, using default', ['error' => $e->getMessage()]);
+        }
+        
+        return 2048; // Default 2GB
+    }
+
+    /**
+     * Get dynamic PHP-FPM pool settings based on server RAM.
+     *
+     * @return array{max_children: int, start_servers: int, min_spare: int, max_spare: int}
+     */
+    protected function getDynamicPoolSettings(): array
+    {
+        $totalRamMb = $this->getTotalRamMb();
+        
+        // max_children = Available RAM / ~100MB per process (conservative for per-site pools)
+        $maxChildren = intval($totalRamMb / 100);
+        $maxChildren = max(5, min(50, $maxChildren)); // Min 5, max 50 per site
+        
+        $startServers = max(2, intval($maxChildren / 4));
+        $minSpare = max(1, intval($maxChildren / 10));
+        $maxSpare = max(3, intval($maxChildren / 4));
+        
+        return [
+            'max_children' => $maxChildren,
+            'start_servers' => $startServers,
+            'min_spare' => $minSpare,
+            'max_spare' => $maxSpare,
+        ];
+    }
+
+    /**
      * Generate PHP-FPM pool configuration for a website.
      *
      * @param Website $website The website model
@@ -115,6 +171,9 @@ abstract class AbstractPhpFpmService implements PhpFpmInterface
         $logDir = $this->getLogPath($website->php_version);
         $user = $this->getWebServerUser();
         $group = $this->getWebServerGroup();
+        
+        // Get dynamic pool settings based on server RAM
+        $pool = $this->getDynamicPoolSettings();
 
         return <<<POOL
 [{$poolName}]
@@ -126,12 +185,12 @@ listen.owner = {$user}
 listen.group = {$group}
 listen.mode = 0660
 
-; Process manager settings
+; Process manager settings (auto-calculated based on server RAM)
 pm = dynamic
-pm.max_children = 10
-pm.start_servers = 2
-pm.min_spare_servers = 1
-pm.max_spare_servers = 3
+pm.max_children = {$pool['max_children']}
+pm.start_servers = {$pool['start_servers']}
+pm.min_spare_servers = {$pool['min_spare']}
+pm.max_spare_servers = {$pool['max_spare']}
 pm.max_requests = 500
 
 ; PHP settings

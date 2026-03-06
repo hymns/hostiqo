@@ -501,26 +501,120 @@ RATELIMITEOF
     # Configure PHP
     print_info "Configuring PHP..."
     TOTAL_RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
+    CPU_CORES=$(nproc)
+    
+    # ==============================================
+    # Dynamic PHP Settings based on RAM
+    # ==============================================
+    
+    # OPcache memory (12.5% of RAM, min 128M, max 512M)
     OPCACHE_MEM=$((TOTAL_RAM_MB / 8))
     [ $OPCACHE_MEM -lt 128 ] && OPCACHE_MEM=128
     [ $OPCACHE_MEM -gt 512 ] && OPCACHE_MEM=512
+    
+    # JIT buffer (25% of OPcache, min 32M)
     JIT_BUFFER=$((OPCACHE_MEM / 4))
     [ $JIT_BUFFER -lt 32 ] && JIT_BUFFER=32
     
+    # Interned strings buffer
+    if [ $TOTAL_RAM_MB -ge 8192 ]; then
+        INTERNED_STRINGS=64
+    elif [ $TOTAL_RAM_MB -ge 4096 ]; then
+        INTERNED_STRINGS=32
+    else
+        INTERNED_STRINGS=16
+    fi
+    
+    # Memory limit per script
+    if [ $TOTAL_RAM_MB -ge 8192 ]; then
+        PHP_MEMORY_LIMIT=512
+    elif [ $TOTAL_RAM_MB -ge 4096 ]; then
+        PHP_MEMORY_LIMIT=256
+    elif [ $TOTAL_RAM_MB -ge 2048 ]; then
+        PHP_MEMORY_LIMIT=192
+    else
+        PHP_MEMORY_LIMIT=128
+    fi
+    
+    # Execution time
+    if [ $TOTAL_RAM_MB -ge 4096 ]; then
+        MAX_EXECUTION_TIME=300
+        MAX_INPUT_TIME=300
+    else
+        MAX_EXECUTION_TIME=120
+        MAX_INPUT_TIME=120
+    fi
+    
+    # Upload/POST size
+    if [ $TOTAL_RAM_MB -ge 8192 ]; then
+        UPLOAD_MAX=512
+        POST_MAX=512
+    elif [ $TOTAL_RAM_MB -ge 4096 ]; then
+        UPLOAD_MAX=256
+        POST_MAX=256
+    elif [ $TOTAL_RAM_MB -ge 2048 ]; then
+        UPLOAD_MAX=128
+        POST_MAX=128
+    else
+        UPLOAD_MAX=64
+        POST_MAX=64
+    fi
+    
+    # Max input vars
+    if [ $TOTAL_RAM_MB -ge 4096 ]; then
+        MAX_INPUT_VARS=5000
+    else
+        MAX_INPUT_VARS=3000
+    fi
+    
+    # Realpath cache
+    if [ $TOTAL_RAM_MB -ge 8192 ]; then
+        REALPATH_CACHE_SIZE=16M
+    elif [ $TOTAL_RAM_MB -ge 4096 ]; then
+        REALPATH_CACHE_SIZE=8M
+    else
+        REALPATH_CACHE_SIZE=4M
+    fi
+    
+    # PHP-FPM pool settings (for default www pool)
+    # max_children = Available RAM / ~50MB per process (conservative)
+    PHP_FPM_MAX_CHILDREN=$((TOTAL_RAM_MB / 100))
+    [ $PHP_FPM_MAX_CHILDREN -lt 5 ] && PHP_FPM_MAX_CHILDREN=5
+    [ $PHP_FPM_MAX_CHILDREN -gt 100 ] && PHP_FPM_MAX_CHILDREN=100
+    
+    PHP_FPM_START_SERVERS=$((PHP_FPM_MAX_CHILDREN / 4))
+    [ $PHP_FPM_START_SERVERS -lt 2 ] && PHP_FPM_START_SERVERS=2
+    
+    PHP_FPM_MIN_SPARE=$((PHP_FPM_MAX_CHILDREN / 10))
+    [ $PHP_FPM_MIN_SPARE -lt 1 ] && PHP_FPM_MIN_SPARE=1
+    
+    PHP_FPM_MAX_SPARE=$((PHP_FPM_MAX_CHILDREN / 4))
+    [ $PHP_FPM_MAX_SPARE -lt 3 ] && PHP_FPM_MAX_SPARE=3
+    
+    print_info "PHP tuning: ${PHP_MEMORY_LIMIT}M memory, ${UPLOAD_MAX}M upload, ${PHP_FPM_MAX_CHILDREN} max workers"
+    
+    # Create PHP error log directory
+    mkdir -p /var/log/php
+    chown www-data:www-data /var/log/php
+    
     for version in $PHP_VERSIONS; do
         if [ -d "/etc/php/$version" ]; then
+            # ==============================================
+            # OPcache + JIT Configuration
+            # ==============================================
             cat > "/etc/php/$version/mods-available/opcache-hostiqo.ini" << OPCACHE
 [opcache]
 ; Hostiqo PHP OPcache + JIT Tuning
-; Auto-calculated based on ${TOTAL_RAM_MB}MB total RAM
+; Auto-calculated based on ${TOTAL_RAM_MB}MB total RAM, ${CPU_CORES} CPU cores
+; Generated on: $(date)
 
 ; Enable OPcache
 opcache.enable=1
-opcache.enable_cli=1
+opcache.enable_cli=0
 
 ; Memory settings
 opcache.memory_consumption=${OPCACHE_MEM}
-opcache.interned_strings_buffer=32
+opcache.interned_strings_buffer=${INTERNED_STRINGS}
 opcache.max_accelerated_files=20000
 
 ; Revalidation (production-ready)
@@ -531,6 +625,7 @@ opcache.revalidate_freq=60
 opcache.enable_file_override=1
 opcache.save_comments=1
 opcache.max_wasted_percentage=10
+opcache.fast_shutdown=1
 OPCACHE
             # Add JIT for PHP 8.0+
             if [[ "$version" =~ ^8\. ]]; then
@@ -541,12 +636,109 @@ opcache.jit=1255
 opcache.jit_buffer_size=${JIT_BUFFER}M
 OPCACHE
             fi
-            # Enable the config
+            
+            # ==============================================
+            # PHP.ini Tuning Configuration
+            # ==============================================
+            cat > "/etc/php/$version/mods-available/hostiqo-tuning.ini" << PHPINI
+; Hostiqo PHP Tuning
+; Auto-calculated based on ${TOTAL_RAM_MB}MB total RAM
+; Generated on: $(date)
+
+; ==============================================
+; Memory
+; ==============================================
+memory_limit = ${PHP_MEMORY_LIMIT}M
+
+; ==============================================
+; Execution & Timeout
+; ==============================================
+max_execution_time = ${MAX_EXECUTION_TIME}
+max_input_time = ${MAX_INPUT_TIME}
+default_socket_timeout = 60
+
+; ==============================================
+; Upload & POST
+; ==============================================
+upload_max_filesize = ${UPLOAD_MAX}M
+post_max_size = ${POST_MAX}M
+max_file_uploads = 20
+max_input_vars = ${MAX_INPUT_VARS}
+
+; ==============================================
+; Path & Realpath Cache
+; ==============================================
+realpath_cache_size = ${REALPATH_CACHE_SIZE}
+realpath_cache_ttl = 600
+
+; ==============================================
+; Session
+; ==============================================
+session.gc_maxlifetime = 1440
+session.save_handler = files
+session.save_path = /var/lib/php/sessions
+
+; ==============================================
+; Security (Production)
+; ==============================================
+expose_php = Off
+display_errors = Off
+display_startup_errors = Off
+log_errors = On
+error_log = /var/log/php/php${version}-error.log
+error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT
+allow_url_fopen = On
+allow_url_include = Off
+enable_dl = Off
+
+; ==============================================
+; Misc
+; ==============================================
+date.timezone = UTC
+PHPINI
+
+            # ==============================================
+            # PHP-FPM Default Pool Tuning
+            # ==============================================
+            cat > "/etc/php/$version/fpm/pool.d/www-hostiqo.conf" << FPMPOOL
+; Hostiqo PHP-FPM Pool Tuning (overrides www.conf defaults)
+; Auto-calculated based on ${TOTAL_RAM_MB}MB total RAM
+; Generated on: $(date)
+
+[www]
+; Process manager
+pm = dynamic
+pm.max_children = ${PHP_FPM_MAX_CHILDREN}
+pm.start_servers = ${PHP_FPM_START_SERVERS}
+pm.min_spare_servers = ${PHP_FPM_MIN_SPARE}
+pm.max_spare_servers = ${PHP_FPM_MAX_SPARE}
+pm.max_requests = 500
+
+; Timeouts
+request_terminate_timeout = ${MAX_EXECUTION_TIME}s
+request_slowlog_timeout = 5s
+
+; Logging
+slowlog = /var/log/php/php${version}-fpm-slow.log
+catch_workers_output = yes
+decorate_workers_output = no
+
+; Security
+php_admin_flag[log_errors] = on
+php_admin_value[error_log] = /var/log/php/php${version}-fpm-error.log
+FPMPOOL
+
+            # Enable the configs
             ln -sf "/etc/php/$version/mods-available/opcache-hostiqo.ini" "/etc/php/$version/fpm/conf.d/99-opcache-hostiqo.ini" 2>/dev/null || true
             ln -sf "/etc/php/$version/mods-available/opcache-hostiqo.ini" "/etc/php/$version/cli/conf.d/99-opcache-hostiqo.ini" 2>/dev/null || true
+            ln -sf "/etc/php/$version/mods-available/hostiqo-tuning.ini" "/etc/php/$version/fpm/conf.d/99-hostiqo-tuning.ini" 2>/dev/null || true
+            ln -sf "/etc/php/$version/mods-available/hostiqo-tuning.ini" "/etc/php/$version/cli/conf.d/99-hostiqo-tuning.ini" 2>/dev/null || true
+            
+            # Restart PHP-FPM to apply changes
+            systemctl restart php${version}-fpm > /dev/null 2>&1 || true
         fi
     done
-    print_success "PHP OPcache + JIT configured"
+    print_success "PHP OPcache + JIT + Tuning configured"
     
     # Node.js version selection with whiptail
     print_info "Select Node.js version to install..."
