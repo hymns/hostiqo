@@ -78,6 +78,13 @@ class WebsiteController extends Controller
             $validated['root_path'] = $this->generateRootPath($validated['domain']);
         }
 
+        // Validate root_path does NOT already exist (prevent overwriting existing projects)
+        if (file_exists($validated['root_path'])) {
+            return back()
+                ->withInput()
+                ->withErrors(['root_path' => 'The root path already exists. Please choose a different path or remove the existing directory.']);
+        }
+
         // Set working_directory to '/' if not provided (relative to root_path)
         if (empty($validated['working_directory'])) {
             $validated['working_directory'] = '/';
@@ -88,7 +95,7 @@ class WebsiteController extends Controller
         $validated['www_redirect'] = $request->input('www_redirect', 'none');
         $validated['is_active'] = $request->boolean('is_active', true);
 
-        // Create directory structure and welcome page if not exists
+        // Create directory structure and welcome page
         $this->createWebsiteStructure($validated['root_path'], $validated['working_directory'], $validated['project_type'], $validated['domain']);
 
         $website = Website::create($validated);
@@ -430,14 +437,10 @@ class WebsiteController extends Controller
             $fullPath = rtrim($rootPath, '/') . '/' . ltrim($workingDirectory, '/');
             $fullPath = rtrim($fullPath, '/');
 
-            // Create directory if not exists
-            if (!file_exists($fullPath)) {
-                Process::run("sudo /bin/mkdir -p {$fullPath}");
-                Process::run("sudo /bin/chown -R www-data:www-data {$rootPath}");
-                Process::run("sudo /bin/chmod -R 755 {$rootPath}");
-            }
+            // Create directory structure
+            Process::run("sudo /bin/mkdir -p {$fullPath}");
 
-            // Create welcome page if directory is empty
+            // Create welcome page
             $indexFile = $fullPath . '/index.html';
             if (!file_exists($indexFile)) {
                 $welcomeContent = $this->getWelcomePageContent($domain, $projectType);
@@ -447,11 +450,12 @@ class WebsiteController extends Controller
                 file_put_contents($tempFile, $welcomeContent);
                 
                 Process::run("sudo /bin/cp {$tempFile} {$indexFile}");
-                Process::run("sudo /bin/chown www-data:www-data {$indexFile}");
-                Process::run("sudo /bin/chmod 644 {$indexFile}");
-                
                 @unlink($tempFile);
             }
+
+            // Set proper ownership and permissions AFTER all files created
+            Process::run("sudo /bin/chown -R www-data:www-data {$rootPath}");
+            Process::run("sudo /bin/chmod -R 755 {$rootPath}");
         } catch (\Exception $e) {
             Log::warning('Failed to create website structure', [
                 'domain' => $domain,
