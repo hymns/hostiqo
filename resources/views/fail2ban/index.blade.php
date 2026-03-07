@@ -132,8 +132,8 @@
             <div class="card-body">
                 <form action="{{ route('fail2ban.unban') }}" method="POST">
                     @csrf
-                    <div class="row g-2">
-                        <div class="col-md-5">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <div class="flex-grow-1" style="min-width: 150px;">
                             <select name="jail" class="form-select" required>
                                 <option value="">Select Jail</option>
                                 @foreach($jails as $jail)
@@ -141,11 +141,11 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-5">
+                        <div class="flex-grow-1" style="min-width: 150px;">
                             <input type="text" name="ip" class="form-control" placeholder="IP Address" required>
                         </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-success w-100">Unban</button>
+                        <div class="flex-shrink-0">
+                            <button type="submit" class="btn btn-success text-nowrap">Unban</button>
                         </div>
                     </div>
                 </form>

@@ -162,13 +162,13 @@ Update to the latest version:
 
 ```bash
 cd /var/www/hostiqo
-php artisan hostiqo:update
+sudo php artisan hostiqo:update
 ```
 
 Options:
 - `--force` - Skip confirmation prompt
 - `--no-backup` - Skip database backup
-- `--sudoers` - Refresh sudo permissions after update (run command with `sudo`)
+- `--sudoers` - Refresh sudo permissions after update
 
 Refresh sudoers automatically during the update:
 
