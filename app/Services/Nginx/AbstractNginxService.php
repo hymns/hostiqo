@@ -67,9 +67,12 @@ abstract class AbstractNginxService implements NginxInterface
         $fastcgiConfig = $this->getFastcgiConfig();
 
         $serverName = $this->getServerName($website);
+        
+        // Check if SSL certificate actually exists (need sudo to access /etc/letsencrypt)
+        $sslCertExists = $this->sslCertificateExists($website->domain);
 
-        // If SSL is enabled, create separate HTTP redirect block and HTTPS block
-        if ($website->ssl_enabled) {
+        // If SSL is enabled AND certificate exists, create HTTPS config
+        if ($website->ssl_enabled && $sslCertExists) {
             $sslConfig = $this->getSslConfig($website->domain);
             
             return <<<NGINX
@@ -257,9 +260,12 @@ NGINX;
         $port = $website->port ?? 3000;
         $runtime = $website->runtime ?? 'Unknown';
         $serverName = $this->getServerName($website);
+        
+        // Check if SSL certificate actually exists (need sudo to access /etc/letsencrypt)
+        $sslCertExists = $this->sslCertificateExists($website->domain);
 
-        // If SSL is enabled, create separate HTTP redirect block and HTTPS block
-        if ($website->ssl_enabled) {
+        // If SSL is enabled AND certificate exists, create HTTPS config
+        if ($website->ssl_enabled && $sslCertExists) {
             $sslConfig = $this->getSslConfig($website->domain);
             
             return <<<NGINX
@@ -423,9 +429,12 @@ NGINX;
         $securityHeaders = $this->getSecurityHeaders();
         $logDir = '/var/log/nginx';
         $serverName = $this->getServerName($website);
+        
+        // Check if SSL certificate actually exists (need sudo to access /etc/letsencrypt)
+        $sslCertExists = $this->sslCertificateExists($website->domain);
 
-        // If SSL is enabled, create separate HTTP redirect block and HTTPS block
-        if ($website->ssl_enabled) {
+        // If SSL is enabled AND certificate exists, create HTTPS config
+        if ($website->ssl_enabled && $sslCertExists) {
             $sslConfig = $this->getSslConfig($website->domain);
             
             return <<<NGINX
@@ -930,5 +939,20 @@ REDIRECT;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 HEADERS;
+    }
+
+    /**
+     * Check if SSL certificate exists for a domain.
+     * Uses sudo to access /etc/letsencrypt directory.
+     *
+     * @param string $domain The domain name
+     * @return bool True if certificate exists
+     */
+    protected function sslCertificateExists(string $domain): bool
+    {
+        $certPath = "/etc/letsencrypt/live/{$domain}/fullchain.pem";
+        $result = Process::run("sudo /usr/bin/test -f {$certPath} && echo 'exists'");
+        
+        return $result->successful() && str_contains($result->output(), 'exists');
     }
 }
