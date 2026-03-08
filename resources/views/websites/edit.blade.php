@@ -92,7 +92,7 @@
                             </small>
                         </div>
 
-                        @if($website->project_type === 'php')
+                        @if($website->project_type === 'php' || $website->project_type === 'static')
                             <div class="mb-3">
                                 <label for="working_directory" class="form-label">
                                     Working Directory (Document Root)
@@ -103,10 +103,10 @@
                                     id="working_directory"
                                     name="working_directory"
                                     value="{{ old('working_directory', $website->working_directory ?? '/') }}"
-                                    placeholder="/ or /public or /public_html"
+                                    placeholder="/ or /public or /dist or /build"
                                 >
                                 <div class="form-text">
-                                    <strong>Relative path</strong> from root path. Examples: <code>/</code> (root), <code>/public</code>, <code>/public_html</code>
+                                    <strong>Relative path</strong> from root path. Examples: <code>/</code> (root), <code>/public</code>, <code>/dist</code>, <code>/build</code>
                                     <br>Final path: <code>{{ $website->root_path }}{working_directory}</code>
                                 </div>
                                 @error('working_directory')
