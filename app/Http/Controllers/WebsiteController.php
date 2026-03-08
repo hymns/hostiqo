@@ -439,30 +439,30 @@ class WebsiteController extends Controller
             $fullPath = rtrim($rootPath, '/') . '/' . ltrim($workingDirectory, '/');
             $fullPath = rtrim($fullPath, '/');
 
-            // Create directory structure
-            Process::run("sudo /bin/mkdir -p {$fullPath}");
+            Log::info('Creating website structure', ['fullPath' => $fullPath, 'domain' => $domain]);
 
-            // Create welcome page (use sudo test since PHP may not have read access)
+            // Create directory structure
+            $mkdirResult = Process::run("sudo /bin/mkdir -p {$fullPath}");
+            Log::info('mkdir result', ['success' => $mkdirResult->successful(), 'output' => $mkdirResult->output(), 'error' => $mkdirResult->errorOutput()]);
+
+            // Create welcome page - always create for new websites
             $indexFile = $fullPath . '/index.html';
-            $indexCheckResult = Process::run("sudo /usr/bin/test -f {$indexFile} && echo 'exists'");
-            $indexExists = $indexCheckResult->successful() && str_contains($indexCheckResult->output(), 'exists');
+            $welcomeContent = $this->getWelcomePageContent($domain, $projectType);
             
-            if (!$indexExists) {
-                $welcomeContent = $this->getWelcomePageContent($domain, $projectType);
-                
-                // Write to temp file then move with sudo
-                $tempFile = tempnam(sys_get_temp_dir(), 'hostiqo_welcome_');
-                file_put_contents($tempFile, $welcomeContent);
-                
-                Process::run("sudo /bin/cp {$tempFile} {$indexFile}");
-                @unlink($tempFile);
-            }
+            // Write to temp file then move with sudo
+            $tempFile = tempnam(sys_get_temp_dir(), 'hostiqo_welcome_');
+            file_put_contents($tempFile, $welcomeContent);
+            
+            $cpResult = Process::run("sudo /bin/cp {$tempFile} {$indexFile}");
+            Log::info('cp result', ['success' => $cpResult->successful(), 'output' => $cpResult->output(), 'error' => $cpResult->errorOutput()]);
+            @unlink($tempFile);
 
             // Set proper ownership and permissions AFTER all files created
-            Process::run("sudo /bin/chown -R www-data:www-data {$rootPath}");
-            Process::run("sudo /bin/chmod -R 755 {$rootPath}");
+            $chownResult = Process::run("sudo /bin/chown -R www-data:www-data {$rootPath}");
+            $chmodResult = Process::run("sudo /bin/chmod -R 755 {$rootPath}");
+            Log::info('permissions result', ['chown' => $chownResult->successful(), 'chmod' => $chmodResult->successful()]);
         } catch (\Exception $e) {
-            Log::warning('Failed to create website structure', [
+            Log::error('Failed to create website structure', [
                 'domain' => $domain,
                 'error' => $e->getMessage(),
             ]);
