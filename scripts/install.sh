@@ -1995,9 +1995,12 @@ www-data ALL=(ALL) NOPASSWD: /bin/chown -R [a-zA-Z0-9_-]*?[a-zA-Z0-9_-]* /var/ww
 www-data ALL=(ALL) NOPASSWD: /bin/chown [a-zA-Z0-9_-]*?[a-zA-Z0-9_-]* /var/www/[a-zA-Z0-9._-]*/*
 www-data ALL=(ALL) NOPASSWD: /bin/chmod -R [0-9]* /var/www/[a-zA-Z0-9._-]*
 www-data ALL=(ALL) NOPASSWD: /bin/chmod [0-9]* /var/www/[a-zA-Z0-9._-]*/*
+www-data ALL=(ALL) NOPASSWD: /bin/cp /tmp/* /var/www/[a-zA-Z0-9._-]*/*
 www-data ALL=(ALL) NOPASSWD: /bin/mv /tmp/* /var/www/[a-zA-Z0-9._-]*/*
 www-data ALL=(ALL) NOPASSWD: /bin/rm -rf /var/www/[a-zA-Z0-9._-]*
 www-data ALL=(ALL) NOPASSWD: /usr/bin/find /var/www/[a-zA-Z0-9._-]* *
+www-data ALL=(ALL) NOPASSWD: /usr/bin/test -d /var/www/*
+www-data ALL=(ALL) NOPASSWD: /usr/bin/test -f /var/www/*/*
 
 # Nginx Cache Directory
 www-data ALL=(ALL) NOPASSWD: /bin/mkdir -p /var/cache/nginx/*
@@ -2151,9 +2154,12 @@ nginx ALL=(ALL) NOPASSWD: /usr/bin/chown -R [a-zA-Z0-9_-]*?[a-zA-Z0-9_-]* /var/w
 nginx ALL=(ALL) NOPASSWD: /usr/bin/chown [a-zA-Z0-9_-]*?[a-zA-Z0-9_-]* /var/www/[a-zA-Z0-9._-]*/*
 nginx ALL=(ALL) NOPASSWD: /usr/bin/chmod -R [0-9]* /var/www/[a-zA-Z0-9._-]*
 nginx ALL=(ALL) NOPASSWD: /usr/bin/chmod [0-9]* /var/www/[a-zA-Z0-9._-]*/*
+nginx ALL=(ALL) NOPASSWD: /usr/bin/cp /tmp/* /var/www/[a-zA-Z0-9._-]*/*
 nginx ALL=(ALL) NOPASSWD: /usr/bin/mv /tmp/* /var/www/[a-zA-Z0-9._-]*/*
 nginx ALL=(ALL) NOPASSWD: /usr/bin/rm -rf /var/www/[a-zA-Z0-9._-]*
 nginx ALL=(ALL) NOPASSWD: /usr/bin/find /var/www/[a-zA-Z0-9._-]* *
+nginx ALL=(ALL) NOPASSWD: /usr/bin/test -d /var/www/*
+nginx ALL=(ALL) NOPASSWD: /usr/bin/test -f /var/www/*/*
 
 # Nginx Cache Directory
 nginx ALL=(ALL) NOPASSWD: /usr/bin/mkdir -p /var/cache/nginx/*
