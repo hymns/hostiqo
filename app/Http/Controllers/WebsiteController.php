@@ -79,7 +79,9 @@ class WebsiteController extends Controller
         }
 
         // Validate root_path does NOT already exist (prevent overwriting existing projects)
-        if (file_exists($validated['root_path'])) {
+        // Use Process::run with sudo since PHP may not have access to check /var/www directories
+        $pathCheckResult = Process::run("sudo /usr/bin/test -d {$validated['root_path']} && echo 'exists'");
+        if ($pathCheckResult->successful() && str_contains($pathCheckResult->output(), 'exists')) {
             return back()
                 ->withInput()
                 ->withErrors(['root_path' => 'The root path already exists. Please choose a different path or remove the existing directory.']);
@@ -440,9 +442,12 @@ class WebsiteController extends Controller
             // Create directory structure
             Process::run("sudo /bin/mkdir -p {$fullPath}");
 
-            // Create welcome page
+            // Create welcome page (use sudo test since PHP may not have read access)
             $indexFile = $fullPath . '/index.html';
-            if (!file_exists($indexFile)) {
+            $indexCheckResult = Process::run("sudo /usr/bin/test -f {$indexFile} && echo 'exists'");
+            $indexExists = $indexCheckResult->successful() && str_contains($indexCheckResult->output(), 'exists');
+            
+            if (!$indexExists) {
                 $welcomeContent = $this->getWelcomePageContent($domain, $projectType);
                 
                 // Write to temp file then move with sudo
