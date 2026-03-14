@@ -137,13 +137,18 @@ class Fail2banService
         }
         
         // Use parallel processing for faster execution
-        $pool = Process::pool(function ($pool) use ($status) {
-            foreach ($status['jails'] as $jail) {
-                $pool->timeout(5)->command("sudo /usr/bin/fail2ban-client status {$jail}");
-            }
-        });
-        
-        $results = $pool->start()->wait();
+        try {
+            $pool = Process::pool(function ($pool) use ($status) {
+                foreach ($status['jails'] as $jail) {
+                    $pool->timeout(5)->command("sudo /usr/bin/fail2ban-client status {$jail}");
+                }
+            });
+            
+            $results = $pool->start()->wait();
+        } catch (\Symfony\Component\Process\Exception\ProcessTimedOutException $e) {
+            // If any process times out, return empty array
+            return [];
+        }
         
         // Parse results
         $jailsStatus = [];
