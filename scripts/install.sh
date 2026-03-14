@@ -3407,6 +3407,7 @@ main() {
     echo "for SLA & priority fixes."
     echo ""
     echo "Sponsor: https://toyyibpay.com/sponsor-hostiqo"
+    echo "GitHub Sponsors: https://thanks.dev/u/gh/hymns"
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
