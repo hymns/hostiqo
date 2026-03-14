@@ -20,8 +20,28 @@ class Fail2banController extends Controller
     public function index()
     {
         $serviceStatus = $this->fail2banService->getServiceStatus();
-        $summary = $this->fail2banService->getSummary();
+        
+        // Get jails status once and reuse for summary
         $jails = $this->fail2banService->getAllJailsStatus();
+        
+        // Build summary from already-fetched jail data
+        $totalBanned = 0;
+        foreach ($jails as $jail) {
+            $totalBanned += $jail['currently_banned'] ?? 0;
+        }
+        
+        $summary = [
+            'running' => !empty($jails),
+            'total_jails' => count($jails),
+            'total_banned' => $totalBanned,
+            'jails' => array_map(function($jail) {
+                return [
+                    'name' => $jail['name'],
+                    'currently_banned' => $jail['currently_banned'] ?? 0,
+                    'total_banned' => $jail['total_banned'] ?? 0,
+                ];
+            }, $jails),
+        ];
         
         return view('fail2ban.index', compact('serviceStatus', 'summary', 'jails'));
     }

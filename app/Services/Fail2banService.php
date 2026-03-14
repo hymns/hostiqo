@@ -26,13 +26,13 @@ class Fail2banService
      */
     public function getStatus(): array
     {
-        $result = Process::run('sudo /usr/bin/fail2ban-client status');
+        $result = Process::timeout(5)->run('sudo /usr/bin/fail2ban-client status');
         
         if (!$result->successful()) {
             return [
                 'running' => false,
                 'jails' => [],
-                'error' => $result->errorOutput(),
+                'error' => $result->errorOutput() ?: 'Timeout or command failed',
             ];
         }
         
@@ -59,13 +59,13 @@ class Fail2banService
      */
     public function getJailStatus(string $jail): array
     {
-        $result = Process::run("sudo /usr/bin/fail2ban-client status {$jail}");
+        $result = Process::timeout(5)->run("sudo /usr/bin/fail2ban-client status {$jail}");
         
         if (!$result->successful()) {
             return [
                 'name' => $jail,
                 'enabled' => false,
-                'error' => $result->errorOutput(),
+                'error' => $result->errorOutput() ?: 'Timeout or command failed',
             ];
         }
         
