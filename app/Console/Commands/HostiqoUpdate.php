@@ -227,6 +227,7 @@ class HostiqoUpdate extends Command
         $this->line('for SLA & priority fixes.');
         $this->line('');
         $this->comment('Sponsor: https://toyyibpay.com/sponsor-hostiqo');
+        $this->comment('GitHub Sponsors: https://thanks.dev/u/gh/hymns');
         $this->info('');
         $this->line('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         $this->info('');
