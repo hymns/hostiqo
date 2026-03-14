@@ -1899,11 +1899,15 @@ enabled = false
 enabled = false
 JAILEOF
         
-        # Enable only specific jails we want
+        # Enable recommended jails for web hosting
         ensure_jail 10 sshd
         ensure_jail 20 nginx-botsearch
         ensure_jail 21 nginx-http-auth
         ensure_jail 22 nginx-limit-req
+        ensure_jail 23 nginx-bad-request
+        ensure_jail 30 mysqld-auth
+        ensure_jail 40 recidive "bantime = 1w
+findtime = 1d"
     fi
     systemctl enable fail2ban > /dev/null 2>&1
     systemctl restart fail2ban > /dev/null 2>&1
