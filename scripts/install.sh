@@ -1672,13 +1672,234 @@ SYSCTLEOF
     # Configure fail2ban
     print_info "Configuring fail2ban defaults..."
     if [ -f /etc/fail2ban/jail.conf ]; then
-        ensure_jail 00 DEFAULT "
+        # Create jail.local with DEFAULT settings only
+        cat > /etc/fail2ban/jail.local << 'JAILEOF'
+[DEFAULT]
 bantime  = 1h
 findtime = 10m
 maxretry = 5
 backend  = systemd
 ignoreip = 127.0.0.1/8 ::1
-"
+
+# Disable all default jails - only enable what we explicitly configure
+[sshd]
+enabled = false
+
+[apache-auth]
+enabled = false
+
+[apache-badbots]
+enabled = false
+
+[apache-noscript]
+enabled = false
+
+[apache-overflows]
+enabled = false
+
+[apache-nohome]
+enabled = false
+
+[apache-botsearch]
+enabled = false
+
+[apache-fakegooglebot]
+enabled = false
+
+[apache-modsecurity]
+enabled = false
+
+[apache-shellshock]
+enabled = false
+
+[nginx-http-auth]
+enabled = false
+
+[nginx-limit-req]
+enabled = false
+
+[nginx-botsearch]
+enabled = false
+
+[php-url-fopen]
+enabled = false
+
+[suhosin]
+enabled = false
+
+[lighttpd-auth]
+enabled = false
+
+[roundcube-auth]
+enabled = false
+
+[openwebmail]
+enabled = false
+
+[horde]
+enabled = false
+
+[groupoffice]
+enabled = false
+
+[sogo-auth]
+enabled = false
+
+[tine20]
+enabled = false
+
+[drupal-auth]
+enabled = false
+
+[guacamole]
+enabled = false
+
+[monit]
+enabled = false
+
+[webmin-auth]
+enabled = false
+
+[froxlor-auth]
+enabled = false
+
+[squid]
+enabled = false
+
+[3proxy]
+enabled = false
+
+[proftpd]
+enabled = false
+
+[pure-ftpd]
+enabled = false
+
+[gssftpd]
+enabled = false
+
+[wuftpd]
+enabled = false
+
+[vsftpd]
+enabled = false
+
+[assp]
+enabled = false
+
+[courier-smtp]
+enabled = false
+
+[postfix]
+enabled = false
+
+[postfix-rbl]
+enabled = false
+
+[sendmail-auth]
+enabled = false
+
+[sendmail-reject]
+enabled = false
+
+[qmail-rbl]
+enabled = false
+
+[dovecot]
+enabled = false
+
+[sieve]
+enabled = false
+
+[solid-pop3d]
+enabled = false
+
+[exim]
+enabled = false
+
+[exim-spam]
+enabled = false
+
+[kerio]
+enabled = false
+
+[courier-auth]
+enabled = false
+
+[postfix-sasl]
+enabled = false
+
+[perdition]
+enabled = false
+
+[squirrelmail]
+enabled = false
+
+[cyrus-imap]
+enabled = false
+
+[uwimap-auth]
+enabled = false
+
+[named-refused]
+enabled = false
+
+[nsd]
+enabled = false
+
+[asterisk]
+enabled = false
+
+[freeswitch]
+enabled = false
+
+[mysqld-auth]
+enabled = false
+
+[mongodb-auth]
+enabled = false
+
+[recidive]
+enabled = false
+
+[pam-generic]
+enabled = false
+
+[xinetd-fail]
+enabled = false
+
+[stunnel]
+enabled = false
+
+[ejabberd-auth]
+enabled = false
+
+[counter-strike]
+enabled = false
+
+[softethervpn]
+enabled = false
+
+[gitlab]
+enabled = false
+
+[grafana]
+enabled = false
+
+[bitwarden]
+enabled = false
+
+[centreon]
+enabled = false
+
+[openhab-auth]
+enabled = false
+
+[traefik-auth]
+enabled = false
+JAILEOF
+        
+        # Enable only specific jails we want
         ensure_jail 10 sshd
         ensure_jail 20 nginx-botsearch
         ensure_jail 21 nginx-http-auth

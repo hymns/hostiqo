@@ -126,7 +126,7 @@ class Fail2banService
     }
 
     /**
-     * Get all jails with their status
+     * Get all jails with their status (parallel processing)
      */
     public function getAllJailsStatus(): array
     {
@@ -136,9 +136,71 @@ class Fail2banService
             return [];
         }
         
+        // Use parallel processing for faster execution
+        $pool = Process::pool(function ($pool) use ($status) {
+            foreach ($status['jails'] as $jail) {
+                $pool->timeout(5)->command("sudo /usr/bin/fail2ban-client status {$jail}");
+            }
+        });
+        
+        $results = $pool->start()->wait();
+        
+        // Parse results
         $jailsStatus = [];
+        $jailIndex = 0;
         foreach ($status['jails'] as $jail) {
-            $jailsStatus[] = $this->getJailStatus($jail);
+            $result = $results[$jailIndex++];
+            
+            if (!$result->successful()) {
+                $jailsStatus[] = [
+                    'name' => $jail,
+                    'enabled' => false,
+                    'error' => $result->errorOutput() ?: 'Timeout or command failed',
+                ];
+                continue;
+            }
+            
+            $output = $result->output();
+            $jailStatus = [
+                'name' => $jail,
+                'enabled' => true,
+                'filter' => [],
+                'actions' => [],
+            ];
+            
+            // Parse currently failed
+            if (preg_match('/Currently failed:\s*(\d+)/m', $output, $matches)) {
+                $jailStatus['currently_failed'] = (int) $matches[1];
+            }
+            
+            // Parse total failed
+            if (preg_match('/Total failed:\s*(\d+)/m', $output, $matches)) {
+                $jailStatus['total_failed'] = (int) $matches[1];
+            }
+            
+            // Parse currently banned
+            if (preg_match('/Currently banned:\s*(\d+)/m', $output, $matches)) {
+                $jailStatus['currently_banned'] = (int) $matches[1];
+            }
+            
+            // Parse total banned
+            if (preg_match('/Total banned:\s*(\d+)/m', $output, $matches)) {
+                $jailStatus['total_banned'] = (int) $matches[1];
+            }
+            
+            // Parse banned IP list
+            if (preg_match('/Banned IP list:\s*(.+)$/ms', $output, $matches)) {
+                $ipList = trim($matches[1]);
+                if (!empty($ipList)) {
+                    $jailStatus['banned_ips'] = array_filter(array_map('trim', explode("\n", $ipList)));
+                } else {
+                    $jailStatus['banned_ips'] = [];
+                }
+            } else {
+                $jailStatus['banned_ips'] = [];
+            }
+            
+            $jailsStatus[] = $jailStatus;
         }
         
         return $jailsStatus;
