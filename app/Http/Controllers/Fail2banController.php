@@ -51,7 +51,22 @@ class Fail2banController extends Controller
      */
     public function banned()
     {
-        $bannedIps = $this->fail2banService->getAllBannedIps();
+        // Get all jails status once (with parallel processing)
+        $jails = $this->fail2banService->getAllJailsStatus();
+        
+        // Extract banned IPs from already-fetched jail data
+        $bannedIps = [];
+        foreach ($jails as $jail) {
+            if (!empty($jail['banned_ips'])) {
+                foreach ($jail['banned_ips'] as $ip) {
+                    $bannedIps[] = [
+                        'ip' => $ip,
+                        'jail' => $jail['name'],
+                    ];
+                }
+            }
+        }
+        
         $status = $this->fail2banService->getStatus();
         
         return view('fail2ban.banned', compact('bannedIps', 'status'));
