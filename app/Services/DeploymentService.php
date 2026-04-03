@@ -149,9 +149,10 @@ class DeploymentService
 
                 $homeDir = $this->resolveHomeDir($deployUser);
 
-                // Wrap full script with env -i to isolate environment
-                $envPrefix = "env -i HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
-                $wrappedScript = $envPrefix . " bash -c " . escapeshellarg($cleanedScript);
+                // Wrap full script with env -i to isolate environment completely
+                // Set PWD explicitly to ensure Laravel loads .env from correct directory
+                $envPrefix = "env -i HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin PWD={$localPath}";
+                $wrappedScript = $envPrefix . " bash -c " . escapeshellarg("cd {$localPath} && " . $cleanedScript);
 
                 $command = $this->prepareCommandAsUser(['bash', '-c', $wrappedScript], $deployUser);
 
@@ -233,9 +234,10 @@ class DeploymentService
 
                 $homeDir = $this->resolveHomeDir($deployUser);
 
-                // Wrap full script dengan env -i supaya semua lines kena apply
-                $envPrefix = "env -i HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
-                $wrappedScript = $envPrefix . " bash -c " . escapeshellarg($cleanedScript);
+                // Wrap full script with env -i to isolate environment completely
+                // Set PWD explicitly to ensure Laravel loads .env from correct directory
+                $envPrefix = "env -i HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin PWD={$localPath}";
+                $wrappedScript = $envPrefix . " bash -c " . escapeshellarg("cd {$localPath} && " . $cleanedScript);
 
                 $command = $this->prepareCommandAsUser(['bash', '-c', $wrappedScript], $deployUser);
 
