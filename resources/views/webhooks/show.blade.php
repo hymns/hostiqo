@@ -284,10 +284,10 @@
                             <i class="bi bi-pencil me-2"></i> Edit Configuration
                         </a>
 
-                        <form action="{{ route('webhooks.destroy', $webhook) }}" method="POST" class="d-grid" onsubmit="return confirmDelete('Are you sure you want to delete this webhook and all its deployments?')">
+                        <form id="delete-webhook-form" action="{{ route('webhooks.destroy', $webhook) }}" method="POST" class="d-grid">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn btn-danger">
+                            <button type="button" class="btn btn-danger" onclick="confirmDelete('Are you sure you want to delete this webhook and all its deployments?').then(confirmed => { if(confirmed) document.getElementById('delete-webhook-form').submit(); })">
                                 <i class="bi bi-trash me-2"></i> Delete Webhook
                             </button>
                         </form>

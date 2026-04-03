@@ -84,7 +84,7 @@
                                                 <i class="bi bi-pencil"></i>
                                             </a>
                                             <button type="button" class="btn btn-outline-danger" title="Delete"
-                                                    onclick="if(confirmDelete('Are you sure you want to delete this webhook?')) { document.getElementById('delete-form-{{ $webhook->id }}').submit(); }">
+                                                    onclick="confirmDelete('Are you sure you want to delete this webhook?').then(confirmed => { if(confirmed) document.getElementById('delete-form-{{ $webhook->id }}').submit(); })">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </div>
