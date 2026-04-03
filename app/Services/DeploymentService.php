@@ -78,6 +78,24 @@ class DeploymentService
     }
 
     /**
+     * Resolve the home directory path for the deployment user.
+     *
+     * This ensures script execution uses the correct HOME and COMPOSER_HOME,
+     * especially when running as www-data or a specific user.
+     *
+     * @param string $deployUser The user configured for deployment
+     * @return string Filesystem path to that user's home directory
+     */
+    private function resolveHomeDir(string $deployUser): string
+    {
+        return match ($deployUser) {
+            'root' => '/root',
+            'www-data' => '/var/www',
+            default => '/home/' . $deployUser,
+        };
+    }
+
+    /**
      * Execute the deployment process.
      *
      * @param Webhook $webhook The webhook to deploy
@@ -114,13 +132,40 @@ class DeploymentService
                     // Directory exists but not a git repo - remove it so we can clone fresh
                     $output[] = "Directory exists but is not a git repository. Removing: {$localPath}";
                     $result = Process::run("sudo rm -rf {$localPath}");
-                    
+
                     if ($result->failed()) {
                         throw new \Exception("Failed to remove directory: " . $result->errorOutput());
                     }
                 }
             }
-            
+
+            // Run pre-deploy script
+            if ($webhook->pre_deploy_script) {
+                $output[] = "\nRunning pre-deploy script...";
+
+                // Normalize line endings and trim each line to remove trailing spaces
+                $normalizedScript = str_replace(["\r\n", "\r"], "\n", $webhook->pre_deploy_script);
+                $cleanedScript = implode("\n", array_map('trim', explode("\n", $normalizedScript)));
+
+                $homeDir = $this->resolveHomeDir($deployUser);
+
+                // Wrap full script with env -i to isolate environment
+                $envPrefix = "env -i HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
+                $wrappedScript = $envPrefix . " bash -c " . escapeshellarg($cleanedScript);
+
+                $command = $this->prepareCommandAsUser(['bash', '-c', $wrappedScript], $deployUser);
+
+                $result = Process::path($localPath)
+                    ->timeout(300)
+                    ->run($command);
+
+                $output[] = $result->output();
+
+                if ($result->failed()) {
+                    $output[] = "Warning: Pre-deploy script failed: " . $result->errorOutput();
+                }
+            }
+
             // Clone or pull repository
             if (!File::isDirectory($localPath)) {
                 // Clone repository
@@ -178,51 +223,24 @@ class DeploymentService
                 }
             }
 
-            // Run pre-deploy script
-            if ($webhook->pre_deploy_script) {
-                $output[] = "\nRunning pre-deploy script...";
-                
-                // Normalize line endings and trim each line to remove trailing spaces
-                $normalizedScript = str_replace(["\r\n", "\r"], "\n", $webhook->pre_deploy_script);
-                $cleanedScript = implode("\n", array_map('trim', explode("\n", $normalizedScript)));
-                
-                $command = $this->prepareCommandAsUser([
-                    'bash', '-c', $cleanedScript
-                ], $deployUser);
-
-                $result = Process::path($localPath)
-                    ->timeout(300)
-                    ->run($command);
-
-                $output[] = $result->output();
-
-                if ($result->failed()) {
-                    $output[] = "Warning: Pre-deploy script failed: " . $result->errorOutput();
-                }
-            }
-
             // Run post-deploy script
             if ($webhook->post_deploy_script) {
                 $output[] = "\nRunning post-deploy script...";
-                
+
                 // Normalize line endings and trim each line to remove trailing spaces
                 $normalizedScript = str_replace(["\r\n", "\r"], "\n", $webhook->post_deploy_script);
                 $cleanedScript = implode("\n", array_map('trim', explode("\n", $normalizedScript)));
-                
-                $command = $this->prepareCommandAsUser([
-                    'bash', '-c', $cleanedScript
-                ], $deployUser);
 
-                // Set required environment variables for Composer and other tools
-                $homeDir = $deployUser === 'www-data' ? '/var/www' : ('/home/' . $deployUser);
-                
+                $homeDir = $this->resolveHomeDir($deployUser);
+
+                // Wrap full script dengan env -i supaya semua lines kena apply
+                $envPrefix = "env -i HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
+                $wrappedScript = $envPrefix . " bash -c " . escapeshellarg($cleanedScript);
+
+                $command = $this->prepareCommandAsUser(['bash', '-c', $wrappedScript], $deployUser);
+
                 $result = Process::path($localPath)
                     ->timeout(300)
-                    ->env([
-                        'HOME' => $homeDir,
-                        'COMPOSER_HOME' => $homeDir . '/.composer',
-                        'PATH' => '/usr/local/bin:/usr/bin:/bin',
-                    ])
                     ->run($command);
 
                 $output[] = $result->output();
