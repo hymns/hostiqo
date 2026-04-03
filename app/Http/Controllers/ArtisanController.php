@@ -18,16 +18,21 @@ class ArtisanController extends Controller
     {
         // Get Laravel sites from websites table
         $laravelSites = $this->getLaravelSites();
-        
+
         // Get selected site from session or default to 'hostiqo'
         $selectedSite = $request->get('site', session('artisan_selected_site', 'hostiqo'));
         session(['artisan_selected_site' => $selectedSite]);
-        
+
         return view('artisan.index', compact('laravelSites', 'selectedSite'));
     }
 
     /**
      * Get list of Laravel sites with artisan file
+     *
+     * Scans for Laravel projects by looking for artisan files in website root paths
+     * and their subdirectories up to 2 levels deep.
+     *
+     * @return array Array of sites with 'name' and 'path' keys
      */
     protected function getLaravelSites(): array
     {
@@ -37,25 +42,60 @@ class ArtisanController extends Controller
                 'path' => base_path(),
             ]
         ];
-        
+
         // Scan websites from database
         $websites = Website::where('project_type', 'php')
             ->where('is_active', true)
             ->get();
-        
+
         foreach ($websites as $website) {
             $rootPath = rtrim($website->root_path, '/');
-            
-            // Check if artisan file exists in root_path (working_directory is usually public)
-            if (File::exists($rootPath . '/artisan')) {
+            $artisanPath = $this->findArtisanPath($rootPath);
+
+            if ($artisanPath) {
                 $sites[$website->id] = [
                     'name' => $website->domain,
-                    'path' => $rootPath,
+                    'path' => $artisanPath,
                 ];
             }
         }
-        
+
         return $sites;
+    }
+
+    /**
+     * Find the path to artisan file by searching in root and subdirectories
+     *
+     * Searches up to 2 levels deep for artisan file:
+     * - Level 0: root directory
+     * - Level 1: immediate subdirectories
+     * - Level 2: nested subdirectories
+     *
+     * @param string $rootPath The root path to start searching from
+     * @return string|null Path to directory containing artisan file, or null if not found
+     */
+    private function findArtisanPath(string $rootPath): ?string
+    {
+        // Level 0 - root itself
+        if (File::exists($rootPath . '/artisan')) {
+            return $rootPath;
+        }
+
+        // Level 1 - subdirectories
+        foreach (glob($rootPath . '/*', GLOB_ONLYDIR) as $subdir) {
+            if (File::exists($subdir . '/artisan')) {
+                return $subdir;
+            }
+
+            // Level 2 - nested subdirectories
+            foreach (glob($subdir . '/*', GLOB_ONLYDIR) as $nested) {
+                if (File::exists($nested . '/artisan')) {
+                    return $nested;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -64,13 +104,13 @@ class ArtisanController extends Controller
     protected function runArtisanCommand(string $command, string $siteKey): array
     {
         $sites = $this->getLaravelSites();
-        
+
         if (!isset($sites[$siteKey])) {
             return ['success' => false, 'output' => 'Site not found'];
         }
-        
+
         $sitePath = $sites[$siteKey]['path'];
-        
+
         // If it's hostiqo, use native Artisan
         if ($siteKey === 'hostiqo') {
             try {
@@ -81,13 +121,13 @@ class ArtisanController extends Controller
                 return ['success' => false, 'output' => $e->getMessage()];
             }
         }
-        
+
         // For external sites, use Process
         try {
             $result = Process::path($sitePath)
                 ->timeout(60)
                 ->run("php artisan {$command}");
-            
+
             return [
                 'success' => $result->successful(),
                 'output' => $result->output() ?: $result->errorOutput() ?: 'Command executed.',
@@ -104,35 +144,35 @@ class ArtisanController extends Controller
     {
         $command = $request->input('command');
         $site = $request->input('site', 'hostiqo');
-        
+
         $allowedCommands = [
             'optimize', 'optimize:clear',
             'cache:clear', 'config:clear', 'config:cache',
             'route:clear', 'route:cache',
             'view:clear', 'view:cache',
         ];
-        
+
         if (!in_array($command, $allowedCommands)) {
             return redirect()->route('artisan.index')
                 ->with('error', 'Command not allowed: ' . $command);
         }
-        
+
         $result = $this->runArtisanCommand($command, $site);
-        
+
         $sites = $this->getLaravelSites();
         $siteName = $sites[$site]['name'] ?? 'Unknown';
-        
+
         Log::info("Artisan {$command} executed on {$siteName}", [
             'site' => $site,
             'success' => $result['success'],
         ]);
-        
+
         if ($result['success']) {
             return redirect()->route('artisan.index', ['site' => $site])
                 ->with('success', "Command '{$command}' executed on {$siteName}")
                 ->with('output', $result['output']);
         }
-        
+
         return redirect()->route('artisan.index', ['site' => $site])
             ->with('error', "Command failed: " . $result['output']);
     }
@@ -144,25 +184,25 @@ class ArtisanController extends Controller
     {
         $site = $request->input('site', 'hostiqo');
         $commands = ['cache:clear', 'config:clear', 'route:clear', 'view:clear'];
-        
+
         $outputs = [];
         $allSuccess = true;
-        
+
         foreach ($commands as $command) {
             $result = $this->runArtisanCommand($command, $site);
             $outputs[] = "{$command}: " . ($result['success'] ? 'OK' : 'FAILED');
             if (!$result['success']) $allSuccess = false;
         }
-        
+
         $sites = $this->getLaravelSites();
         $siteName = $sites[$site]['name'] ?? 'Unknown';
-        
+
         if ($allSuccess) {
             return redirect()->route('artisan.index', ['site' => $site])
                 ->with('success', "All caches cleared on {$siteName}")
                 ->with('output', implode("\n", $outputs));
         }
-        
+
         return redirect()->route('artisan.index', ['site' => $site])
             ->with('error', "Some commands failed on {$siteName}")
             ->with('output', implode("\n", $outputs));
@@ -175,25 +215,25 @@ class ArtisanController extends Controller
     {
         $site = $request->input('site', 'hostiqo');
         $commands = ['config:cache', 'route:cache', 'view:cache', 'optimize'];
-        
+
         $outputs = [];
         $allSuccess = true;
-        
+
         foreach ($commands as $command) {
             $result = $this->runArtisanCommand($command, $site);
             $outputs[] = "{$command}: " . ($result['success'] ? 'OK' : 'FAILED');
             if (!$result['success']) $allSuccess = false;
         }
-        
+
         $sites = $this->getLaravelSites();
         $siteName = $sites[$site]['name'] ?? 'Unknown';
-        
+
         if ($allSuccess) {
             return redirect()->route('artisan.index', ['site' => $site])
                 ->with('success', "Production optimization complete on {$siteName}")
                 ->with('output', implode("\n", $outputs));
         }
-        
+
         return redirect()->route('artisan.index', ['site' => $site])
             ->with('error', "Some commands failed on {$siteName}")
             ->with('output', implode("\n", $outputs));
