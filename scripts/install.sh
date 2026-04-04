@@ -1675,229 +1675,100 @@ SYSCTLEOF
         # Create jail.local with DEFAULT settings only
         cat > /etc/fail2ban/jail.local << 'JAILEOF'
 [DEFAULT]
-bantime  = 1h
-findtime = 10m
-maxretry = 5
-backend  = systemd
-ignoreip = 127.0.0.1/8 ::1
+# Ban hosts for 24 hours (86400 seconds)
+bantime = 86400
 
-# Disable all default jails - only enable what we explicitly configure
+# Find time window (10 minutes)
+findtime = 600
+
+# Max retry attempts before ban
+maxretry = 3
+
+# Ban action
+banaction = iptables-multiport
+
+# Ignore local IPs
+ignoreip = 127.0.0.1/8
+
+# Destination email for notifications (optional)
+destemail = root@localhost
+
+# Sender email
+sender = fail2ban@localhost
+
+# Action to take when banning
+action = %(action_mwl)s
+
 [sshd]
-enabled = false
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+findtime = 60
+bantime = 604800
 
-[apache-auth]
-enabled = false
-
-[apache-badbots]
-enabled = false
-
-[apache-noscript]
-enabled = false
-
-[apache-overflows]
-enabled = false
-
-[apache-nohome]
-enabled = false
-
-[apache-botsearch]
-enabled = false
-
-[apache-fakegooglebot]
-enabled = false
-
-[apache-modsecurity]
-enabled = false
-
-[apache-shellshock]
-enabled = false
+[sshd-ddos]
+enabled = true
+port = ssh
+filter = sshd-ddos
+maxretry = 6
+findtime = 60
+bantime = 3600
 
 [nginx-http-auth]
-enabled = false
-
-[nginx-limit-req]
-enabled = false
+enabled = true
+port = http,https
+filter = nginx-http-auth
+logpath = /var/log/nginx/*access.log
+maxretry = 5
+bantime = 86400
 
 [nginx-botsearch]
-enabled = false
+enabled = true
+port = http,https
+filter = nginx-botsearch
+logpath = /var/log/nginx/*access.log
+maxretry = 2
+bantime = 86400
 
-[php-url-fopen]
-enabled = false
+[nginx-bad-request]
+enabled = true
+port = http,https
+filter = nginx-bad-request
+logpath = /var/log/nginx/*access.log
+maxretry = 10
+bantime = 86400
 
-[suhosin]
-enabled = false
-
-[lighttpd-auth]
-enabled = false
-
-[roundcube-auth]
-enabled = false
-
-[openwebmail]
-enabled = false
-
-[horde]
-enabled = false
-
-[groupoffice]
-enabled = false
-
-[sogo-auth]
-enabled = false
-
-[tine20]
-enabled = false
-
-[drupal-auth]
-enabled = false
-
-[guacamole]
-enabled = false
-
-[monit]
-enabled = false
-
-[webmin-auth]
-enabled = false
-
-[froxlor-auth]
-enabled = false
-
-[squid]
-enabled = false
-
-[3proxy]
-enabled = false
-
-[proftpd]
-enabled = false
-
-[pure-ftpd]
-enabled = false
-
-[gssftpd]
-enabled = false
-
-[wuftpd]
-enabled = false
-
-[vsftpd]
-enabled = false
-
-[assp]
-enabled = false
-
-[courier-smtp]
-enabled = false
-
-[postfix]
-enabled = false
-
-[postfix-rbl]
-enabled = false
-
-[sendmail-auth]
-enabled = false
-
-[sendmail-reject]
-enabled = false
-
-[qmail-rbl]
-enabled = false
-
-[dovecot]
-enabled = false
-
-[sieve]
-enabled = false
-
-[solid-pop3d]
-enabled = false
-
-[exim]
-enabled = false
-
-[exim-spam]
-enabled = false
-
-[kerio]
-enabled = false
-
-[courier-auth]
-enabled = false
-
-[postfix-sasl]
-enabled = false
-
-[perdition]
-enabled = false
-
-[squirrelmail]
-enabled = false
-
-[cyrus-imap]
-enabled = false
-
-[uwimap-auth]
-enabled = false
-
-[named-refused]
-enabled = false
-
-[nsd]
-enabled = false
-
-[asterisk]
-enabled = false
-
-[freeswitch]
-enabled = false
-
-[mysqld-auth]
-enabled = false
-
-[mongodb-auth]
-enabled = false
+[nginx-4xx]
+enabled = true
+port = http,https
+filter = nginx-4xx
+logpath = /var/log/nginx/*access.log
+maxretry = 20
+findtime = 60
+bantime = 86400
 
 [recidive]
-enabled = false
-
-[pam-generic]
-enabled = false
-
-[xinetd-fail]
-enabled = false
-
-[stunnel]
-enabled = false
-
-[ejabberd-auth]
-enabled = false
-
-[counter-strike]
-enabled = false
-
-[softethervpn]
-enabled = false
-
-[gitlab]
-enabled = false
-
-[grafana]
-enabled = false
-
-[bitwarden]
-enabled = false
-
-[centreon]
-enabled = false
-
-[openhab-auth]
-enabled = false
-
-[traefik-auth]
-enabled = false
+enabled = true
+filter = recidive
+logpath = /var/log/fail2ban.log
+action = iptables-allports
+bantime = 2592000
+findtime = 86400
+maxretry = 3
 JAILEOF
+        
+        # Create custom nginx-4xx filter
+        print_info "Creating nginx-4xx filter..."
+        cat > /etc/fail2ban/filter.d/nginx-4xx.conf << 'FILTEREOF'
+# Fail2Ban filter to match 4xx errors in nginx access log
+# Blocks IPs that generate too many 4xx errors (404, 403, etc.)
+
+[Definition]
+failregex = ^<HOST> - .* "(GET|POST|HEAD|PUT|DELETE).*" (400|401|403|404|405|444) .*$
+ignoreregex = .*(robots\.txt|favicon\.ico).*
+FILTEREOF
         
         # Enable recommended jails for web hosting
         ensure_jail 10 sshd
@@ -1905,8 +1776,12 @@ JAILEOF
         ensure_jail 21 nginx-http-auth
         ensure_jail 22 nginx-limit-req
         ensure_jail 23 nginx-bad-request
+        ensure_jail 24 nginx-4xx "logpath = /var/log/nginx/*access.log
+maxretry = 20
+findtime = 60
+bantime = 1d"
         ensure_jail 30 mysqld-auth
-        ensure_jail 40 recidive "bantime = 1w
+        ensure_jail 40 recidive "bantime = 1m
 findtime = 1d"
     fi
     systemctl enable fail2ban > /dev/null 2>&1
