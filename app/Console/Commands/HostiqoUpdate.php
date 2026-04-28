@@ -152,6 +152,11 @@ class HostiqoUpdate extends Command
         $this->warn('Step 5/7: Running database migrations...');
         $this->runAsWebUser('php artisan migrate --force');
         $this->info('✓ Migrations completed');
+        
+        // Post-migration: Update existing databases to set default type
+        $this->info('  → Updating existing databases with default type...');
+        $this->runAsWebUser('php artisan db:seed --class=UpdateExistingDatabasesSeeder --force');
+        $this->info('  ✓ Existing databases updated');
 
         // Step 6: Build assets (as web user)
         $this->warn('Step 6/7: Building frontend assets...');
