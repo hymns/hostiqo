@@ -16,8 +16,10 @@ class Database extends Model
      */
     protected $fillable = [
         'name',
+        'type',
         'username',
         'host',
+        'port',
         'description',
     ];
 
@@ -27,6 +29,8 @@ class Database extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'type' => 'string',
+        'port' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

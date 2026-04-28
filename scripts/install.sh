@@ -939,6 +939,24 @@ FPMPOOL
     systemctl start mysql > /dev/null 2>&1
     print_success "MySQL installed and started"
     
+    # Optional: Install PostgreSQL
+    print_info "Do you want to install PostgreSQL? (y/N)"
+    read_input -p "> " INSTALL_POSTGRES
+    if [[ "$INSTALL_POSTGRES" =~ ^[Yy]$ ]]; then
+        install_postgresql_debian
+    else
+        print_info "Skipping PostgreSQL installation"
+    fi
+
+    # Optional: Install MongoDB
+    print_info "Do you want to install MongoDB? (y/N)"
+    read_input -p "> " INSTALL_MONGODB
+    if [[ "$INSTALL_MONGODB" =~ ^[Yy]$ ]]; then
+        install_mongodb_debian
+    else
+        print_info "Skipping MongoDB installation"
+    fi
+    
     # Install Certbot
     print_info "Installing Certbot..."
     apt-get install -y certbot > /dev/null 2>&1
@@ -1041,6 +1059,159 @@ LOGROTATE
     chown -R www-data:www-data /var/www
     chmod -R 755 /var/www
     print_success "Web directories created"
+}
+
+#########################################################
+# PostgreSQL Installation (Debian/Ubuntu)
+#########################################################
+install_postgresql_debian() {
+    print_info "Select PostgreSQL version to install..."
+    POSTGRES_VERSION=$(whiptail --title "PostgreSQL Version Selection" --radiolist \
+        "Select PostgreSQL version:" 12 60 4 \
+        "14" "PostgreSQL 14" OFF \
+        "15" "PostgreSQL 15" OFF \
+        "16" "PostgreSQL 16 (Recommended)" ON \
+        "17" "PostgreSQL 17 (Latest)" OFF \
+        3>&1 1>&2 2>&3)
+    
+    # Default to 16 if cancelled
+    if [ $? -ne 0 ] || [ -z "$POSTGRES_VERSION" ]; then
+        print_warning "No version selected, defaulting to PostgreSQL 16"
+        POSTGRES_VERSION="16"
+    fi
+    
+    print_info "Installing PostgreSQL ${POSTGRES_VERSION}..."
+    
+    # Add PostgreSQL official repository
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - > /dev/null 2>&1
+    echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+    apt-get update > /dev/null 2>&1
+    
+    # Install PostgreSQL
+    apt-get install -y postgresql-${POSTGRES_VERSION} postgresql-contrib-${POSTGRES_VERSION} > /dev/null 2>&1
+    
+    # Enable and start service
+    systemctl enable postgresql > /dev/null 2>&1
+    systemctl start postgresql > /dev/null 2>&1
+    
+    # Generate secure root password
+    POSTGRES_ROOT_PASS=$(openssl rand -base64 32)
+    
+    # Set password for postgres user
+    sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD '${POSTGRES_ROOT_PASS}';" > /dev/null 2>&1
+    
+    # Configure pg_hba.conf for local connections
+    PG_HBA="/etc/postgresql/${POSTGRES_VERSION}/main/pg_hba.conf"
+    if [ -f "$PG_HBA" ]; then
+        # Backup original
+        cp "$PG_HBA" "${PG_HBA}.backup"
+        
+        # Allow local connections with password
+        sed -i 's/^local.*all.*postgres.*peer$/local   all             postgres                                md5/' "$PG_HBA"
+        sed -i 's/^local.*all.*all.*peer$/local   all             all                                     md5/' "$PG_HBA"
+        sed -i 's/^host.*all.*all.*127.0.0.1\/32.*scram-sha-256$/host    all             all             127.0.0.1\/32            md5/' "$PG_HBA"
+        sed -i 's/^host.*all.*all.*::1\/128.*scram-sha-256$/host    all             all             ::1\/128                 md5/' "$PG_HBA"
+        
+        systemctl restart postgresql > /dev/null 2>&1
+    fi
+    
+    # Save credentials
+    echo "$POSTGRES_ROOT_PASS" > /root/.postgres_root_password
+    chmod 600 /root/.postgres_root_password
+    
+    # Update config.json
+    mkdir -p /etc/hostiqo
+    if [ -f /etc/hostiqo/config.json ]; then
+        TMP_CONFIG=$(mktemp)
+        jq ".databases.postgresql = {\"installed\": true, \"version\": \"${POSTGRES_VERSION}\"}" /etc/hostiqo/config.json > "$TMP_CONFIG" 2>/dev/null || \
+        cat /etc/hostiqo/config.json | sed 's/}$/,"databases":{"postgresql":{"installed":true,"version":"'"${POSTGRES_VERSION}"'"}}}/' > "$TMP_CONFIG"
+        mv "$TMP_CONFIG" /etc/hostiqo/config.json
+        chmod 644 /etc/hostiqo/config.json
+    fi
+    
+    print_success "PostgreSQL ${POSTGRES_VERSION} installed (password: /root/.postgres_root_password)"
+}
+
+#########################################################
+# MongoDB Installation (Debian/Ubuntu)
+#########################################################
+install_mongodb_debian() {
+    print_info "Select MongoDB version to install..."
+    MONGO_VERSION=$(whiptail --title "MongoDB Version Selection" --radiolist \
+        "Select MongoDB version:" 12 60 3 \
+        "6.0" "MongoDB 6.0" OFF \
+        "7.0" "MongoDB 7.0 (Recommended)" ON \
+        "8.0" "MongoDB 8.0 (Latest)" OFF \
+        3>&1 1>&2 2>&3)
+    
+    # Default to 7.0 if cancelled
+    if [ $? -ne 0 ] || [ -z "$MONGO_VERSION" ]; then
+        print_warning "No version selected, defaulting to MongoDB 7.0"
+        MONGO_VERSION="7.0"
+    fi
+    
+    print_info "Installing MongoDB ${MONGO_VERSION}..."
+    
+    # Add MongoDB official repository
+    wget -qO - https://www.mongodb.org/static/pgp/server-${MONGO_VERSION}.asc | apt-key add - > /dev/null 2>&1
+    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/${MONGO_VERSION} multiverse" > /etc/apt/sources.list.d/mongodb-org-${MONGO_VERSION}.list
+    apt-get update > /dev/null 2>&1
+    
+    # Install MongoDB
+    apt-get install -y mongodb-org > /dev/null 2>&1
+    
+    # Enable and start service
+    systemctl enable mongod > /dev/null 2>&1
+    systemctl start mongod > /dev/null 2>&1
+    
+    # Wait for MongoDB to start
+    sleep 3
+    
+    # Generate secure root password
+    MONGO_ROOT_PASS=$(openssl rand -base64 32)
+    
+    # Create admin user
+    mongosh --quiet --eval "
+        db = db.getSiblingDB('admin');
+        db.createUser({
+            user: 'root',
+            pwd: '${MONGO_ROOT_PASS}',
+            roles: [{role: 'root', db: 'admin'}]
+        });
+    " > /dev/null 2>&1
+    
+    # Enable authentication in mongod.conf
+    if [ -f /etc/mongod.conf ]; then
+        # Backup original
+        cp /etc/mongod.conf /etc/mongod.conf.backup
+        
+        # Enable security
+        if ! grep -q "^security:" /etc/mongod.conf; then
+            echo "" >> /etc/mongod.conf
+            echo "security:" >> /etc/mongod.conf
+            echo "  authorization: enabled" >> /etc/mongod.conf
+        else
+            sed -i '/^security:/a\  authorization: enabled' /etc/mongod.conf
+        fi
+        
+        systemctl restart mongod > /dev/null 2>&1
+    fi
+    
+    # Save credentials
+    echo "$MONGO_ROOT_PASS" > /root/.mongodb_root_password
+    chmod 600 /root/.mongodb_root_password
+    
+    # Update config.json
+    mkdir -p /etc/hostiqo
+    if [ -f /etc/hostiqo/config.json ]; then
+        TMP_CONFIG=$(mktemp)
+        jq ".databases.mongodb = {\"installed\": true, \"version\": \"${MONGO_VERSION}\"}" /etc/hostiqo/config.json > "$TMP_CONFIG" 2>/dev/null || \
+        cat /etc/hostiqo/config.json | sed 's/}$/,"databases":{"mongodb":{"installed":true,"version":"'"${MONGO_VERSION}"'"}}}/' > "$TMP_CONFIG"
+        mv "$TMP_CONFIG" /etc/hostiqo/config.json
+        chmod 644 /etc/hostiqo/config.json
+    fi
+    
+    print_success "MongoDB ${MONGO_VERSION} installed (password: /root/.mongodb_root_password)"
 }
 
 #########################################################
@@ -1477,6 +1648,24 @@ OPCACHE
     systemctl start mariadb > /dev/null 2>&1 || true
     print_success "MariaDB installed and started"
 
+    # Optional: Install PostgreSQL
+    print_info "Do you want to install PostgreSQL? (y/N)"
+    read_input -p "> " INSTALL_POSTGRES
+    if [[ "$INSTALL_POSTGRES" =~ ^[Yy]$ ]]; then
+        install_postgresql_rhel
+    else
+        print_info "Skipping PostgreSQL installation"
+    fi
+
+    # Optional: Install MongoDB
+    print_info "Do you want to install MongoDB? (y/N)"
+    read_input -p "> " INSTALL_MONGODB
+    if [[ "$INSTALL_MONGODB" =~ ^[Yy]$ ]]; then
+        install_mongodb_rhel
+    else
+        print_info "Skipping MongoDB installation"
+    fi
+
     # Install Certbot
     print_info "Installing Certbot..."
     $PKG_MANAGER install -y certbot > /dev/null 2>&1
@@ -1591,6 +1780,169 @@ LOGROTATE
         setenforce 0 2>/dev/null || true
         print_success "SELinux set to permissive mode"
     fi
+}
+
+#########################################################
+# PostgreSQL Installation (RHEL)
+#########################################################
+install_postgresql_rhel() {
+    print_info "Select PostgreSQL version to install..."
+    POSTGRES_VERSION=$(whiptail --title "PostgreSQL Version Selection" --radiolist \
+        "Select PostgreSQL version:" 12 60 4 \
+        "14" "PostgreSQL 14" OFF \
+        "15" "PostgreSQL 15" OFF \
+        "16" "PostgreSQL 16 (Recommended)" ON \
+        "17" "PostgreSQL 17 (Latest)" OFF \
+        3>&1 1>&2 2>&3)
+    
+    # Default to 16 if cancelled
+    if [ $? -ne 0 ] || [ -z "$POSTGRES_VERSION" ]; then
+        print_warning "No version selected, defaulting to PostgreSQL 16"
+        POSTGRES_VERSION="16"
+    fi
+    
+    print_info "Installing PostgreSQL ${POSTGRES_VERSION}..."
+    
+    # Add PostgreSQL official repository
+    $PKG_MANAGER install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-${OS_VERSION%%.*}-x86_64/pgdg-redhat-repo-latest.noarch.rpm > /dev/null 2>&1
+    
+    # Disable built-in PostgreSQL module (RHEL 8+)
+    if command -v dnf &> /dev/null && [ "${OS_VERSION%%.*}" -ge 8 ]; then
+        dnf -qy module disable postgresql > /dev/null 2>&1 || true
+    fi
+    
+    # Install PostgreSQL
+    $PKG_MANAGER install -y postgresql${POSTGRES_VERSION}-server postgresql${POSTGRES_VERSION} postgresql${POSTGRES_VERSION}-contrib > /dev/null 2>&1
+    
+    # Initialize database
+    /usr/pgsql-${POSTGRES_VERSION}/bin/postgresql-${POSTGRES_VERSION}-setup initdb > /dev/null 2>&1 || true
+    
+    # Enable and start service
+    systemctl enable postgresql-${POSTGRES_VERSION} > /dev/null 2>&1
+    systemctl start postgresql-${POSTGRES_VERSION} > /dev/null 2>&1
+    
+    # Generate secure root password
+    POSTGRES_ROOT_PASS=$(openssl rand -base64 32)
+    
+    # Set password for postgres user
+    sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD '${POSTGRES_ROOT_PASS}';" > /dev/null 2>&1
+    
+    # Configure pg_hba.conf for local connections
+    PG_HBA="/var/lib/pgsql/${POSTGRES_VERSION}/data/pg_hba.conf"
+    if [ -f "$PG_HBA" ]; then
+        # Backup original
+        cp "$PG_HBA" "${PG_HBA}.backup"
+        
+        # Allow local connections with password
+        sed -i 's/^local.*all.*all.*peer$/local   all             all                                     md5/' "$PG_HBA"
+        sed -i 's/^host.*all.*all.*127.0.0.1\/32.*ident$/host    all             all             127.0.0.1\/32            md5/' "$PG_HBA"
+        sed -i 's/^host.*all.*all.*::1\/128.*ident$/host    all             all             ::1\/128                 md5/' "$PG_HBA"
+        
+        systemctl restart postgresql-${POSTGRES_VERSION} > /dev/null 2>&1
+    fi
+    
+    # Save credentials
+    echo "$POSTGRES_ROOT_PASS" > /root/.postgres_root_password
+    chmod 600 /root/.postgres_root_password
+    
+    # Update config.json
+    mkdir -p /etc/hostiqo
+    if [ -f /etc/hostiqo/config.json ]; then
+        TMP_CONFIG=$(mktemp)
+        jq ".databases.postgresql = {\"installed\": true, \"version\": \"${POSTGRES_VERSION}\"}" /etc/hostiqo/config.json > "$TMP_CONFIG" 2>/dev/null || \
+        cat /etc/hostiqo/config.json | sed 's/}$/,"databases":{"postgresql":{"installed":true,"version":"'"${POSTGRES_VERSION}"'"}}}/' > "$TMP_CONFIG"
+        mv "$TMP_CONFIG" /etc/hostiqo/config.json
+        chmod 644 /etc/hostiqo/config.json
+    fi
+    
+    print_success "PostgreSQL ${POSTGRES_VERSION} installed (password: /root/.postgres_root_password)"
+}
+
+#########################################################
+# MongoDB Installation (RHEL)
+#########################################################
+install_mongodb_rhel() {
+    print_info "Select MongoDB version to install..."
+    MONGO_VERSION=$(whiptail --title "MongoDB Version Selection" --radiolist \
+        "Select MongoDB version:" 12 60 3 \
+        "6.0" "MongoDB 6.0" OFF \
+        "7.0" "MongoDB 7.0 (Recommended)" ON \
+        "8.0" "MongoDB 8.0 (Latest)" OFF \
+        3>&1 1>&2 2>&3)
+    
+    # Default to 7.0 if cancelled
+    if [ $? -ne 0 ] || [ -z "$MONGO_VERSION" ]; then
+        print_warning "No version selected, defaulting to MongoDB 7.0"
+        MONGO_VERSION="7.0"
+    fi
+    
+    print_info "Installing MongoDB ${MONGO_VERSION}..."
+    
+    # Add MongoDB official repository
+    cat > /etc/yum.repos.d/mongodb-org-${MONGO_VERSION}.repo << MONGOREPO
+[mongodb-org-${MONGO_VERSION}]
+name=MongoDB Repository
+baseurl=https://repo.mongodb.org/yum/redhat/\$releasever/mongodb-org/${MONGO_VERSION}/x86_64/
+gpgcheck=1
+enabled=1
+gpgkey=https://pgp.mongodb.com/server-${MONGO_VERSION}.asc
+MONGOREPO
+    
+    # Install MongoDB
+    $PKG_MANAGER install -y mongodb-org > /dev/null 2>&1
+    
+    # Enable and start service
+    systemctl enable mongod > /dev/null 2>&1
+    systemctl start mongod > /dev/null 2>&1
+    
+    # Wait for MongoDB to start
+    sleep 3
+    
+    # Generate secure root password
+    MONGO_ROOT_PASS=$(openssl rand -base64 32)
+    
+    # Create admin user
+    mongosh --quiet --eval "
+        db = db.getSiblingDB('admin');
+        db.createUser({
+            user: 'root',
+            pwd: '${MONGO_ROOT_PASS}',
+            roles: [{role: 'root', db: 'admin'}]
+        });
+    " > /dev/null 2>&1
+    
+    # Enable authentication in mongod.conf
+    if [ -f /etc/mongod.conf ]; then
+        # Backup original
+        cp /etc/mongod.conf /etc/mongod.conf.backup
+        
+        # Enable security
+        if ! grep -q "^security:" /etc/mongod.conf; then
+            echo "" >> /etc/mongod.conf
+            echo "security:" >> /etc/mongod.conf
+            echo "  authorization: enabled" >> /etc/mongod.conf
+        else
+            sed -i '/^security:/a\  authorization: enabled' /etc/mongod.conf
+        fi
+        
+        systemctl restart mongod > /dev/null 2>&1
+    fi
+    
+    # Save credentials
+    echo "$MONGO_ROOT_PASS" > /root/.mongodb_root_password
+    chmod 600 /root/.mongodb_root_password
+    
+    # Update config.json
+    mkdir -p /etc/hostiqo
+    if [ -f /etc/hostiqo/config.json ]; then
+        TMP_CONFIG=$(mktemp)
+        jq ".databases.mongodb = {\"installed\": true, \"version\": \"${MONGO_VERSION}\"}" /etc/hostiqo/config.json > "$TMP_CONFIG" 2>/dev/null || \
+        cat /etc/hostiqo/config.json | sed 's/}$/,"databases":{"mongodb":{"installed":true,"version":"'"${MONGO_VERSION}"'"}}}/' > "$TMP_CONFIG"
+        mv "$TMP_CONFIG" /etc/hostiqo/config.json
+        chmod 644 /etc/hostiqo/config.json
+    fi
+    
+    print_success "MongoDB ${MONGO_VERSION} installed (password: /root/.mongodb_root_password)"
 }
 
 #########################################################
