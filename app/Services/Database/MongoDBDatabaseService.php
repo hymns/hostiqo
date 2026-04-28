@@ -7,8 +7,20 @@ use Exception;
 use MongoDB\Client;
 use MongoDB\Driver\Exception\Exception as MongoException;
 
+/**
+ * MongoDB database service implementation.
+ * 
+ * Manages MongoDB databases, collections, and users using the MongoDB PHP library.
+ * Connects to MongoDB using credentials stored in /root/.mongodb_root_password.
+ * Note: In MongoDB, "tables" are called "collections".
+ */
 class MongoDBDatabaseService extends AbstractDatabaseService
 {
+    /**
+     * Cached MongoDB client instance.
+     *
+     * @var Client|null
+     */
     protected ?Client $client = null;
     
     protected function getClient(): Client

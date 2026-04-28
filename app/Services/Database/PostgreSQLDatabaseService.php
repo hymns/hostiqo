@@ -6,8 +6,19 @@ use Illuminate\Support\Facades\Cache;
 use Exception;
 use PDO;
 
+/**
+ * PostgreSQL database service implementation.
+ * 
+ * Manages PostgreSQL databases, users, and permissions using PDO.
+ * Connects to PostgreSQL using credentials stored in /root/.postgres_root_password.
+ */
 class PostgreSQLDatabaseService extends AbstractDatabaseService
 {
+    /**
+     * Cached PDO connection instance.
+     *
+     * @var PDO|null
+     */
     protected ?PDO $connection = null;
     
     protected function getConnection(): PDO
