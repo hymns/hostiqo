@@ -86,6 +86,18 @@ A simple self-managed server panel built with Laravel for automating Git deploym
 - 📋 **Service Logs** - View service logs (systemd journal) with configurable line counts
 - ⚡ **Multi-Version PHP** - Manage all PHP versions (7.4-8.4) individually
 
+### 🗄️ Database Management
+- 🎯 **Multi-Database Support** - MySQL, PostgreSQL, and MongoDB management
+- ➕ **Easy Database Creation** - Create databases with dedicated users via web UI
+- 🔐 **User Management** - Create, modify, and delete database users
+- 🔑 **Password Management** - Change database user passwords securely
+- 📊 **Database Statistics** - Real-time size and table/collection count monitoring
+- 🔧 **Permission Checking** - Automatic privilege verification before operations
+- 🎨 **Type-Specific Routes** - Separate management interfaces for each database type
+- 📦 **Optional Installation** - Install PostgreSQL (14-17) or MongoDB (6.0-8.0) on demand
+- 🔄 **Version Selection** - Choose specific database versions during installation
+- 🛡️ **Secure Setup** - Automatic authentication configuration and credential storage
+
 ### 🎨 General Features
 - 🚦 **Queue System** - Asynchronous deployment and configuration processing
 - 📱 **Responsive Design** - Modern card-based UI, works on all devices
@@ -801,6 +813,50 @@ npm run build
 # Copy built files to public directory (adjust paths as needed)
 rsync -avz dist/ ./public/
 ```
+
+### Managing Databases
+
+#### Creating a Database
+
+1. Navigate to **Databases** → Select database type (MySQL/PostgreSQL/MongoDB)
+2. Click **Create Database**
+3. Fill in the form:
+   - **Database Name:** Alphanumeric and underscores only
+   - **Username:** Database user name
+   - **Password:** Strong password (min 8 characters)
+   - **Host:** Usually `localhost` (or specific IP for remote access)
+   - **Description:** Optional notes
+4. Click **Create Database**
+
+The system will:
+- Create the database
+- Create a dedicated user with full privileges
+- Track the database in Hostiqo
+
+#### Installing Additional Database Types
+
+**PostgreSQL (versions 14-17):**
+```bash
+# Interactive installation with version selection
+sudo bash /var/www/hostiqo/scripts/install.sh --install-postgresql
+```
+
+**MongoDB (versions 6.0-8.0):**
+```bash
+# Interactive installation with version selection
+sudo bash /var/www/hostiqo/scripts/install.sh --install-mongodb
+```
+
+After installation:
+- Database menu will appear automatically in sidebar
+- Root credentials stored in `/root/.postgres_root_password` or `/root/.mongodb_root_password`
+- Configuration tracked in `/etc/hostiqo/config.json`
+
+#### Managing Database Users
+
+- **Change Password:** Click database → Change Password
+- **View Details:** See database size, table/collection count, creation date
+- **Delete Database:** Removes database and associated user
 
 ## 🔒 Security Best Practices
 
