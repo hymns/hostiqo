@@ -70,7 +70,7 @@
                 <h4 class="mt-4">No databases yet</h4>
                 <p class="text-muted">Create your first database to get started.</p>
                 @if($permissions['can_create'])
-                    <a href="{{ route('databases.create') }}" class="btn btn-primary mt-3">
+                    <a href="{{ route('databases.' . ($type ?? 'mysql') . '.create') }}" class="btn btn-primary mt-3">
                         <i class="bi bi-plus-circle me-1"></i> Create Your First Database
                     </a>
                 @else
