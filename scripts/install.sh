@@ -1534,6 +1534,7 @@ OPCACHE
     copytruncate
 }
 
+# PHP-FPM logs (Remi repository path for RHEL)
 /var/opt/remi/php*/log/php-fpm/*.log {
     daily
     maxage 7
@@ -1551,15 +1552,13 @@ OPCACHE
 LOGROTATE_EOF
     print_success "logrotate configured for Hostiqo"
     
-    # Configure log rotation for system logs
+    # Configure log rotation for system logs (RHEL-specific paths)
     print_info "Configuring logrotate for system logs..."
     cat > /etc/logrotate.d/rsyslog << 'LOGROTATE'
-/var/log/syslog
-/var/log/mail.log
-/var/log/kern.log
-/var/log/auth.log
-/var/log/user.log
-/var/log/cron.log
+/var/log/messages
+/var/log/maillog
+/var/log/secure
+/var/log/cron
 {
         rotate 7
         daily
@@ -1570,7 +1569,7 @@ LOGROTATE_EOF
         delaycompress
         sharedscripts
         postrotate
-                /usr/lib/rsyslog/rsyslog-rotate
+                /bin/kill -HUP `cat /var/run/syslogd.pid 2> /dev/null` 2> /dev/null || true
         endscript
 }
 LOGROTATE
@@ -1671,6 +1670,18 @@ SYSCTLEOF
     
     # Configure fail2ban
     print_info "Configuring fail2ban defaults..."
+    
+    # Create custom nginx-4xx filter (outside jail.conf check - needed for both Debian and RHEL)
+    print_info "Creating nginx-4xx filter..."
+    cat > /etc/fail2ban/filter.d/nginx-4xx.conf << 'FILTEREOF'
+# Fail2Ban filter to match 4xx errors in nginx access log
+# Blocks IPs that generate too many 4xx errors (404, 403, etc.)
+
+[Definition]
+failregex = ^<HOST> - .* "(GET|POST|HEAD|PUT|DELETE).*" (400|401|403|404|405|444) .*$
+ignoreregex = .*(robots\.txt|favicon\.ico).*
+FILTEREOF
+    
     if [ -f /etc/fail2ban/jail.conf ]; then
         # Create jail.local with DEFAULT settings only
         cat > /etc/fail2ban/jail.local << 'JAILEOF'
@@ -1758,17 +1769,6 @@ bantime = 2592000
 findtime = 86400
 maxretry = 3
 JAILEOF
-        
-        # Create custom nginx-4xx filter
-        print_info "Creating nginx-4xx filter..."
-        cat > /etc/fail2ban/filter.d/nginx-4xx.conf << 'FILTEREOF'
-# Fail2Ban filter to match 4xx errors in nginx access log
-# Blocks IPs that generate too many 4xx errors (404, 403, etc.)
-
-[Definition]
-failregex = ^<HOST> - .* "(GET|POST|HEAD|PUT|DELETE).*" (400|401|403|404|405|444) .*$
-ignoreregex = .*(robots\.txt|favicon\.ico).*
-FILTEREOF
         
         # Enable recommended jails for web hosting
         ensure_jail 10 sshd
