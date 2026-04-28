@@ -3,78 +3,114 @@
 namespace App\Http\Controllers;
 
 use App\Models\Database;
-use App\Services\DatabaseService;
+use App\Services\Database\DatabaseServiceFactory;
+use App\Services\Database\AbstractDatabaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Exception;
 
+/**
+ * Controller for managing databases across different database types.
+ * 
+ * Supports MySQL, PostgreSQL, and MongoDB database management
+ * with CRUD operations, user management, and statistics.
+ */
 class DatabaseController extends Controller
 {
-    public function __construct(
-        protected DatabaseService $databaseService
-    ) {
+    /**
+     * Get the database service for the specified type.
+     *
+     * @param string $type Database type (mysql, postgresql, mongodb)
+     * @return AbstractDatabaseService
+     */
+    protected function getService(string $type): AbstractDatabaseService
+    {
+        return DatabaseServiceFactory::make($type);
+    }
+    
+    /**
+     * Get the database type from the request or default to mysql.
+     *
+     * @param Request $request
+     * @return string
+     */
+    protected function getType(Request $request): string
+    {
+        return $request->route('type') ?? 'mysql';
     }
 
     /**
      * Clear permission cache and recheck.
      *
+     * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function recheckPermissions()
+    public function recheckPermissions(Request $request)
     {
-        $this->databaseService->clearPermissionCache();
+        $type = $this->getType($request);
+        $service = $this->getService($type);
+        
+        $service->clearPermissionCache();
         
         return redirect()
-            ->route('databases.index')
+            ->route("databases.{$type}.index")
             ->with('success', 'Permissions rechecked successfully!');
     }
 
     /**
      * Display a listing of the databases.
      *
+     * @param Request $request
      * @return \Illuminate\View\View
      */
-    public function index()
+    public function index(Request $request)
     {
-        $databases = Database::latest()->paginate(15);
+        $type = $this->getType($request);
+        $service = $this->getService($type);
+        
+        $databases = Database::where('type', $type)->latest()->paginate(15);
         
         // Prefetch all database stats in single query
-        $dbStats = $this->databaseService->getAllDatabaseStats();
+        $dbStats = $service->getAllDatabaseStats();
         
-        // Enhance database records with MySQL info
+        // Enhance database records with database info
         foreach ($databases as $database) {
-            $database->exists_in_mysql = isset($dbStats[$database->name]);
-            if ($database->exists_in_mysql) {
+            $database->exists_in_db = isset($dbStats[$database->name]);
+            if ($database->exists_in_db) {
                 $database->size_mb = $dbStats[$database->name]['size_mb'];
                 $database->table_count = $dbStats[$database->name]['table_count'];
             }
         }
         
         // Check if user has permission to create databases
-        $permissions = $this->databaseService->canCreateDatabase();
+        $permissions = $service->canCreateDatabase();
         
-        return view('databases.index', compact('databases', 'permissions'));
+        return view('databases.index', compact('databases', 'permissions', 'type'));
     }
 
     /**
      * Show the form for creating a new database.
      *
+     * @param Request $request
      * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
      */
-    public function create()
+    public function create(Request $request)
     {
+        $type = $this->getType($request);
+        $service = $this->getService($type);
+        
         // Check if user has permission to create databases
-        $permissions = $this->databaseService->canCreateDatabase();
+        $permissions = $service->canCreateDatabase();
         
         if (!$permissions['can_create']) {
             return redirect()
-                ->route('databases.index')
+                ->route("databases.{$type}.index")
                 ->withErrors([
                     'permission' => $permissions['message']
                 ]);
         }
         
-        return view('databases.create', compact('permissions'));
+        return view('databases.create', compact('permissions', 'type'));
     }
 
     /**
@@ -85,8 +121,11 @@ class DatabaseController extends Controller
      */
     public function store(Request $request)
     {
+        $type = $this->getType($request);
+        $service = $this->getService($type);
+        
         // Check permissions before proceeding
-        $permissions = $this->databaseService->canCreateDatabase();
+        $permissions = $service->canCreateDatabase();
         if (!$permissions['can_create']) {
             return back()
                 ->withInput()
@@ -102,17 +141,25 @@ class DatabaseController extends Controller
         ]);
 
         $host = $validated['host'] ?? 'localhost';
+        
+        // Get default port for database type
+        $port = match($type) {
+            'mysql' => 3306,
+            'postgresql' => 5432,
+            'mongodb' => 27017,
+            default => null,
+        };
 
         try {
-            // Check if database already exists in MySQL
-            if ($this->databaseService->databaseExists($validated['name'])) {
+            // Check if database already exists
+            if ($service->databaseExists($validated['name'])) {
                 return back()
                     ->withInput()
-                    ->withErrors(['name' => 'Database already exists in MySQL.']);
+                    ->withErrors(['name' => "Database already exists in {$type}."]);
             }
 
-            // Create database and user in MySQL
-            $this->databaseService->createDatabase(
+            // Create database and user
+            $service->createDatabase(
                 $validated['name'],
                 $validated['username'],
                 $validated['password'],
@@ -122,13 +169,15 @@ class DatabaseController extends Controller
             // Save to tracking table
             $database = Database::create([
                 'name' => $validated['name'],
+                'type' => $type,
                 'username' => $validated['username'],
                 'host' => $host,
+                'port' => $port,
                 'description' => $validated['description'] ?? null,
             ]);
 
             return redirect()
-                ->route('databases.index')
+                ->route("databases.{$type}.index")
                 ->with('success', 'Database and user created successfully!');
         } catch (Exception $e) {
             return back()
@@ -140,29 +189,35 @@ class DatabaseController extends Controller
     /**
      * Display the specified database.
      *
+     * @param Request $request
      * @param Database $database The database model
      * @return \Illuminate\View\View
      */
-    public function show(Database $database)
+    public function show(Request $request, Database $database)
     {
-        $database->exists_in_mysql = $this->databaseService->databaseExists($database->name);
-        if ($database->exists_in_mysql) {
-            $database->size_mb = $this->databaseService->getDatabaseSize($database->name);
-            $database->table_count = $this->databaseService->getTableCount($database->name);
+        $type = $database->type ?? 'mysql';
+        $service = $this->getService($type);
+        
+        $database->exists_in_db = $service->databaseExists($database->name);
+        if ($database->exists_in_db) {
+            $database->size_mb = $service->getDatabaseSize($database->name);
+            $database->table_count = $service->getTableCount($database->name);
         }
         
-        return view('databases.show', compact('database'));
+        return view('databases.show', compact('database', 'type'));
     }
 
     /**
      * Show the form for editing the specified database.
      *
+     * @param Request $request
      * @param Database $database The database model
      * @return \Illuminate\View\View
      */
-    public function edit(Database $database)
+    public function edit(Request $request, Database $database)
     {
-        return view('databases.edit', compact('database'));
+        $type = $database->type ?? 'mysql';
+        return view('databases.edit', compact('database', 'type'));
     }
 
     /**
@@ -174,6 +229,8 @@ class DatabaseController extends Controller
      */
     public function update(Request $request, Database $database)
     {
+        $type = $database->type ?? 'mysql';
+        
         $validated = $request->validate([
             'description' => ['nullable', 'string', 'max:500'],
         ]);
@@ -181,19 +238,21 @@ class DatabaseController extends Controller
         $database->update($validated);
 
         return redirect()
-            ->route('databases.show', $database)
+            ->route("databases.{$type}.show", $database)
             ->with('success', 'Database information updated successfully!');
     }
 
     /**
      * Show form to change user password.
      *
+     * @param Request $request
      * @param Database $database The database model
      * @return \Illuminate\View\View
      */
-    public function showChangePasswordForm(Database $database)
+    public function showChangePasswordForm(Request $request, Database $database)
     {
-        return view('databases.change-password', compact('database'));
+        $type = $database->type ?? 'mysql';
+        return view('databases.change-password', compact('database', 'type'));
     }
 
     /**
@@ -205,19 +264,22 @@ class DatabaseController extends Controller
      */
     public function changePassword(Request $request, Database $database)
     {
+        $type = $database->type ?? 'mysql';
+        $service = $this->getService($type);
+        
         $validated = $request->validate([
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         try {
-            $this->databaseService->changeUserPassword(
+            $service->changeUserPassword(
                 $database->username,
                 $validated['password'],
                 $database->host
             );
 
             return redirect()
-                ->route('databases.show', $database)
+                ->route("databases.{$type}.show", $database)
                 ->with('success', 'Password changed successfully!');
         } catch (Exception $e) {
             return back()
@@ -228,27 +290,27 @@ class DatabaseController extends Controller
     /**
      * Remove the specified database from storage.
      *
+     * @param Request $request
      * @param Database $database The database model
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function destroy(Database $database)
+    public function destroy(Request $request, Database $database)
     {
+        $type = $database->type ?? 'mysql';
+        $service = $this->getService($type);
+        
         try {
-            // Delete database from MySQL
-            if ($this->databaseService->databaseExists($database->name)) {
-                $this->databaseService->deleteDatabase($database->name);
-            }
-
-            // Delete user from MySQL
-            if ($this->databaseService->userExists($database->username, $database->host)) {
-                $this->databaseService->deleteUser($database->username, $database->host);
-            }
-
+            // Delete database
+            $service->deleteDatabase($database->name);
+            
+            // Delete user
+            $service->deleteUser($database->username, $database->host);
+            
             // Delete from tracking table
             $database->delete();
 
             return redirect()
-                ->route('databases.index')
+                ->route("databases.{$type}.index")
                 ->with('success', 'Database and user deleted successfully!');
         } catch (Exception $e) {
             return back()

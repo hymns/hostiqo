@@ -58,14 +58,57 @@ Route::middleware('auth')->group(function () {
     Route::post('webhooks/{webhook}/deploy', [DeploymentController::class, 'trigger'])
         ->name('deployments.trigger');
 
-    // Database Management
-    Route::get('databases-recheck-permissions', [DatabaseController::class, 'recheckPermissions'])
-        ->name('databases.recheck-permissions');
-    Route::resource('databases', DatabaseController::class);
-    Route::get('databases/{database}/change-password', [DatabaseController::class, 'showChangePasswordForm'])
-        ->name('databases.change-password');
-    Route::put('databases/{database}/change-password', [DatabaseController::class, 'changePassword'])
-        ->name('databases.update-password');
+    // Database Management - Type-specific routes
+    // MySQL databases
+    Route::prefix('databases/mysql')->name('databases.mysql.')->group(function () {
+        Route::get('recheck-permissions', [DatabaseController::class, 'recheckPermissions'])
+            ->name('recheck-permissions');
+        Route::get('/', [DatabaseController::class, 'index'])->name('index');
+        Route::get('create', [DatabaseController::class, 'create'])->name('create');
+        Route::post('/', [DatabaseController::class, 'store'])->name('store');
+        Route::get('{database}', [DatabaseController::class, 'show'])->name('show');
+        Route::get('{database}/edit', [DatabaseController::class, 'edit'])->name('edit');
+        Route::put('{database}', [DatabaseController::class, 'update'])->name('update');
+        Route::delete('{database}', [DatabaseController::class, 'destroy'])->name('destroy');
+        Route::get('{database}/change-password', [DatabaseController::class, 'showChangePasswordForm'])
+            ->name('change-password');
+        Route::put('{database}/change-password', [DatabaseController::class, 'changePassword'])
+            ->name('update-password');
+    });
+    
+    // PostgreSQL databases
+    Route::prefix('databases/postgresql')->name('databases.postgresql.')->group(function () {
+        Route::get('recheck-permissions', [DatabaseController::class, 'recheckPermissions'])
+            ->name('recheck-permissions');
+        Route::get('/', [DatabaseController::class, 'index'])->name('index');
+        Route::get('create', [DatabaseController::class, 'create'])->name('create');
+        Route::post('/', [DatabaseController::class, 'store'])->name('store');
+        Route::get('{database}', [DatabaseController::class, 'show'])->name('show');
+        Route::get('{database}/edit', [DatabaseController::class, 'edit'])->name('edit');
+        Route::put('{database}', [DatabaseController::class, 'update'])->name('update');
+        Route::delete('{database}', [DatabaseController::class, 'destroy'])->name('destroy');
+        Route::get('{database}/change-password', [DatabaseController::class, 'showChangePasswordForm'])
+            ->name('change-password');
+        Route::put('{database}/change-password', [DatabaseController::class, 'changePassword'])
+            ->name('update-password');
+    });
+    
+    // MongoDB databases
+    Route::prefix('databases/mongodb')->name('databases.mongodb.')->group(function () {
+        Route::get('recheck-permissions', [DatabaseController::class, 'recheckPermissions'])
+            ->name('recheck-permissions');
+        Route::get('/', [DatabaseController::class, 'index'])->name('index');
+        Route::get('create', [DatabaseController::class, 'create'])->name('create');
+        Route::post('/', [DatabaseController::class, 'store'])->name('store');
+        Route::get('{database}', [DatabaseController::class, 'show'])->name('show');
+        Route::get('{database}/edit', [DatabaseController::class, 'edit'])->name('edit');
+        Route::put('{database}', [DatabaseController::class, 'update'])->name('update');
+        Route::delete('{database}', [DatabaseController::class, 'destroy'])->name('destroy');
+        Route::get('{database}/change-password', [DatabaseController::class, 'showChangePasswordForm'])
+            ->name('change-password');
+        Route::put('{database}/change-password', [DatabaseController::class, 'changePassword'])
+            ->name('update-password');
+    });
 
     // Queue Management
     Route::get('queues', [QueueController::class, 'index'])->name('queues.index');
