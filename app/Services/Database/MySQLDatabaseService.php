@@ -208,6 +208,25 @@ class MySQLDatabaseService extends AbstractDatabaseService
     }
 
     /**
+     * Create a new database user.
+     *
+     * @param string $username Username
+     * @param string $password Password
+     * @param string $host Host from which the user can connect
+     * @return void
+     * @throws Exception If user creation fails
+     */
+    public function createUser(string $username, string $password, string $host = 'localhost'): void
+    {
+        try {
+            DB::statement("CREATE USER IF NOT EXISTS '{$username}'@'{$host}' IDENTIFIED BY '{$password}'");
+            DB::statement('FLUSH PRIVILEGES');
+        } catch (Exception $e) {
+            throw new Exception("Failed to create user: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Change password for a database user.
      *
      * @param string $username The username
