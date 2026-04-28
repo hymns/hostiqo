@@ -2,10 +2,10 @@
 
 @section('title', 'Create Database - Hostiqo')
 @section('page-title', 'Create New Database')
-@section('page-description', 'Create a new MySQL database and user')
+@section('page-description', 'Create a new ' . ucfirst($type ?? 'MySQL') . ' database and user')
 
 @section('page-actions')
-    <a href="{{ route('databases.index') }}" class="btn btn-outline-secondary">
+    <a href="{{ route('databases.' . ($type ?? 'mysql') . '.index') }}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i> Back to Databases
     </a>
 @endsection
@@ -26,7 +26,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('databases.store') }}" method="POST">
+            <form action="{{ route('databases.' . ($type ?? 'mysql') . '.store') }}" method="POST">
                 @csrf
 
                 <div class="card">
@@ -156,7 +156,7 @@
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-check-circle me-1"></i> Create Database
                     </button>
-                    <a href="{{ route('databases.index') }}" class="btn btn-outline-secondary">
+                    <a href="{{ route('databases.' . ($type ?? 'mysql') . '.index') }}" class="btn btn-outline-secondary">
                         Cancel
                     </a>
                 </div>

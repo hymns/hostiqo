@@ -5,7 +5,7 @@
 @section('page-description', 'Update password for ' . $database->username)
 
 @section('page-actions')
-    <a href="{{ route('databases.show', $database) }}" class="btn btn-outline-secondary">
+    <a href="{{ route('databases.' . ($type ?? 'mysql') . '.show', $database) }}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i> Back to Database
     </a>
 @endsection
@@ -20,7 +20,7 @@
                 <strong>Host:</strong> {{ $database->host }}
             </div>
 
-            <form action="{{ route('databases.update-password', $database) }}" method="POST">
+            <form action="{{ route('databases.' . ($type ?? 'mysql') . '.update-password', $database) }}" method="POST">
                 @csrf
                 @method('PUT')
 
@@ -75,7 +75,7 @@
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-key me-1"></i> Change Password
                     </button>
-                    <a href="{{ route('databases.show', $database) }}" class="btn btn-outline-secondary">
+                    <a href="{{ route('databases.' . ($type ?? 'mysql') . '.show', $database) }}" class="btn btn-outline-secondary">
                         Cancel
                     </a>
                 </div>

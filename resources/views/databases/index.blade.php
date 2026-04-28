@@ -1,23 +1,23 @@
 @extends('layouts.app')
 
-@section('title', 'Databases - Hostiqo')
-@section('page-title', 'Database Management')
-@section('page-description', 'Manage MySQL databases and users')
+@section('title', ucfirst($type ?? 'MySQL') . ' Databases - Hostiqo')
+@section('page-title', ucfirst($type ?? 'MySQL') . ' Database Management')
+@section('page-description', 'Manage ' . ucfirst($type ?? 'MySQL') . ' databases and users')
 
 @section('page-actions')
     <div class="btn-group">
         @if($permissions['can_create'])
-            <a href="{{ route('databases.create') }}" class="btn btn-primary">
+            <a href="{{ route('databases.' . ($type ?? 'mysql') . '.create') }}" class="btn btn-primary">
                 <i class="bi bi-plus-circle me-1"></i> Create Database
             </a>
         @else
-            <button class="btn btn-primary" disabled title="Insufficient MySQL privileges">
+            <button class="btn btn-primary" disabled title="Insufficient {{ ucfirst($type ?? 'MySQL') }} privileges">
                 <i class="bi bi-plus-circle me-1"></i> Create Database
             </button>
         @endif
 
         @if(!$permissions['can_create'])
-            <a href="{{ route('databases.recheck-permissions') }}" class="btn btn-outline-secondary" title="Recheck permissions">
+            <a href="{{ route('databases.' . ($type ?? 'mysql') . '.recheck-permissions') }}" class="btn btn-outline-secondary" title="Recheck permissions">
                 <i class="bi bi-arrow-clockwise"></i>
             </a>
         @endif
@@ -110,10 +110,10 @@
                                     <i class="bi bi-three-dots-vertical"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="{{ route('databases.show', $database) }}">
+                                    <li><a class="dropdown-item" href="{{ route('databases.' . ($type ?? 'mysql') . '.show', $database) }}">
                                         <i class="bi bi-search me-2"></i>View Details
                                     </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('databases.change-password', $database) }}">
+                                    <li><a class="dropdown-item" href="{{ route('databases.' . ($type ?? 'mysql') . '.change-password', $database) }}">
                                         <i class="bi bi-lock-fill me-2"></i>Change Password
                                     </a></li>
                                     <li><hr class="dropdown-divider"></li>
@@ -181,7 +181,7 @@
                 </div>
 
                 <!-- Hidden Forms -->
-                <form id="delete-form-{{ $database->id }}" action="{{ route('databases.destroy', $database) }}" method="POST" class="d-none">
+                <form id="delete-form-{{ $database->id }}" action="{{ route('databases.' . ($type ?? 'mysql') . '.destroy', $database) }}" method="POST" class="d-none">
                     @csrf
                     @method('DELETE')
                 </form>

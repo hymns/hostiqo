@@ -5,7 +5,7 @@
 @section('page-description', 'Update database information')
 
 @section('page-actions')
-    <a href="{{ route('databases.show', $database) }}" class="btn btn-outline-secondary">
+    <a href="{{ route('databases.' . ($type ?? 'mysql') . '.show', $database) }}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i> Back to Database
     </a>
 @endsection
@@ -17,10 +17,10 @@
                 <i class="bi bi-info-circle me-2"></i>
                 <strong>Note:</strong> You can only update the description here.
                 Database name and username cannot be changed. To change the password,
-                <a href="{{ route('databases.change-password', $database) }}" class="alert-link">click here</a>.
+                <a href="{{ route('databases.' . ($type ?? 'mysql') . '.change-password', $database) }}" class="alert-link">click here</a>.
             </div>
 
-            <form action="{{ route('databases.update', $database) }}" method="POST">
+            <form action="{{ route('databases.' . ($type ?? 'mysql') . '.update', $database) }}" method="POST">
                 @csrf
                 @method('PUT')
 
@@ -90,7 +90,7 @@
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-check-circle me-1"></i> Update Database
                     </button>
-                    <a href="{{ route('databases.show', $database) }}" class="btn btn-outline-secondary">
+                    <a href="{{ route('databases.' . ($type ?? 'mysql') . '.show', $database) }}" class="btn btn-outline-secondary">
                         Cancel
                     </a>
                 </div>
@@ -107,7 +107,7 @@
                     <p class="small">Only the description field can be updated. Database name, username, and host are permanent.</p>
 
                     <h6 class="mt-3">Change Password</h6>
-                    <p class="small">To update the database password, use the <a href="{{ route('databases.change-password', $database) }}">Change Password</a> page.</p>
+                    <p class="small">To update the database password, use the <a href="{{ route('databases.' . ($type ?? 'mysql') . '.change-password', $database) }}">Change Password</a> page.</p>
 
                     <h6 class="mt-3">Database Name/User</h6>
                     <p class="small">To change the database name or username, you must create a new database and migrate your data.</p>
@@ -121,7 +121,7 @@
                     </ul>
 
                     <h6 class="mt-3">Quick Actions</h6>
-                    <p class="small">Return to the <a href="{{ route('databases.show', $database) }}">database details</a> page for connection strings and other actions.</p>
+                    <p class="small">Return to the <a href="{{ route('databases.' . ($type ?? 'mysql') . '.show', $database) }}">database details</a> page for connection strings and other actions.</p>
                 </div>
             </div>
         </div>

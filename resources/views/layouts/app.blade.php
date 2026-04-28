@@ -53,15 +53,30 @@
                 <a class="nav-link {{ request()->routeIs('websites.*') ? 'active' : '' }}" href="{{ route('websites.index') }}">
                     <i class="bi bi-globe me-2"></i> Websites
                 </a>
-                <a class="nav-link {{ request()->routeIs('databases.*') ? 'active' : '' }}" href="{{ route('databases.index') }}">
-                    <i class="bi bi-database me-2"></i> Databases
-                </a>
                 <a class="nav-link {{ request()->routeIs('webhooks.*') ? 'active' : '' }}" href="{{ route('webhooks.index') }}">
                     <i class="bi bi-hdd-network me-2"></i> Webhooks
                 </a>
                 <a class="nav-link {{ request()->routeIs('deployments.*') ? 'active' : '' }}" href="{{ route('deployments.index') }}">
                     <i class="bi bi-cloud-haze2 me-2"></i> Deployments
                 </a>
+
+                <!-- Databases Section -->
+                <div class="nav-section-title">
+                    Databases
+                </div>
+                <a class="nav-link {{ request()->routeIs('databases.mysql.*') ? 'active' : '' }}" href="{{ route('databases.mysql.index') }}">
+                    <i class="bi bi-database me-2"></i> MySQL
+                </a>
+                @if(config('hostiqo.databases.postgresql.installed', false))
+                <a class="nav-link {{ request()->routeIs('databases.postgresql.*') ? 'active' : '' }}" href="{{ route('databases.postgresql.index') }}">
+                    <i class="bi bi-database me-2"></i> PostgreSQL
+                </a>
+                @endif
+                @if(config('hostiqo.databases.mongodb.installed', false))
+                <a class="nav-link {{ request()->routeIs('databases.mongodb.*') ? 'active' : '' }}" href="{{ route('databases.mongodb.index') }}">
+                    <i class="bi bi-database me-2"></i> MongoDB
+                </a>
+                @endif
 
                 <!-- Server Tools Section -->
                 <div class="nav-section-title">

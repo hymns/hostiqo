@@ -5,7 +5,7 @@
 @section('page-description', 'Database details and information')
 
 @section('page-actions')
-    <a href="{{ route('databases.index') }}" class="btn btn-outline-secondary">
+    <a href="{{ route('databases.' . ($type ?? 'mysql') . '.index') }}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i> Back to List
     </a>
 @endsection
@@ -101,17 +101,17 @@
                     <!-- Compact Icon Grid -->
                     <div class="d-flex gap-2 flex-wrap justify-content-center mb-3">
                         <!-- Change Password Button -->
-                        <a href="{{ route('databases.change-password', $database) }}" class="action-btn warning" title="Change Password">
+                        <a href="{{ route('databases.' . ($type ?? 'mysql') . '.change-password', $database) }}" class="action-btn warning" title="Change Password">
                             <i class="bi bi-lock-fill"></i>
                         </a>
 
                         <!-- Edit Button -->
-                        <a href="{{ route('databases.edit', $database) }}" class="action-btn primary" title="Edit Description">
+                        <a href="{{ route('databases.' . ($type ?? 'mysql') . '.edit', $database) }}" class="action-btn primary" title="Edit Description">
                             <i class="bi bi-pencil"></i>
                         </a>
 
                         <!-- Delete Button -->
-                        <form action="{{ route('databases.destroy', $database) }}" method="POST" style="display: inline;" onsubmit="return confirmDelete('Are you sure you want to delete this database? This action cannot be undone!')">
+                        <form action="{{ route('databases.' . ($type ?? 'mysql') . '.destroy', $database) }}" method="POST" style="display: inline;" onsubmit="return confirmDelete('Are you sure you want to delete this database? This action cannot be undone!')">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="action-btn danger" title="Delete Database">
