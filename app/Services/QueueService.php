@@ -54,7 +54,7 @@ class QueueService
                     $payload = json_decode($jobData, true);
                     
                     $jobs[] = [
-                        'id' => md5($jobData), // Redis doesn't have numeric ID
+                        'id' => hash('sha256', $jobData), // Redis doesn't have numeric ID
                         'queue' => $queueName,
                         'payload' => $payload,
                         'attempts' => $payload['attempts'] ?? 0,
@@ -418,7 +418,7 @@ class QueueService
             $driver = config('queue.default');
             
             if ($driver === 'redis') {
-                // For Redis, find job by matching MD5 hash
+                // For Redis, find job by matching SHA-256 hash
                 $connection = config('queue.connections.redis.connection', 'default');
                 $redis = Redis::connection($connection);
                 $queueNames = $this->getRedisQueueNames();
@@ -428,7 +428,7 @@ class QueueService
                     $jobsInQueue = $redis->lrange($queueKey, 0, -1);
                     
                     foreach ($jobsInQueue as $jobData) {
-                        if (md5($jobData) === $jobId) {
+                        if (hash('sha256', $jobData) === $jobId) {
                             $payload = json_decode($jobData, true);
                             
                             return [
