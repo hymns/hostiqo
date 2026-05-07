@@ -2560,9 +2560,11 @@ setup_application() {
         
         # Create database and user
         print_info "Creating database and user..."
+        # Escape single quotes for MySQL string literals
+        DB_PASS_SQL=$(printf '%s' "$DB_PASS" | sed "s/'/\\\\'/g")
         mysql -u root -p"$MYSQL_ROOT_PASS" << MYSQL_SCRIPT > /dev/null 2>&1
 CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';
+CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS_SQL';
 GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost';
 GRANT CREATE, DROP, ALTER ON *.* TO '$DB_USER'@'localhost';
 GRANT CREATE USER ON *.* TO '$DB_USER'@'localhost';
@@ -2574,10 +2576,12 @@ MYSQL_SCRIPT
         if [ $? -eq 0 ]; then
             print_success "Database '$DB_NAME' and user '$DB_USER' created"
             
-            # Update .env
-            sed -i "s/DB_DATABASE=.*/DB_DATABASE=$DB_NAME/" "$APP_DIR/.env"
-            sed -i "s/DB_USERNAME=.*/DB_USERNAME=$DB_USER/" "$APP_DIR/.env"
-            sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$DB_PASS/" "$APP_DIR/.env"
+            # Update .env — wrap password in double quotes to handle special chars (#, !)
+            # Escape chars that break sed's | delimiter and replacement (\, &, |)
+            DB_PASS_SAFE=$(printf '%s' "$DB_PASS" | sed 's/\\/\\\\/g; s/|/\\|/g; s/&/\\&/g')
+            sed -i "s|DB_DATABASE=.*|DB_DATABASE=$DB_NAME|" "$APP_DIR/.env"
+            sed -i "s|DB_USERNAME=.*|DB_USERNAME=$DB_USER|" "$APP_DIR/.env"
+            sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=\"${DB_PASS_SAFE}\"|" "$APP_DIR/.env"
             print_success ".env updated with database credentials"
         else
             print_error "Failed to create database"
