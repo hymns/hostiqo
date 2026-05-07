@@ -62,7 +62,7 @@ ensure_jail() {
     command -v fail2ban-client >/dev/null 2>&1 || return 0
 
     # Idempotent: do nothing if file already exists
-    [ -f "$file" ] && return 0
+    [[ -f "$file" ]] && return 0
 
     # Create jail config (fail2ban will validate on restart)
     cat > "$file" <<EOF
@@ -113,10 +113,10 @@ preflight_check() {
     # 2. Check disk space (minimum 5GB free)
     print_info "Checking disk space..."
     DISK_FREE=$(df -BG / 2>/dev/null | awk 'NR==2 {gsub(/G/,"",$4); print $4}')
-    if [ -z "$DISK_FREE" ]; then
+    if [[ -z "$DISK_FREE" ]]; then
         DISK_FREE=$(df -k / | awk 'NR==2 {print int($4/1024/1024)}')
     fi
-    if [ "$DISK_FREE" -ge 5 ] 2>/dev/null; then
+    if [[ "$DISK_FREE" -ge 5 ]] 2>/dev/null; then
         print_success "Disk space OK (${DISK_FREE}GB free)"
     else
         print_error "Insufficient disk space. Need at least 5GB free (have ${DISK_FREE}GB)."
@@ -126,12 +126,12 @@ preflight_check() {
     # 3. Check RAM (minimum 1GB recommended)
     print_info "Checking memory..."
     TOTAL_RAM_MB=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')
-    if [ -z "$TOTAL_RAM_MB" ]; then
+    if [[ -z "$TOTAL_RAM_MB" ]]; then
         TOTAL_RAM_MB=$(cat /proc/meminfo | grep MemTotal | awk '{print int($2/1024)}')
     fi
-    if [ "$TOTAL_RAM_MB" -ge 1024 ] 2>/dev/null; then
+    if [[ "$TOTAL_RAM_MB" -ge 1024 ]] 2>/dev/null; then
         print_success "Memory OK (${TOTAL_RAM_MB}MB total)"
-    elif [ "$TOTAL_RAM_MB" -ge 512 ] 2>/dev/null; then
+    elif [[ "$TOTAL_RAM_MB" -ge 512 ]] 2>/dev/null; then
         print_warning "Low memory (${TOTAL_RAM_MB}MB). Recommended: 1GB+. Installation may be slow."
     else
         print_error "Insufficient memory (${TOTAL_RAM_MB}MB). Minimum: 512MB."
@@ -140,9 +140,9 @@ preflight_check() {
     
     # 4. Check if running in container (warning only)
     print_info "Checking environment..."
-    if [ -f /.dockerenv ] || grep -q docker /proc/1/cgroup 2>/dev/null; then
+    if [[ -f /.dockerenv ]] || grep -q docker /proc/1/cgroup 2>/dev/null; then
         print_warning "Running in Docker container. Some features may not work (systemd, fail2ban)."
-    elif [ -f /run/systemd/container ] || systemd-detect-virt --container > /dev/null 2>&1; then
+    elif [[ -f /run/systemd/container ]] || systemd-detect-virt --container > /dev/null 2>&1; then
         CONTAINER_TYPE=$(systemd-detect-virt --container 2>/dev/null || cat /run/systemd/container 2>/dev/null || echo "unknown")
         print_warning "Running in container ($CONTAINER_TYPE). Some features may be limited."
     else
@@ -169,7 +169,7 @@ preflight_check() {
         fi
     done
     
-    if [ -n "$MISSING_TOOLS" ]; then
+    if [[ -n "$MISSING_TOOLS" ]]; then
         print_info "Installing missing tools:$MISSING_TOOLS"
         if command -v apt-get &> /dev/null; then
             apt-get update -y > /dev/null 2>&1
@@ -226,7 +226,7 @@ preflight_check() {
         netstat -tlnp 2>/dev/null | grep -q ':443 ' && PORTS_IN_USE="$PORTS_IN_USE 443"
     fi
     
-    if [ -n "$PORTS_IN_USE" ]; then
+    if [[ -n "$PORTS_IN_USE" ]]; then
         print_warning "Ports in use:$PORTS_IN_USE. Existing web server will be replaced."
     else
         print_success "Ports 80/443 available"
@@ -235,7 +235,7 @@ preflight_check() {
     echo ""
     
     # Final verdict
-    if [ $errors -gt 0 ]; then
+    if [[ $errors -gt 0 ]]; then
         print_error "Pre-flight checks failed with $errors error(s). Please fix the issues above."
         exit 1
     fi
@@ -250,7 +250,7 @@ preflight_check() {
 detect_os() {
     print_info "Detecting operating system..."
 
-    if [ -f /etc/os-release ]; then
+    if [[ -f /etc/os-release ]]; then
         . /etc/os-release
         OS_ID="$ID"
         OS_VERSION="$VERSION_ID"
@@ -293,7 +293,7 @@ detect_os() {
 install_prerequisites() {
     print_header "Phase 1: Installing System Prerequisites"
     
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         install_prerequisites_debian
     else
         install_prerequisites_rhel
@@ -304,7 +304,7 @@ install_prerequisites() {
     configure_security
     
     # Set ownership of app directory (now that web user exists)
-    if [ -d "$APP_DIR" ]; then
+    if [[ -d "$APP_DIR" ]]; then
         print_info "Setting ownership of $APP_DIR to $WEB_USER..."
         chown -R $WEB_USER:$WEB_USER "$APP_DIR"
         print_success "Ownership set to $WEB_USER"
@@ -353,7 +353,7 @@ install_prerequisites_debian() {
     mkdir -p /etc/nginx/snippets
     
     # Create fastcgi.conf if not exists
-    if [ ! -f /etc/nginx/fastcgi.conf ]; then
+    if [[ ! -f /etc/nginx/fastcgi.conf ]]; then
         cat > /etc/nginx/fastcgi.conf << 'FASTCGICONFEOF'
 fastcgi_param  SCRIPT_FILENAME    $document_root$fastcgi_script_name;
 fastcgi_param  QUERY_STRING       $query_string;
@@ -411,14 +411,14 @@ FASTCGIEOF
     # worker_connections based on RAM (each connection ~1KB)
     # Formula: (RAM_MB * 256) / workers, min 512, max 4096
     WORKER_CONNECTIONS=$((TOTAL_RAM_MB * 256 / NGINX_WORKERS))
-    [ $WORKER_CONNECTIONS -lt 512 ] && WORKER_CONNECTIONS=512
-    [ $WORKER_CONNECTIONS -gt 4096 ] && WORKER_CONNECTIONS=4096
+    [[ $WORKER_CONNECTIONS -lt 512 ]] && WORKER_CONNECTIONS=512
+    [[ $WORKER_CONNECTIONS -gt 4096 ]] && WORKER_CONNECTIONS=4096
     
     # Client body buffer based on RAM
-    if [ $TOTAL_RAM_MB -ge 4096 ]; then
+    if [[ $TOTAL_RAM_MB -ge 4096 ]]; then
         CLIENT_BODY_BUFFER="128k"
         CLIENT_MAX_BODY="512M"
-    elif [ $TOTAL_RAM_MB -ge 2048 ]; then
+    elif [[ $TOTAL_RAM_MB -ge 2048 ]]; then
         CLIENT_BODY_BUFFER="64k"
         CLIENT_MAX_BODY="256M"
     else
@@ -516,7 +516,7 @@ NGINXCONF
     fi
     
     # Create logrotate config for nginx (nginx.org package may not include it)
-    if [ ! -f /etc/logrotate.d/nginx ]; then
+    if [[ ! -f /etc/logrotate.d/nginx ]]; then
         print_info "Creating logrotate config for Nginx..."
         cat > /etc/logrotate.d/nginx << 'LOGROTATEEOF'
 /var/log/nginx/*.log {
@@ -529,7 +529,7 @@ NGINXCONF
     create 0640 www-data adm
     sharedscripts
     postrotate
-        [ -f /var/run/nginx.pid ] && kill -USR1 $(cat /var/run/nginx.pid)
+        [[ -f /var/run/nginx.pid ]] && kill -USR1 $(cat /var/run/nginx.pid)
     endscript
 }
 LOGROTATEEOF
@@ -613,7 +613,7 @@ RATELIMITEOF
         3>&1 1>&2 2>&3)
     
     # Check if user cancelled
-    if [ $? -ne 0 ] || [ -z "$PHP_SELECTIONS" ]; then
+    if [[ $? -ne 0 ]] || [[ -z "$PHP_SELECTIONS" ]]; then
         print_warning "No PHP version selected, defaulting to PHP 8.2 and 8.3"
         PHP_SELECTIONS='"8.2" "8.3"'
     fi
@@ -663,35 +663,35 @@ RATELIMITEOF
     
     # OPcache memory (12.5% of RAM, min 128M, max 512M)
     OPCACHE_MEM=$((TOTAL_RAM_MB / 8))
-    [ $OPCACHE_MEM -lt 128 ] && OPCACHE_MEM=128
-    [ $OPCACHE_MEM -gt 512 ] && OPCACHE_MEM=512
+    [[ $OPCACHE_MEM -lt 128 ]] && OPCACHE_MEM=128
+    [[ $OPCACHE_MEM -gt 512 ]] && OPCACHE_MEM=512
     
     # JIT buffer (25% of OPcache, min 32M)
     JIT_BUFFER=$((OPCACHE_MEM / 4))
-    [ $JIT_BUFFER -lt 32 ] && JIT_BUFFER=32
+    [[ $JIT_BUFFER -lt 32 ]] && JIT_BUFFER=32
     
     # Interned strings buffer
-    if [ $TOTAL_RAM_MB -ge 8192 ]; then
+    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
         INTERNED_STRINGS=64
-    elif [ $TOTAL_RAM_MB -ge 4096 ]; then
+    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
         INTERNED_STRINGS=32
     else
         INTERNED_STRINGS=16
     fi
     
     # Memory limit per script
-    if [ $TOTAL_RAM_MB -ge 8192 ]; then
+    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
         PHP_MEMORY_LIMIT=512
-    elif [ $TOTAL_RAM_MB -ge 4096 ]; then
+    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
         PHP_MEMORY_LIMIT=256
-    elif [ $TOTAL_RAM_MB -ge 2048 ]; then
+    elif [[ $TOTAL_RAM_MB -ge 2048 ]]; then
         PHP_MEMORY_LIMIT=192
     else
         PHP_MEMORY_LIMIT=128
     fi
     
     # Execution time
-    if [ $TOTAL_RAM_MB -ge 4096 ]; then
+    if [[ $TOTAL_RAM_MB -ge 4096 ]]; then
         MAX_EXECUTION_TIME=300
         MAX_INPUT_TIME=300
     else
@@ -700,13 +700,13 @@ RATELIMITEOF
     fi
     
     # Upload/POST size
-    if [ $TOTAL_RAM_MB -ge 8192 ]; then
+    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
         UPLOAD_MAX=512
         POST_MAX=512
-    elif [ $TOTAL_RAM_MB -ge 4096 ]; then
+    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
         UPLOAD_MAX=256
         POST_MAX=256
-    elif [ $TOTAL_RAM_MB -ge 2048 ]; then
+    elif [[ $TOTAL_RAM_MB -ge 2048 ]]; then
         UPLOAD_MAX=128
         POST_MAX=128
     else
@@ -715,16 +715,16 @@ RATELIMITEOF
     fi
     
     # Max input vars
-    if [ $TOTAL_RAM_MB -ge 4096 ]; then
+    if [[ $TOTAL_RAM_MB -ge 4096 ]]; then
         MAX_INPUT_VARS=5000
     else
         MAX_INPUT_VARS=3000
     fi
     
     # Realpath cache
-    if [ $TOTAL_RAM_MB -ge 8192 ]; then
+    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
         REALPATH_CACHE_SIZE=16M
-    elif [ $TOTAL_RAM_MB -ge 4096 ]; then
+    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
         REALPATH_CACHE_SIZE=8M
     else
         REALPATH_CACHE_SIZE=4M
@@ -733,17 +733,17 @@ RATELIMITEOF
     # PHP-FPM pool settings (for default www pool)
     # max_children = Available RAM / ~50MB per process (conservative)
     PHP_FPM_MAX_CHILDREN=$((TOTAL_RAM_MB / 100))
-    [ $PHP_FPM_MAX_CHILDREN -lt 5 ] && PHP_FPM_MAX_CHILDREN=5
-    [ $PHP_FPM_MAX_CHILDREN -gt 100 ] && PHP_FPM_MAX_CHILDREN=100
+    [[ $PHP_FPM_MAX_CHILDREN -lt 5 ]] && PHP_FPM_MAX_CHILDREN=5
+    [[ $PHP_FPM_MAX_CHILDREN -gt 100 ]] && PHP_FPM_MAX_CHILDREN=100
     
     PHP_FPM_START_SERVERS=$((PHP_FPM_MAX_CHILDREN / 4))
-    [ $PHP_FPM_START_SERVERS -lt 2 ] && PHP_FPM_START_SERVERS=2
+    [[ $PHP_FPM_START_SERVERS -lt 2 ]] && PHP_FPM_START_SERVERS=2
     
     PHP_FPM_MIN_SPARE=$((PHP_FPM_MAX_CHILDREN / 10))
-    [ $PHP_FPM_MIN_SPARE -lt 1 ] && PHP_FPM_MIN_SPARE=1
+    [[ $PHP_FPM_MIN_SPARE -lt 1 ]] && PHP_FPM_MIN_SPARE=1
     
     PHP_FPM_MAX_SPARE=$((PHP_FPM_MAX_CHILDREN / 4))
-    [ $PHP_FPM_MAX_SPARE -lt 3 ] && PHP_FPM_MAX_SPARE=3
+    [[ $PHP_FPM_MAX_SPARE -lt 3 ]] && PHP_FPM_MAX_SPARE=3
     
     print_info "PHP tuning: ${PHP_MEMORY_LIMIT}M memory, ${UPLOAD_MAX}M upload, ${PHP_FPM_MAX_CHILDREN} max workers"
     
@@ -752,7 +752,7 @@ RATELIMITEOF
     chown www-data:www-data /var/log/php
     
     for version in $PHP_VERSIONS; do
-        if [ -d "/etc/php/$version" ]; then
+        if [[ -d "/etc/php/$version" ]]; then
             # ==============================================
             # OPcache + JIT Configuration
             # ==============================================
@@ -904,7 +904,7 @@ FPMPOOL
         3>&1 1>&2 2>&3)
     
     # Default to 20 if cancelled
-    if [ $? -ne 0 ] || [ -z "$NODE_VERSION" ]; then
+    if [[ $? -ne 0 ]] || [[ -z "$NODE_VERSION" ]]; then
         print_warning "No Node.js version selected, defaulting to Node.js 20"
         NODE_VERSION="20"
     fi
@@ -917,7 +917,7 @@ FPMPOOL
     print_success "Node.js $(node -v) installed"
     
     # Update config.json with Node.js version
-    if [ -f /etc/hostiqo/config.json ]; then
+    if [[ -f /etc/hostiqo/config.json ]]; then
         # Add node_version to existing config
         TMP_CONFIG=$(mktemp)
         cat /etc/hostiqo/config.json | sed 's/}$/,"node_version":"'"${NODE_VERSION}"'"}/' > "$TMP_CONFIG"
@@ -977,7 +977,7 @@ FPMPOOL
     delaycompress
     sharedscripts
     postrotate
-        [ -f /var/run/nginx.pid ] && kill -USR1 $(cat /var/run/nginx.pid)
+        [[ -f /var/run/nginx.pid ]] && kill -USR1 $(cat /var/run/nginx.pid)
     endscript
 }
 
@@ -1100,14 +1100,14 @@ NGINXREPO
     
     # worker_connections based on RAM
     WORKER_CONNECTIONS=$((TOTAL_RAM_MB * 256 / NGINX_WORKERS))
-    [ $WORKER_CONNECTIONS -lt 512 ] && WORKER_CONNECTIONS=512
-    [ $WORKER_CONNECTIONS -gt 4096 ] && WORKER_CONNECTIONS=4096
+    [[ $WORKER_CONNECTIONS -lt 512 ]] && WORKER_CONNECTIONS=512
+    [[ $WORKER_CONNECTIONS -gt 4096 ]] && WORKER_CONNECTIONS=4096
     
     # Client body buffer based on RAM
-    if [ $TOTAL_RAM_MB -ge 4096 ]; then
+    if [[ $TOTAL_RAM_MB -ge 4096 ]]; then
         CLIENT_BODY_BUFFER="128k"
         CLIENT_MAX_BODY="512M"
-    elif [ $TOTAL_RAM_MB -ge 2048 ]; then
+    elif [[ $TOTAL_RAM_MB -ge 2048 ]]; then
         CLIENT_BODY_BUFFER="64k"
         CLIENT_MAX_BODY="256M"
     else
@@ -1205,7 +1205,7 @@ NGINXCONF
     fi
     
     # Create logrotate config for nginx (nginx.org package may not include it)
-    if [ ! -f /etc/logrotate.d/nginx ]; then
+    if [[ ! -f /etc/logrotate.d/nginx ]]; then
         print_info "Creating logrotate config for Nginx..."
         cat > /etc/logrotate.d/nginx << 'LOGROTATEEOF'
 /var/log/nginx/*.log {
@@ -1218,7 +1218,7 @@ NGINXCONF
     create 0640 nginx adm
     sharedscripts
     postrotate
-        [ -f /var/run/nginx.pid ] && kill -USR1 $(cat /var/run/nginx.pid)
+        [[ -f /var/run/nginx.pid ]] && kill -USR1 $(cat /var/run/nginx.pid)
     endscript
 }
 LOGROTATEEOF
@@ -1280,7 +1280,7 @@ RATELIMITEOF
 
     # Add Remi repository for PHP
     print_info "Adding Remi repository for PHP..."
-    if [ "$OS_ID" = "centos" ] && [ "${OS_VERSION%%.*}" = "7" ]; then
+    if [[ "$OS_ID" = "centos" ]] && [[ "${OS_VERSION%%.*}" = "7" ]]; then
         $PKG_MANAGER install -y https://rpms.remirepo.net/enterprise/remi-release-7.rpm > /dev/null 2>&1
     else
         # Rocky 8/9, Alma 8/9, RHEL 8/9, CentOS Stream
@@ -1312,7 +1312,7 @@ RATELIMITEOF
         3>&1 1>&2 2>&3)
     
     # Check if user cancelled
-    if [ $? -ne 0 ] || [ -z "$PHP_SELECTIONS" ]; then
+    if [[ $? -ne 0 ]] || [[ -z "$PHP_SELECTIONS" ]]; then
         print_warning "No PHP version selected, defaulting to PHP 8.2 and 8.3"
         PHP_SELECTIONS='"82" "83"'
     fi
@@ -1344,7 +1344,7 @@ RATELIMITEOF
 
         # Configure PHP-FPM to use nginx user for socket
         FPM_CONF="/etc/opt/remi/php${version}/php-fpm.d/www.conf"
-        if [ -f "$FPM_CONF" ]; then
+        if [[ -f "$FPM_CONF" ]]; then
             sed -i 's/^user = .*/user = nginx/' "$FPM_CONF"
             sed -i 's/^group = .*/group = nginx/' "$FPM_CONF"
             sed -i 's/^;listen.owner = .*/listen.owner = nginx/' "$FPM_CONF"
@@ -1370,7 +1370,7 @@ RATELIMITEOF
 
     # Create symlink for default PHP (use highest installed version)
     HIGHEST_PHP=$(echo "$PHP_VERSIONS_NODOT" | tr ' ' '\n' | sort -rn | head -1)
-    if [ ! -f /usr/bin/php ] && [ -n "$HIGHEST_PHP" ]; then
+    if [[ ! -f /usr/bin/php ]] && [[ -n "$HIGHEST_PHP" ]]; then
         ln -sf /opt/remi/php${HIGHEST_PHP}/root/usr/bin/php /usr/bin/php
     fi
 
@@ -1378,15 +1378,15 @@ RATELIMITEOF
     print_info "Configuring PHP..."
     TOTAL_RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
     OPCACHE_MEM=$((TOTAL_RAM_MB / 8))
-    [ $OPCACHE_MEM -lt 128 ] && OPCACHE_MEM=128
-    [ $OPCACHE_MEM -gt 512 ] && OPCACHE_MEM=512
+    [[ $OPCACHE_MEM -lt 128 ]] && OPCACHE_MEM=128
+    [[ $OPCACHE_MEM -gt 512 ]] && OPCACHE_MEM=512
     JIT_BUFFER=$((OPCACHE_MEM / 4))
-    [ $JIT_BUFFER -lt 32 ] && JIT_BUFFER=32
+    [[ $JIT_BUFFER -lt 32 ]] && JIT_BUFFER=32
     
     for version in $PHP_VERSIONS_NODOT; do
         version_dot="${version:0:1}.${version:1}"
         REMI_PHP_DIR="/etc/opt/remi/php${version}"
-        if [ -d "$REMI_PHP_DIR" ]; then
+        if [[ -d "$REMI_PHP_DIR" ]]; then
             cat > "$REMI_PHP_DIR/php.d/99-opcache-hostiqo.ini" << OPCACHE
 [opcache]
 ; Hostiqo PHP OPcache + JIT Tuning
@@ -1433,7 +1433,7 @@ OPCACHE
         3>&1 1>&2 2>&3)
     
     # Default to 20 if cancelled
-    if [ $? -ne 0 ] || [ -z "$NODE_VERSION" ]; then
+    if [[ $? -ne 0 ]] || [[ -z "$NODE_VERSION" ]]; then
         print_warning "No Node.js version selected, defaulting to Node.js 20"
         NODE_VERSION="20"
     fi
@@ -1446,7 +1446,7 @@ OPCACHE
     print_success "Node.js $(node -v) installed"
     
     # Update config.json with Node.js version
-    if [ -f /etc/hostiqo/config.json ]; then
+    if [[ -f /etc/hostiqo/config.json ]]; then
         # Add node_version to existing config
         TMP_CONFIG=$(mktemp)
         cat /etc/hostiqo/config.json | sed 's/}$/,"node_version":"'"${NODE_VERSION}"'"}/' > "$TMP_CONFIG"
@@ -1518,7 +1518,7 @@ OPCACHE
     delaycompress
     sharedscripts
     postrotate
-        [ -f /var/run/nginx.pid ] && kill -USR1 $(cat /var/run/nginx.pid)
+        [[ -f /var/run/nginx.pid ]] && kill -USR1 $(cat /var/run/nginx.pid)
     endscript
 }
 
@@ -1605,7 +1605,7 @@ install_common_tools() {
     php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
     ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
     
-    if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+    if [[ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]]; then
         print_warning "Composer installer checksum mismatch, trying direct download..."
         curl -sS https://getcomposer.org/download/latest-stable/composer.phar -o composer.phar
     else
@@ -1613,7 +1613,7 @@ install_common_tools() {
         rm -f composer-setup.php
     fi
     
-    if [ -f composer.phar ]; then
+    if [[ -f composer.phar ]]; then
         mv composer.phar /usr/local/bin/composer
         chmod +x /usr/local/bin/composer
         # Create symlink in /usr/bin for sudo access
@@ -1633,7 +1633,7 @@ install_common_tools() {
     print_info "Installing WP-CLI..."
     if ! command -v wp &> /dev/null; then
         curl -sS https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar 2>/dev/null
-        if [ -f /tmp/wp-cli.phar ]; then
+        if [[ -f /tmp/wp-cli.phar ]]; then
             chmod +x /tmp/wp-cli.phar
             mv /tmp/wp-cli.phar /usr/local/bin/wp
             print_success "WP-CLI installed"
@@ -1671,7 +1671,7 @@ SYSCTLEOF
     
     # Configure fail2ban
     print_info "Configuring fail2ban defaults..."
-    if [ -f /etc/fail2ban/jail.conf ]; then
+    if [[ -f /etc/fail2ban/jail.conf ]]; then
         # Create jail.local with DEFAULT settings only
         cat > /etc/fail2ban/jail.local << 'JAILEOF'
 [DEFAULT]
@@ -1789,7 +1789,7 @@ findtime = 1d"
     print_success "fail2ban configured and enabled"
 
     # Configure firewall based on OS
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         configure_ufw
     else
         configure_firewalld
@@ -1841,7 +1841,7 @@ secure_database() {
     print_info "Securing database installation..."
     MYSQL_ROOT_PASS=$(openssl rand -base64 32)
 
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         mysql --user=root <<_EOF_ > /dev/null 2>&1 || true
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_ROOT_PASS}';
 DELETE FROM mysql.user WHERE User='';
@@ -1897,16 +1897,16 @@ tune_database() {
     
     # Calculate InnoDB buffer pool size (25% of RAM, min 128M, max 70% RAM)
     BUFFER_POOL_MB=$((TOTAL_RAM_MB * 25 / 100))
-    [ $BUFFER_POOL_MB -lt 128 ] && BUFFER_POOL_MB=128
+    [[ $BUFFER_POOL_MB -lt 128 ]] && BUFFER_POOL_MB=128
     MAX_BUFFER_MB=$((TOTAL_RAM_MB * 80 / 100))
-    [ $BUFFER_POOL_MB -gt $MAX_BUFFER_MB ] && BUFFER_POOL_MB=$MAX_BUFFER_MB
+    [[ $BUFFER_POOL_MB -gt $MAX_BUFFER_MB ]] && BUFFER_POOL_MB=$MAX_BUFFER_MB
     
     # Buffer pool instances (power of 2: 1, 2, 4, 8 based on buffer pool size)
-    if [ $BUFFER_POOL_MB -ge 8192 ]; then
+    if [[ $BUFFER_POOL_MB -ge 8192 ]]; then
         BUFFER_POOL_INSTANCES=8
-    elif [ $BUFFER_POOL_MB -ge 4096 ]; then
+    elif [[ $BUFFER_POOL_MB -ge 4096 ]]; then
         BUFFER_POOL_INSTANCES=4
-    elif [ $BUFFER_POOL_MB -ge 2048 ]; then
+    elif [[ $BUFFER_POOL_MB -ge 2048 ]]; then
         BUFFER_POOL_INSTANCES=2
     else
         BUFFER_POOL_INSTANCES=1
@@ -1914,13 +1914,13 @@ tune_database() {
     
     # InnoDB log file size (25% of buffer pool, min 48M, max 2G)
     LOG_FILE_MB=$((BUFFER_POOL_MB * 25 / 100))
-    [ $LOG_FILE_MB -lt 48 ] && LOG_FILE_MB=48
-    [ $LOG_FILE_MB -gt 2048 ] && LOG_FILE_MB=2048
+    [[ $LOG_FILE_MB -lt 48 ]] && LOG_FILE_MB=48
+    [[ $LOG_FILE_MB -gt 2048 ]] && LOG_FILE_MB=2048
     
     # InnoDB log buffer size (based on RAM)
-    if [ $TOTAL_RAM_MB -ge 4096 ]; then
+    if [[ $TOTAL_RAM_MB -ge 4096 ]]; then
         LOG_BUFFER_MB=64
-    elif [ $TOTAL_RAM_MB -ge 2048 ]; then
+    elif [[ $TOTAL_RAM_MB -ge 2048 ]]; then
         LOG_BUFFER_MB=32
     else
         LOG_BUFFER_MB=16
@@ -1928,31 +1928,31 @@ tune_database() {
     
     # Temp table size (2% of RAM, min 32M, max 256M)
     TMP_TABLE_MB=$((TOTAL_RAM_MB * 2 / 100))
-    [ $TMP_TABLE_MB -lt 32 ] && TMP_TABLE_MB=32
-    [ $TMP_TABLE_MB -gt 256 ] && TMP_TABLE_MB=256
+    [[ $TMP_TABLE_MB -lt 32 ]] && TMP_TABLE_MB=32
+    [[ $TMP_TABLE_MB -gt 256 ]] && TMP_TABLE_MB=256
     
     # Max connections (conservative: 50 + RAM_GB * 10, cap at 300)
     # Higher values can spike RAM due to per-connection buffers
     MAX_CONNECTIONS=$((50 + TOTAL_RAM_GB * 10))
-    [ $MAX_CONNECTIONS -lt 50 ] && MAX_CONNECTIONS=50
-    [ $MAX_CONNECTIONS -gt 300 ] && MAX_CONNECTIONS=300
+    [[ $MAX_CONNECTIONS -lt 50 ]] && MAX_CONNECTIONS=50
+    [[ $MAX_CONNECTIONS -gt 300 ]] && MAX_CONNECTIONS=300
     
     # Thread cache size (CPU cores * 2, min 8, max 64)
     THREAD_CACHE=$((CPU_CORES * 2))
-    [ $THREAD_CACHE -lt 8 ] && THREAD_CACHE=8
-    [ $THREAD_CACHE -gt 64 ] && THREAD_CACHE=64
+    [[ $THREAD_CACHE -lt 8 ]] && THREAD_CACHE=8
+    [[ $THREAD_CACHE -gt 64 ]] && THREAD_CACHE=64
     
     # IO threads (based on CPU cores, min 2, max 8)
     IO_THREADS=$CPU_CORES
-    [ $IO_THREADS -lt 2 ] && IO_THREADS=2
-    [ $IO_THREADS -gt 8 ] && IO_THREADS=8
+    [[ $IO_THREADS -lt 2 ]] && IO_THREADS=2
+    [[ $IO_THREADS -gt 8 ]] && IO_THREADS=8
     
     # Detect if SSD or HDD for IO capacity
     ROOT_DISK=$(df / | tail -1 | awk '{print $1}' | sed 's/[0-9]*$//' | sed 's/p$//')
     ROOT_DISK_NAME=$(basename "$ROOT_DISK")
-    if [ -f "/sys/block/${ROOT_DISK_NAME}/queue/rotational" ]; then
+    if [[ -f "/sys/block/${ROOT_DISK_NAME}/queue/rotational" ]]; then
         IS_SSD=$(cat "/sys/block/${ROOT_DISK_NAME}/queue/rotational")
-        if [ "$IS_SSD" = "0" ]; then
+        if [[ "$IS_SSD" = "0" ]]; then
             IO_CAPACITY=1000
             IO_CAPACITY_MAX=2000
         else
@@ -1968,11 +1968,11 @@ tune_database() {
     # Join/Sort buffer (per-connection, keep conservative to avoid RAM spikes)
     # These are allocated per-connection, so lower is safer for high connection counts
     # Using KB for all to keep consistent output format
-    if [ $TOTAL_RAM_MB -ge 8192 ]; then
+    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
         SORT_BUFFER_KB=2048
         JOIN_BUFFER_KB=2048
         READ_BUFFER_KB=512
-    elif [ $TOTAL_RAM_MB -ge 4096 ]; then
+    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
         SORT_BUFFER_KB=1024
         JOIN_BUFFER_KB=1024
         READ_BUFFER_KB=256
@@ -1985,11 +1985,11 @@ tune_database() {
     
     # Key buffer for MyISAM (small, mainly for system tables)
     KEY_BUFFER_MB=$((TOTAL_RAM_MB * 2 / 100))
-    [ $KEY_BUFFER_MB -lt 16 ] && KEY_BUFFER_MB=16
-    [ $KEY_BUFFER_MB -gt 128 ] && KEY_BUFFER_MB=128
+    [[ $KEY_BUFFER_MB -lt 16 ]] && KEY_BUFFER_MB=16
+    [[ $KEY_BUFFER_MB -gt 128 ]] && KEY_BUFFER_MB=128
     
     # Determine config file location
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         MYSQL_CONF_DIR="/etc/mysql/mysql.conf.d"
         mkdir -p "$MYSQL_CONF_DIR"
         MYSQL_CONF_FILE="$MYSQL_CONF_DIR/hostiqo-tuning.cnf"
@@ -2001,7 +2001,7 @@ tune_database() {
     
     # Create slow query log directory
     mkdir -p /var/log/mysql
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         chown mysql:mysql /var/log/mysql
     else
         chown mysql:mysql /var/log/mysql
@@ -2079,7 +2079,7 @@ MYSQLCONF
     print_success "Database tuning applied: ${BUFFER_POOL_MB}M buffer pool, ${MAX_CONNECTIONS} max connections, IO capacity ${IO_CAPACITY}"
     
     # Restart database to apply changes
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         systemctl restart mysql > /dev/null 2>&1 || true
     else
         systemctl restart mariadb > /dev/null 2>&1 || true
@@ -2428,7 +2428,7 @@ configure_sudoers() {
     
     print_info "Creating sudoers configuration for $WEB_USER ($OS_FAMILY)..."
 
-    if [ "$OS_FAMILY" = "rhel" ]; then
+    if [[ "$OS_FAMILY" = "rhel" ]]; then
         configure_sudoers_rhel
     else
         configure_sudoers_debian
@@ -2447,16 +2447,16 @@ configure_sudoers() {
     
     # Setup PHP-FPM logs based on OS
     print_info "Setting up PHP-FPM log directories..."
-    if [ ! -f "/var/log/php-fpm.log" ]; then
+    if [[ ! -f "/var/log/php-fpm.log" ]]; then
         touch /var/log/php-fpm.log
         chown $WEB_USER:$WEB_USER /var/log/php-fpm.log
         chmod 644 /var/log/php-fpm.log
     fi
     
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         for php_version in $(ls -d /etc/php/*/ 2>/dev/null | grep -oP '\d+\.\d+' | sort -u); do
             log_dir="/var/log/php${php_version}-fpm"
-            if [ ! -d "$log_dir" ]; then
+            if [[ ! -d "$log_dir" ]]; then
                 mkdir -p "$log_dir"
                 chown $WEB_USER:$WEB_USER "$log_dir"
                 chmod 755 "$log_dir"
@@ -2465,7 +2465,7 @@ configure_sudoers() {
     else
         # RHEL-based: Remi PHP logs are in /var/opt/remi/phpXX/log/php-fpm/
         for php_dir in /var/opt/remi/php*/log/php-fpm; do
-            if [ -d "$php_dir" ]; then
+            if [[ -d "$php_dir" ]]; then
                 chown -R $WEB_USER:$WEB_USER "$php_dir" 2>/dev/null || true
             fi
         done
@@ -2488,7 +2488,7 @@ setup_application() {
     chown -R $WEB_USER:$WEB_USER "$APP_DIR"
     
     # Create .env if not exists
-    if [ ! -f "$APP_DIR/.env" ]; then
+    if [[ ! -f "$APP_DIR/.env" ]]; then
         print_info "Creating .env file..."
         sudo -u $WEB_USER cp "$APP_DIR/.env.example" "$APP_DIR/.env"
         print_success ".env file created"
@@ -2544,13 +2544,13 @@ setup_application() {
         read_input -sp "Database password: " DB_PASS
         echo ""
         
-        if [ -z "$DB_PASS" ]; then
+        if [[ -z "$DB_PASS" ]]; then
             print_error "Password cannot be empty!"
             exit 1
         fi
         
         # Read MySQL root password
-        if [ -f /root/.mysql_root_password ]; then
+        if [[ -f /root/.mysql_root_password ]]; then
             MYSQL_ROOT_PASS=$(cat /root/.mysql_root_password)
             print_info "Using MySQL root password from /root/.mysql_root_password"
         else
@@ -2573,7 +2573,7 @@ GRANT ALL PRIVILEGES ON \`%\`.* TO '$DB_USER'@'localhost' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 MYSQL_SCRIPT
         
-        if [ $? -eq 0 ]; then
+        if [[ $? -eq 0 ]]; then
             print_success "Database '$DB_NAME' and user '$DB_USER' created"
             
             # Update .env — wrap password in double quotes to handle special chars (#, !)
@@ -2595,7 +2595,7 @@ MYSQL_SCRIPT
         
         # Seed firewall rules (only if table is empty)
         FIREWALL_COUNT=$(sudo -u $WEB_USER php artisan tinker --execute="echo \App\Models\FirewallRule::count();" 2>/dev/null | tail -1)
-        if [ "$FIREWALL_COUNT" = "0" ] || [ -z "$FIREWALL_COUNT" ]; then
+        if [[ "$FIREWALL_COUNT" = "0" ]] || [[ -z "$FIREWALL_COUNT" ]]; then
             sudo -u $WEB_USER php artisan db:seed --class=FirewallRuleSeeder --force > /dev/null 2>&1 || true
             print_success "Firewall rules seeded"
         else
@@ -2616,7 +2616,7 @@ MYSQL_SCRIPT
         read_input -sp "Admin password: " ADMIN_PASS
         echo ""
         
-        if [ -n "$ADMIN_EMAIL" ] && [ -n "$ADMIN_PASS" ]; then
+        if [[ -n "$ADMIN_EMAIL" ]] && [[ -n "$ADMIN_PASS" ]]; then
             sudo -u $WEB_USER php artisan tinker --execute="
                 \$user = new App\Models\User();
                 \$user->name = '$ADMIN_NAME';
@@ -2629,7 +2629,7 @@ MYSQL_SCRIPT
     fi
     
     # Build frontend assets
-    if [ -f "$APP_DIR/package.json" ]; then
+    if [[ -f "$APP_DIR/package.json" ]]; then
         print_info "Installing npm dependencies..."
         cd "$APP_DIR"
         sudo -u $WEB_USER npm install --silent > /dev/null 2>&1
@@ -2651,7 +2651,7 @@ MYSQL_SCRIPT
     # Setup Supervisor configs based on OS
     print_info "Creating Supervisor configurations..."
     
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         # Debian/Ubuntu: /etc/supervisor/conf.d/*.conf
         SUPERVISOR_DIR="/etc/supervisor/conf.d"
         SUPERVISOR_EXT="conf"
@@ -2717,7 +2717,7 @@ setup_webserver() {
         
         # Get server IP
         SERVER_IP=$(hostname -I | awk '{print $1}')
-        if [ -z "$SERVER_IP" ]; then
+        if [[ -z "$SERVER_IP" ]]; then
             SERVER_IP="_"
         fi
         
@@ -2741,7 +2741,7 @@ setup_webserver() {
     else
         # Domain mode
         read_input -p "Enter your domain name (e.g., hostiqo.example.com): " DOMAIN_NAME
-        if [ -z "$DOMAIN_NAME" ]; then
+        if [[ -z "$DOMAIN_NAME" ]]; then
             print_error "Domain name is required!"
             exit 1
         fi
@@ -2772,7 +2772,7 @@ setup_webserver() {
     # Detect PHP version and socket path based on OS
     PHP_VERSION=$(php -v | grep -oP 'PHP \K[0-9]+\.[0-9]+' | head -1)
 
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         PHP_SOCKET="/var/run/php/php${PHP_VERSION}-fpm.sock"
         NGINX_CONF_DIR="/etc/nginx/sites-available"
         NGINX_ENABLED_DIR="/etc/nginx/sites-enabled"
@@ -2789,12 +2789,12 @@ setup_webserver() {
     
     # Ensure nginx config directories exist
     mkdir -p "$NGINX_CONF_DIR"
-    if [ -n "$NGINX_ENABLED_DIR" ]; then
+    if [[ -n "$NGINX_ENABLED_DIR" ]]; then
         mkdir -p "$NGINX_ENABLED_DIR"
     fi
     
     # Determine config file path
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         NGINX_CONF_FILE="$NGINX_CONF_DIR/hostiqo"
     else
         NGINX_CONF_FILE="$NGINX_CONF_DIR/hostiqo.conf"
@@ -2916,7 +2916,7 @@ server {
 EOF
 
     # Enable site (Debian uses symlinks, RHEL uses conf.d directly)
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         ln -sf "$NGINX_CONF_FILE" "$NGINX_ENABLED_DIR/hostiqo"
     fi
     
@@ -3116,7 +3116,7 @@ SSLCONF2
     fi
     
     # Configure SELinux context for web directory on RHEL
-    if [ "$OS_FAMILY" = "rhel" ] && command -v semanage &> /dev/null; then
+    if [[ "$OS_FAMILY" = "rhel" ]] && command -v semanage &> /dev/null; then
         print_info "Setting SELinux context for web directory..."
         semanage fcontext -a -t httpd_sys_rw_content_t "$APP_DIR/storage(/.*)?" > /dev/null 2>&1 || true
         semanage fcontext -a -t httpd_sys_rw_content_t "$APP_DIR/bootstrap/cache(/.*)?" > /dev/null 2>&1 || true
@@ -3154,7 +3154,7 @@ setup_repository() {
     print_header "Repository Setup"
     
     # Check if already exists
-    if [ -d "$DEFAULT_APP_DIR" ] && [ -f "$DEFAULT_APP_DIR/artisan" ]; then
+    if [[ -d "$DEFAULT_APP_DIR" ]] && [[ -f "$DEFAULT_APP_DIR/artisan" ]]; then
         print_info "Hostiqo already exists at $DEFAULT_APP_DIR"
         read_input -p "Use existing installation? (y/n, default: y): " USE_EXISTING
         USE_EXISTING=${USE_EXISTING:-y}
@@ -3239,7 +3239,7 @@ main() {
     echo ""
     print_info "Installed components:"
     # Read installed versions from config
-    if [ -f /etc/hostiqo/config.json ]; then
+    if [[ -f /etc/hostiqo/config.json ]]; then
         INSTALLED_PHP=$(cat /etc/hostiqo/config.json | grep -o '"php_versions":\s*\[[^]]*\]' | grep -o '\["[^"]*"' | tr -d '[]"' | tr ',' ', ' 2>/dev/null || echo "8.2, 8.3")
         INSTALLED_NODE=$(cat /etc/hostiqo/config.json | grep -o '"node_version":\s*"[^"]*"' | grep -o '"[0-9]*"' | tr -d '"' 2>/dev/null || echo "20")
     else
@@ -3247,7 +3247,7 @@ main() {
         INSTALLED_NODE="20"
     fi
     
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         echo "  • Nginx, PHP ${INSTALLED_PHP}, MySQL, Redis"
     else
         echo "  • Nginx, PHP ${INSTALLED_PHP}, MariaDB, Redis"
@@ -3257,14 +3257,14 @@ main() {
     echo ""
     print_info "Important files:"
     echo "  • Database root password: /root/.mysql_root_password"
-    if [ "$OS_FAMILY" = "debian" ]; then
+    if [[ "$OS_FAMILY" = "debian" ]]; then
         echo "  • Nginx config: /etc/nginx/sites-available/hostiqo"
     else
         echo "  • Nginx config: /etc/nginx/conf.d/hostiqo.conf"
     fi
     echo "  • App logs: $APP_DIR/storage/logs/"
     echo ""
-    if [ "$USE_CUSTOM_PORT" = true ]; then
+    if [[ "$USE_CUSTOM_PORT" = true ]]; then
         print_info "Access your panel at: http://$SERVER_IP:$CUSTOM_PORT"
         echo ""
         print_info "Note: You can later switch to domain mode by re-running:"
