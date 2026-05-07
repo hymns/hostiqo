@@ -68,12 +68,10 @@ class DeploymentService
      */
     protected function prepareCommandAsUser(array $command, ?string $deployUser = null): array
     {
-        // If no deploy user specified, or same as current user, run as-is
         if (!$deployUser || $deployUser === get_current_user()) {
             return $command;
         }
 
-        // Prepend sudo -u to run as different user
         return array_merge(['sudo', '-u', $deployUser], $command);
     }
 
@@ -93,6 +91,43 @@ class DeploymentService
             'www-data' => '/var/www',
             default => '/home/' . $deployUser,
         };
+    }
+
+    /**
+     * Run a deploy script (pre or post) in an isolated environment.
+     *
+     * @param string $script The script content to execute
+     * @param string $localPath The deployment directory
+     * @param string|null $deployUser The user to run the script as
+     * @param string $label Label for logging (e.g. "pre-deploy" or "post-deploy")
+     * @return array Output lines from the script execution
+     */
+    private function runDeployScript(string $script, string $localPath, ?string $deployUser, string $label): array
+    {
+        $output = ["\nRunning {$label} script..."];
+
+        // Normalize line endings and trim each line to remove trailing spaces
+        $normalizedScript = str_replace(["\r\n", "\r"], "\n", $script);
+        $cleanedScript = implode("\n", array_map('trim', explode("\n", $normalizedScript)));
+
+        $homeDir = $this->resolveHomeDir($deployUser ?? get_current_user());
+
+        // Wrap full script with env -i to isolate environment completely
+        // Set PWD explicitly to ensure Laravel loads .env from correct directory
+        $envPrefix = "env -i HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin PWD={$localPath}";
+        $wrappedScript = $envPrefix . ' bash -c ' . escapeshellarg("cd {$localPath} && " . $cleanedScript);
+
+        $command = $this->prepareCommandAsUser(['bash', '-c', $wrappedScript], $deployUser);
+
+        $result = Process::path($localPath)->timeout(300)->run($command);
+
+        $output[] = $result->output();
+
+        if ($result->failed()) {
+            $output[] = "Warning: {$label} script failed: " . $result->errorOutput();
+        }
+
+        return $output;
     }
 
     /**
@@ -125,64 +160,29 @@ class DeploymentService
                 $output[] = "Running deployment as user: {$deployUser}\n";
             }
 
-            // Check if directory exists
-            if (File::isDirectory($localPath)) {
-                // Check if it's a git repository
-                if (!File::isDirectory($localPath . '/.git')) {
-                    // Directory exists but not a git repo - remove it so we can clone fresh
-                    $output[] = "Directory exists but is not a git repository. Removing: {$localPath}";
-                    $result = Process::run("sudo rm -rf {$localPath}");
-
-                    if ($result->failed()) {
-                        throw new \Exception("Failed to remove directory: " . $result->errorOutput());
-                    }
-                }
-            }
-
-            // Run pre-deploy script
-            if ($webhook->pre_deploy_script) {
-                $output[] = "\nRunning pre-deploy script...";
-
-                // Normalize line endings and trim each line to remove trailing spaces
-                $normalizedScript = str_replace(["\r\n", "\r"], "\n", $webhook->pre_deploy_script);
-                $cleanedScript = implode("\n", array_map('trim', explode("\n", $normalizedScript)));
-
-                $homeDir = $this->resolveHomeDir($deployUser);
-
-                // Wrap full script with env -i to isolate environment completely
-                // Set PWD explicitly to ensure Laravel loads .env from correct directory
-                $envPrefix = "env -i HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin PWD={$localPath}";
-                $wrappedScript = $envPrefix . " bash -c " . escapeshellarg("cd {$localPath} && " . $cleanedScript);
-
-                $command = $this->prepareCommandAsUser(['bash', '-c', $wrappedScript], $deployUser);
-
-                $result = Process::path($localPath)
-                    ->timeout(300)
-                    ->run($command);
-
-                $output[] = $result->output();
+            // Check if directory exists but is not a git repo — remove so we can clone fresh
+            if (File::isDirectory($localPath) && !File::isDirectory($localPath . '/.git')) {
+                $output[] = "Directory exists but is not a git repository. Removing: {$localPath}";
+                $result = Process::run("sudo rm -rf {$localPath}");
 
                 if ($result->failed()) {
-                    $output[] = "Warning: Pre-deploy script failed: " . $result->errorOutput();
+                    throw new \Exception("Failed to remove directory: " . $result->errorOutput());
                 }
             }
 
-            // Clone or pull repository
+            if ($webhook->pre_deploy_script) {
+                array_push($output, ...$this->runDeployScript($webhook->pre_deploy_script, $localPath, $deployUser, 'pre-deploy'));
+            }
+
             if (!File::isDirectory($localPath)) {
                 // Clone repository
                 $output[] = "Cloning repository...";
-                $command = $this->prepareCommandAsUser([
-                    'git',
-                    'clone',
-                    '-b', $branch,
-                    $webhook->repository_url,
-                    $localPath,
-                ], $deployUser);
+                $command = $this->prepareCommandAsUser(
+                    ['git', 'clone', '-b', $branch, $webhook->repository_url, $localPath],
+                    $deployUser
+                );
 
-                $result = Process::env([
-                    'GIT_SSH_COMMAND' => $gitSshCommand,
-                ])->run($command);
-
+                $result = Process::env(['GIT_SSH_COMMAND' => $gitSshCommand])->run($command);
                 $output[] = $result->output();
 
                 if ($result->failed()) {
@@ -192,15 +192,8 @@ class DeploymentService
                 // Pull latest changes
                 $output[] = "Pulling latest changes...";
 
-                // Fetch
-                $command = $this->prepareCommandAsUser([
-                    'git', 'fetch', 'origin', $branch
-                ], $deployUser);
-
-                $result = Process::path($localPath)
-                    ->env(['GIT_SSH_COMMAND' => $gitSshCommand])
-                    ->run($command);
-
+                $command = $this->prepareCommandAsUser(['git', 'fetch', 'origin', $branch], $deployUser);
+                $result = Process::path($localPath)->env(['GIT_SSH_COMMAND' => $gitSshCommand])->run($command);
                 $output[] = $result->output();
 
                 if ($result->failed()) {
@@ -208,15 +201,11 @@ class DeploymentService
                 }
 
                 // Reset to origin
-                $command = $this->prepareCommandAsUser([
-                    'git',
-                    'reset',
-                    '--hard',
-                    "origin/{$branch}",
-                ], $deployUser);
-
+                $command = $this->prepareCommandAsUser(
+                    ['git', 'reset', '--hard', "origin/{$branch}"],
+                    $deployUser
+                );
                 $result = Process::path($localPath)->run($command);
-
                 $output[] = $result->output();
 
                 if ($result->failed()) {
@@ -224,32 +213,8 @@ class DeploymentService
                 }
             }
 
-            // Run post-deploy script
             if ($webhook->post_deploy_script) {
-                $output[] = "\nRunning post-deploy script...";
-
-                // Normalize line endings and trim each line to remove trailing spaces
-                $normalizedScript = str_replace(["\r\n", "\r"], "\n", $webhook->post_deploy_script);
-                $cleanedScript = implode("\n", array_map('trim', explode("\n", $normalizedScript)));
-
-                $homeDir = $this->resolveHomeDir($deployUser);
-
-                // Wrap full script with env -i to isolate environment completely
-                // Set PWD explicitly to ensure Laravel loads .env from correct directory
-                $envPrefix = "env -i HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin PWD={$localPath}";
-                $wrappedScript = $envPrefix . " bash -c " . escapeshellarg("cd {$localPath} && " . $cleanedScript);
-
-                $command = $this->prepareCommandAsUser(['bash', '-c', $wrappedScript], $deployUser);
-
-                $result = Process::path($localPath)
-                    ->timeout(300)
-                    ->run($command);
-
-                $output[] = $result->output();
-
-                if ($result->failed()) {
-                    $output[] = "Warning: Post-deploy script failed: " . $result->errorOutput();
-                }
+                array_push($output, ...$this->runDeployScript($webhook->post_deploy_script, $localPath, $deployUser, 'post-deploy'));
             }
 
             $output[] = "\n✓ Deployment completed successfully!";
