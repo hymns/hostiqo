@@ -22,7 +22,7 @@ class DatabaseService
             $currentUser = DB::selectOne("SELECT CURRENT_USER() as user")->user;
             
             // Create cache key based on current user
-            $cacheKey = 'db_permissions_' . md5($currentUser);
+            $cacheKey = 'db_permissions_' . hash('sha256', $currentUser);
             
             // Check cache first (valid for 10 minutes)
             return Cache::remember($cacheKey, 600, function () use ($currentUser) {
@@ -150,7 +150,7 @@ class DatabaseService
     {
         try {
             $currentUser = DB::selectOne("SELECT CURRENT_USER() as user")->user;
-            $cacheKey = 'db_permissions_' . md5($currentUser);
+            $cacheKey = 'db_permissions_' . hash('sha256', $currentUser);
             Cache::forget($cacheKey);
         } catch (Exception $e) {
             // Ignore errors

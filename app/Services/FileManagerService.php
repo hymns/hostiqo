@@ -146,8 +146,8 @@ class FileManagerService
             // Check if directory exists, if not create it
             $directory = dirname($path);
             if (!File::isDirectory($directory)) {
-                // 0755: Owner rwx, Group rx, Others rx - secure for directories
-                File::makeDirectory($directory, 0755, true);
+                // 0750: Owner rwx, Group rx, Others none — no world-traversal access
+                File::makeDirectory($directory, 0750, true);
             }
 
             // Check if we can write (either file doesn't exist or is writable)
@@ -158,9 +158,8 @@ class FileManagerService
             // Write content
             File::put($path, $content);
 
-            // Set permissions for new files
-            // 0644: Owner rw, Group r, Others r - secure for files (no execute)
-            File::chmod($path, 0644);
+            // 0640: Owner rw, Group r, Others none — no world-readable access
+            File::chmod($path, 0640);
 
             return true;
 
@@ -217,8 +216,8 @@ class FileManagerService
                 throw FileManagerException::pathAlreadyExists();
             }
 
-            // 0755: Owner rwx, Group rx, Others rx - secure for directories
-            File::makeDirectory($path, 0755, true);
+            // 0750: Owner rwx, Group rx, Others none — no world-traversal access
+            File::makeDirectory($path, 0750, true);
 
             return true;
 
@@ -278,6 +277,13 @@ class FileManagerService
             throw FileManagerException::invalidPermissionsFormat();
         }
 
+        // Reject permissions that grant write (2) or execute (1) to others (last octal digit)
+        // Safe "others" values: 0 (none) or 4 (read-only)
+        $othersDigit = (int) substr($permissions, -1);
+        if ($othersDigit & 0b011) {
+            throw FileManagerException::invalidPermissionsFormat();
+        }
+
         try {
             if (!File::exists($path)) {
                 throw FileManagerException::fileNotFound();
@@ -285,7 +291,7 @@ class FileManagerService
 
             // Convert string octal to integer
             $mode = octdec($permissions);
-            
+
             File::chmod($path, $mode);
 
             return true;
