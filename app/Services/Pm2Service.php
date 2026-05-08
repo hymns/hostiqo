@@ -15,7 +15,7 @@ class Pm2Service
     public function __construct()
     {
         $this->isLocal = in_array(config('app.env'), ['local', 'dev', 'development']);
-        
+
         // Environment-aware paths
         if ($this->isLocal) {
             $this->pm2ConfigPath = storage_path('server/pm2');
@@ -41,14 +41,17 @@ class Pm2Service
         $nodeVersion = '20'; // Default Node.js version
         $port = $website->port ?? 3000;
         $instances = 'max'; // Auto-scale based on CPU cores
-        
+
         // Determine root path based on environment
         if ($this->isLocal) {
             $appPath = storage_path("server/www/{$website->domain}");
         } else {
             $appPath = $website->root_path;
         }
-        
+
+        // Auto-detect entry point script
+        $script = $this->detectEntryPoint($appPath, $website->working_directory);
+
         // Log paths
         if ($this->isLocal) {
             $errorLog = storage_path("server/logs/pm2/{$appName}-error.log");
@@ -66,35 +69,35 @@ class Pm2Service
 module.exports = {
   apps: [{
     name: '{$appName}',
-    script: 'index.js',  // Update to your entry point (server.js, app.js, etc.)
+    script: '{$script}',  // Entry point from working_directory or auto-detected (server.js, app.js, index.js, etc.)
     cwd: '{$appPath}',
-    
+
     // Execution mode
     instances: '{$instances}',
     exec_mode: 'cluster',
-    
+
     // Node.js interpreter
     interpreter: 'node',
     // For NVM users, uncomment and update path:
     // interpreter: '/home/deploy/.nvm/versions/node/v{$nodeVersion}.0/bin/node',
-    
+
     // Environment variables
     env: {
       NODE_ENV: 'production',
       PORT: {$port}
     },
-    
+
     // Logging
     error_file: '{$errorLog}',
     out_file: '{$outLog}',
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     merge_logs: true,
-    
+
     // Restart behavior
     autorestart: true,
     watch: false,
     max_memory_restart: '1G',
-    
+
     // Advanced options
     kill_timeout: 5000,
     wait_ready: true,
@@ -103,6 +106,47 @@ module.exports = {
 };
 
 JS;
+    }
+
+    /**
+     * Auto-detect the entry point script for a Node.js application.
+     *
+     * @param string $appPath The application root path
+     * @param string|null $workingDirectory The working directory/script override
+     * @return string The detected entry point script
+     */
+    protected function detectEntryPoint(string $appPath, ?string $workingDirectory = null): string
+    {
+        // If working_directory is set and looks like a script file, use it
+        if (!empty($workingDirectory) && !str_starts_with($workingDirectory, '/')) {
+            $scriptPath = rtrim($appPath, '/') . '/' . $workingDirectory;
+            if (File::exists($scriptPath)) {
+                Log::info('Using specified entry point from working_directory', [
+                    'script' => $workingDirectory,
+                    'path' => $scriptPath
+                ]);
+                return $workingDirectory;
+            }
+        }
+
+        $possibleScripts = ['server.js', 'app.js', 'index.js', 'main.js'];
+
+        foreach ($possibleScripts as $script) {
+            $scriptPath = rtrim($appPath, '/') . '/' . $script;
+            if (File::exists($scriptPath)) {
+                Log::info('Auto-detected Node.js entry point', [
+                    'script' => $script,
+                    'path' => $scriptPath
+                ]);
+                return $script;
+            }
+        }
+
+        // Default fallback
+        Log::warning('No common entry point found, using default index.js', [
+            'app_path' => $appPath
+        ]);
+        return 'index.js';
     }
 
     /**
@@ -132,15 +176,15 @@ JS;
                 if (!File::exists($this->pm2ConfigPath)) {
                     File::makeDirectory($this->pm2ConfigPath, 0755, true);
                 }
-                
+
                 $logDir = storage_path('server/logs/pm2');
                 if (!File::exists($logDir)) {
                     File::makeDirectory($logDir, 0755, true);
                 }
-                
+
                 // Write config
                 File::put($filepath, $config);
-                
+
                 Log::info('[LOCAL] PM2 ecosystem config written to storage', [
                     'filepath' => $filepath,
                     'website_id' => $website->id
@@ -158,17 +202,17 @@ JS;
 
                 // Move to PM2 directory with sudo
                 $result = Process::run("sudo /bin/cp {$tempFile} {$filepath}");
-                
+
                 // Clean up temp file
                 @unlink($tempFile);
-                
+
                 if ($result->failed()) {
                     throw new \Exception("Failed to write PM2 config: " . $result->errorOutput());
                 }
 
                 // Set proper permissions
                 Process::run("sudo /bin/chmod 644 {$filepath}");
-                
+
                 Log::info('[PRODUCTION] PM2 ecosystem config created', [
                     'filepath' => $filepath,
                     'website_id' => $website->id
@@ -262,9 +306,9 @@ JS;
 
             if ($result->successful()) {
                 Process::run("pm2 save");
-                
+
                 $website->update(['pm2_status' => 'running']);
-                
+
                 Log::info('PM2 app started', [
                     'website_id' => $website->id,
                     'app_name' => $appName
@@ -321,9 +365,9 @@ JS;
 
             if ($result->successful()) {
                 Process::run("pm2 save");
-                
+
                 $website->update(['pm2_status' => 'stopped']);
-                
+
                 Log::info('PM2 app stopped', [
                     'website_id' => $website->id,
                     'app_name' => $appName
@@ -380,9 +424,9 @@ JS;
 
             if ($result->successful()) {
                 Process::run("pm2 save");
-                
+
                 $website->update(['pm2_status' => 'running']);
-                
+
                 Log::info('PM2 app restarted', [
                     'website_id' => $website->id,
                     'app_name' => $appName
@@ -423,7 +467,7 @@ JS;
     {
         try {
             $appName = str_replace('.', '-', $website->domain);
-            
+
             // This is for production mode only
             if ($this->isLocal) {
                 return [
@@ -432,9 +476,9 @@ JS;
                     'status' => 'local'
                 ];
             }
-            
+
             $result = Process::run("pm2 jlist");
-            
+
             if ($result->failed()) {
                 return [
                     'success' => false,
@@ -443,7 +487,7 @@ JS;
             }
 
             $processes = json_decode($result->output(), true);
-            
+
             foreach ($processes as $process) {
                 if ($process['name'] === $appName) {
                     return [
@@ -488,7 +532,7 @@ JS;
             }
 
             $result = Process::run("pm2 jlist");
-            
+
             if ($result->failed()) {
                 return [
                     'success' => false,
@@ -498,7 +542,7 @@ JS;
             }
 
             $processes = json_decode($result->output(), true);
-            
+
             // Ensure $processes is an array
             if (!is_array($processes)) {
                 return [
@@ -507,7 +551,7 @@ JS;
                     'apps' => []
                 ];
             }
-            
+
             $apps = [];
 
             foreach ($processes as $process) {
@@ -557,19 +601,19 @@ JS;
             if ($this->isLocal) {
                 $errorLog = storage_path("server/logs/pm2/{$appName}-error.log");
                 $outLog = storage_path("server/logs/pm2/{$appName}-out.log");
-                
+
                 $logs = '';
-                
+
                 if (File::exists($outLog)) {
                     $logs .= "=== Output Logs ===\n";
                     $logs .= shell_exec("tail -n {$lines} {$outLog}") ?? '';
                 }
-                
+
                 if (File::exists($errorLog)) {
                     $logs .= "\n\n=== Error Logs ===\n";
                     $logs .= shell_exec("tail -n {$lines} {$errorLog}") ?? '';
                 }
-                
+
                 return [
                     'success' => true,
                     'logs' => $logs ?: 'No logs available'
@@ -577,7 +621,7 @@ JS;
             }
 
             $result = Process::run("pm2 logs {$appName} --lines {$lines} --nostream --raw");
-            
+
             if ($result->failed()) {
                 return [
                     'success' => false,
@@ -622,7 +666,7 @@ JS;
 
             if ($result->successful()) {
                 Process::run("pm2 save");
-                
+
                 Log::info('PM2 app deleted', [
                     'app_name' => $appName
                 ]);
