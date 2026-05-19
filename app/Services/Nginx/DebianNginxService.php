@@ -48,6 +48,7 @@ class DebianNginxService extends AbstractNginxService
      */
     protected function getConfigFilename(Website $website): string
     {
-        return $website->domain;
+        // Remove trailing slashes and sanitize domain name
+        return rtrim($website->domain, '/');
     }
 }

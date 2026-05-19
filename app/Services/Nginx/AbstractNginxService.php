@@ -20,15 +20,15 @@ abstract class AbstractNginxService implements NginxInterface
     abstract protected function getFastcgiConfig(): string;
 
     /**
-     * Get config filename for a website.
-     * Override in subclass if needed (e.g., Debian doesn't use .conf extension).
+     * Get the config filename for a website.
      *
      * @param Website $website The website model
      * @return string The config filename
      */
     protected function getConfigFilename(Website $website): string
     {
-        return $website->domain . '.conf';
+        // Remove trailing slashes and sanitize domain name
+        return rtrim($website->domain, '/') . '.conf';
     }
 
     /**
