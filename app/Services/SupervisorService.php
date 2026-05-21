@@ -114,6 +114,14 @@ class SupervisorService
                 ];
             }
 
+            // Check if /etc is writable
+            if (!is_writable('/etc/supervisor/conf.d')) {
+                return [
+                    'success' => false,
+                    'error' => 'Filesystem is read-only or /etc/supervisor/conf.d is not writable. Please check disk space and filesystem status.'
+                ];
+            }
+
             $config = $this->generateConfig($program);
             $configPath = $program->getConfigFilePath();
             $tempFile = '/tmp/hostiqo-' . $program->getConfigFileName();
@@ -124,7 +132,14 @@ class SupervisorService
             // Copy to supervisor conf.d
             $result = Process::run(['/usr/bin/sudo', '/usr/bin/cp', $tempFile, $configPath]);
             if ($result->failed()) {
-                throw new Exception("Failed to copy config file: " . $result->errorOutput());
+                $error = $result->errorOutput();
+                
+                // Check for read-only filesystem error
+                if (str_contains($error, 'Read-only file system')) {
+                    throw new Exception("Filesystem is read-only. Please check disk space with 'df -h' and remount with 'sudo mount -o remount,rw /'");
+                }
+                
+                throw new Exception("Failed to copy config file: " . $error);
             }
             
             // Set permissions
