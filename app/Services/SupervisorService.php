@@ -114,14 +114,6 @@ class SupervisorService
                 ];
             }
 
-            // Check if /etc is writable
-            if (!is_writable('/etc/supervisor/conf.d')) {
-                return [
-                    'success' => false,
-                    'error' => 'Filesystem is read-only or /etc/supervisor/conf.d is not writable. Please check disk space and filesystem status.'
-                ];
-            }
-
             $config = $this->generateConfig($program);
             $configPath = $program->getConfigFilePath();
             $tempFile = '/tmp/hostiqo-' . $program->getConfigFileName();
