@@ -131,6 +131,8 @@
                             <span class="badge badge-pastel-{{ $website->pm2_status == 'running' ? 'green' : 'red' }}">
                                 {{ $website->runtime === 'Node.js' ? 'PM2' : 'Supervisor' }}: {{ ucfirst($website->pm2_status ?? 'unknown') }}
                             </span>
+                            <br>
+                            <small class="text-muted">Service name: <code>{{ $website->service_name }}</code></small>
                         </div>
                     </div>
                     @endif

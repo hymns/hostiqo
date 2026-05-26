@@ -255,7 +255,7 @@
                         @endif
                         @else
                         <div class="info-row">
-                            <span class="info-label"><i class="bi bi-play-circle"></i> {{ $website->runtime === 'Node.js' ? 'PM2' : 'Supervisor' }}</span>
+                            <span class="info-label"><i class="bi bi-play-circle"></i> {{ $website->runtime === 'Node.js' ? 'PM2' : 'Supervisor' }} (<code>{{ $website->service_name }}</code>)</span>
                             <span class="badge badge-md badge-pastel-{{ $website->pm2_status === 'running' ? 'green' : ($website->pm2_status === 'error' ? 'yellow' : 'red') }}">
                                 {{ ucfirst($website->pm2_status ?? 'unknown') }}
                             </span>
