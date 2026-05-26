@@ -117,7 +117,19 @@
                             </div>
                             <div class="flex-grow-1">
                                 <div class="website-name">
-                                    {{ $website->name }} <span class="status-dot {{ $website->is_active ? 'active' : 'inactive' }}"></span>
+                                    {{ $website->name }} 
+                                    @php
+                                        // Determine status based on service type
+                                        $isRunning = false;
+                                        if ($website->project_type === 'backend' && empty($website->domain)) {
+                                            // Backend without domain: check PM2/Supervisor status
+                                            $isRunning = $website->pm2_status === 'online';
+                                        } else {
+                                            // Has domain: check Nginx status
+                                            $isRunning = $website->nginx_status === 'active';
+                                        }
+                                    @endphp
+                                    <span class="status-dot {{ $isRunning ? 'active' : 'inactive' }}"></span>
                                     @if($website->ssl_status === 'active')
                                         <span class="badge" style="background: #10b981; font-size: 0.75rem;"><i class="bi bi-lock-fill"></i> SSL</span>
                                     @endif
