@@ -96,6 +96,30 @@ class Website extends Model
     }
 
     /**
+     * Get a safe service name for PM2/Supervisor.
+     * Sanitizes name by removing spaces and special characters.
+     *
+     * @return string Safe service name
+     */
+    public function getServiceNameAttribute(): string
+    {
+        // Priority: domain > name > id
+        $baseName = $this->domain ?: $this->name ?: "website-{$this->id}";
+        
+        // Convert to lowercase and replace spaces/special chars with hyphens
+        $safeName = strtolower($baseName);
+        $safeName = preg_replace('/[^a-z0-9]+/', '-', $safeName);
+        $safeName = trim($safeName, '-');
+        
+        // For backend without domain, add port suffix for uniqueness
+        if ($this->project_type === 'backend' && !$this->domain && $this->port) {
+            $safeName .= "-port-{$this->port}";
+        }
+        
+        return $safeName;
+    }
+
+    /**
      * Get the status badge color.
      *
      * @return string The badge color class
