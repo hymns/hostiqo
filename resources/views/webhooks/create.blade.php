@@ -178,15 +178,31 @@
 /usr/bin/php8.3 artisan migrate --force
 /usr/bin/php8.3 artisan config:cache</code>
 
-                    <p class="small mb-1 mt-3"><strong>Node.js:</strong></p>
+                    <p class="small mb-1 mt-3"><strong>Node.js (PM2):</strong></p>
                     <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">npm install
 npm run build
-pm2 restart ecosystem.config.js</code>
+pm2 restart app-name</code>
 
-                    <p class="small mb-1 mt-3"><strong>Python:</strong></p>
+                    <p class="small mb-1 mt-3"><strong>Python (Supervisor):</strong></p>
                     <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">pip install -r requirements.txt
 python manage.py migrate
-supervisorctl restart myapp</code>
+sudo supervisorctl restart app-name</code>
+
+                    <h6 class="mt-3">PM2 Ecosystem Template</h6>
+                    <p class="small mb-1">Create <code>ecosystem.config.js</code> in your project root:</p>
+                    <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap; font-size: 0.7rem;">module.exports = {
+  apps: [{
+    name: 'app-name',
+    script: 'index.js',
+    instances: 'max',
+    exec_mode: 'cluster',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000
+    }
+  }]
+};</code>
+                    <p class="small text-muted">Replace <code>app-name</code> with your website's service name (shown in website details).</p>
 
                     <p class="small mb-1 mt-3"><strong>Go:</strong></p>
                     <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">go mod download
