@@ -450,6 +450,7 @@
                     </div>
                     <div class="card-body">
                         @if($website->project_type !== 'backend' || !empty($website->domain))
+                        <div id="ssl-section">
                         <div class="mb-3">
                             <div class="form-check form-switch">
                                 <input
@@ -520,6 +521,7 @@
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
+                        </div>
                         @endif
 
                         <div class="mb-3">
@@ -577,6 +579,31 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+@if($website->project_type === 'backend')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const domainInput = document.getElementById('domain');
+    const sslSection = document.getElementById('ssl-section');
+    
+    function toggleSslSection() {
+        const hasDomain = domainInput.value.trim() !== '';
+        if (sslSection) {
+            sslSection.style.display = hasDomain ? 'block' : 'none';
+        }
+    }
+    
+    // Initial check
+    toggleSslSection();
+    
+    // Listen for changes
+    domainInput.addEventListener('input', toggleSslSection);
+    domainInput.addEventListener('change', toggleSslSection);
+});
+</script>
+@endif
+@endpush
 
 @push('scripts')
 <script>
