@@ -226,7 +226,7 @@
 
                         <!-- Services Section -->
                         <div class="section-label">SERVICES</div>
-                        @if($website->project_type !== 'backend' || !empty($website->domain))
+                        @if($website->project_type !== 'backend' || ($website->domain && trim($website->domain) !== ''))
                         <div class="info-row">
                             <span class="info-label"><i class="bi bi-hexagon"></i> Nginx</span>
                             <span class="badge badge-md badge-pastel-{{ $website->nginx_status === 'active' ? 'green' : ($website->nginx_status === 'pending' ? 'yellow' : 'red') }}">
