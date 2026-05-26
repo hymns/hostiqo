@@ -273,8 +273,10 @@ class WebsiteController extends Controller
         // Delete SSL certificate from Let's Encrypt if SSL was enabled
         // Note: SSL deletion handled separately
         
-        // Delete Nginx configuration
-        $nginxService->deleteConfig($website);
+        // Delete Nginx configuration (if has domain)
+        if ($website->project_type !== 'backend' || !empty($website->domain)) {
+            $nginxService->deleteConfig($website);
+        }
         
         // Delete PHP-FPM pool configuration if PHP project
         if ($website->project_type === 'php') {
@@ -282,6 +284,23 @@ class WebsiteController extends Controller
             $phpFpmService->deletePoolConfig($website);
             if ($website->php_version) {
                 $phpFpmService->restart($website->php_version);
+            }
+        }
+        
+        // Delete PM2/Supervisor configuration if backend project
+        if ($website->project_type === 'backend') {
+            if ($website->runtime === 'Node.js') {
+                // Delete PM2 config and stop app
+                $pm2Service = app(\App\Services\Pm2Service::class);
+                $pm2Service->deleteApp($website->service_name);
+                $pm2Service->deleteEcosystemConfig($website);
+            } else {
+                // Delete Supervisor config
+                $serviceName = $website->service_name;
+                $configPath = "/etc/supervisor/conf.d/{$serviceName}.conf";
+                \Illuminate\Support\Facades\Process::run("sudo /bin/rm -f {$configPath}");
+                \Illuminate\Support\Facades\Process::run("sudo supervisorctl reread");
+                \Illuminate\Support\Facades\Process::run("sudo supervisorctl update");
             }
         }
         
