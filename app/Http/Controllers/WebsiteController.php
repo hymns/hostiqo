@@ -108,9 +108,15 @@ class WebsiteController extends Controller
             $validated['working_directory'] = '/';
         }
 
-        // Set SSL to false by default
-        $validated['ssl_enabled'] = $request->boolean('ssl_enabled', false);
-        $validated['www_redirect'] = $request->input('www_redirect', 'none');
+        // Set SSL and WWW redirect (not applicable for backend without domain)
+        if ($validated['project_type'] === 'backend') {
+            $validated['ssl_enabled'] = false;
+            $validated['www_redirect'] = 'none';
+        } else {
+            $validated['ssl_enabled'] = $request->boolean('ssl_enabled', false);
+            $validated['www_redirect'] = $request->input('www_redirect', 'none');
+        }
+        
         $validated['is_active'] = $request->boolean('is_active', true);
         
         // Set API proxy defaults
@@ -212,10 +218,17 @@ class WebsiteController extends Controller
             $validated['php_settings'] = $phpSettings;
         }
 
-        $sslChanged = $request->boolean('ssl_enabled', false) !== $website->ssl_enabled;
+        // Set SSL and WWW redirect (not applicable for backend without domain)
+        if ($website->project_type === 'backend' && empty($website->domain)) {
+            $validated['ssl_enabled'] = false;
+            $validated['www_redirect'] = 'none';
+            $sslChanged = false;
+        } else {
+            $sslChanged = $request->boolean('ssl_enabled', false) !== $website->ssl_enabled;
+            $validated['ssl_enabled'] = $request->boolean('ssl_enabled', $website->ssl_enabled);
+            $validated['www_redirect'] = $request->input('www_redirect', $website->www_redirect ?? 'none');
+        }
         
-        $validated['ssl_enabled'] = $request->boolean('ssl_enabled', $website->ssl_enabled);
-        $validated['www_redirect'] = $request->input('www_redirect', $website->www_redirect ?? 'none');
         $validated['is_active'] = $request->boolean('is_active', $website->is_active);
         
         // Set API proxy defaults
