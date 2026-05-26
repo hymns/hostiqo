@@ -153,10 +153,12 @@
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
+                            @if($website->project_type !== 'backend' || !empty($website->domain))
                             <button type="button" class="deploy-btn"
                                     onclick="event.stopPropagation(); redeployWebsite({{ $website->id }})">
                                 <i class="bi bi-rocket-takeoff-fill me-2"></i> Redeploy
                             </button>
+                            @endif
                             <div class="dropdown" onclick="event.stopPropagation();">
                                 <button class="btn btn-link text-dark p-0" type="button"
                                         data-bs-toggle="dropdown" style="font-size: 1.25rem;">

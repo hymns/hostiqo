@@ -444,7 +444,8 @@
                         </form>
                         @endif
 
-                        <!-- Redeploy Button -->
+                        <!-- Redeploy Button (not for backend without domain) -->
+                        @if($website->project_type !== 'backend' || !empty($website->domain))
                         <form id="redeploy-form" action="{{ route('websites.redeploy', $website) }}" method="POST">
                             @csrf
                             <button type="button" class="action-btn warning" title="Redeploy Configuration"
@@ -452,6 +453,7 @@
                                 <i class="bi bi-rocket-takeoff"></i>
                             </button>
                         </form>
+                        @endif
 
                         <!-- Edit Button -->
                         <a href="{{ route('websites.edit', $website) }}" class="action-btn primary" title="Edit Website">

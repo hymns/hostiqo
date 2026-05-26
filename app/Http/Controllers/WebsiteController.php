@@ -346,6 +346,13 @@ class WebsiteController extends Controller
      */
     public function redeploy(Website $website)
     {
+        // Backend without domain doesn't need nginx redeploy
+        if ($website->project_type === 'backend' && empty($website->domain)) {
+            return redirect()
+                ->route('websites.show', $website)
+                ->with('info', 'Backend without domain does not require nginx configuration. Use webhook deployment to update your application.');
+        }
+
         // Reset status to pending
         $website->update([
             'nginx_status' => 'pending',
