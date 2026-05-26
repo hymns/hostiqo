@@ -21,7 +21,7 @@
         </a>
         <a href="{{ route('websites.index', ['type' => 'backend']) }}"
            class="tab-btn text-decoration-none {{ $type === 'backend' ? 'active' : '' }}">
-            <i class="bi bi-server me-1"></i> Backend
+            <i class="bi bi-hdd-network me-1"></i> Backend
         </a>
         <a href="{{ route('websites.index', ['type' => 'static']) }}"
            class="tab-btn text-decoration-none {{ $type === 'static' ? 'active' : '' }}">
