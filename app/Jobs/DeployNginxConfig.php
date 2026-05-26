@@ -80,7 +80,7 @@ class DeployNginxConfig implements ShouldQueue
             }
             
             // Deploy PM2 ecosystem configuration for Node.js projects
-            if ($this->website->project_type === 'node') {
+            if ($this->website->project_type === 'reverse-proxy' && $this->website->runtime === 'Node.js') {
                 $pm2Result = $pm2Service->writeEcosystemConfig($this->website);
                 
                 if ($pm2Result['success']) {

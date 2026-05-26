@@ -71,14 +71,14 @@
                     </div>
                 </div>
 
-                @if($type === 'php' || $type === 'reverse-proxy')
+                @if($type === 'php' || $type === 'backend')
                 <div class="card">
                     <div class="card-header">
                         <i class="bi bi-code-slash me-2"></i> 
                         @if($type === 'php')
                             PHP Configuration
                         @else
-                            Reverse Proxy Configuration
+                            Backend Configuration
                         @endif
                     </div>
                     <div class="card-body">
@@ -105,7 +105,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                        @elseif($type === 'reverse-proxy')
+                        @elseif($type === 'backend')
                             <div class="mb-3">
                                 <label for="runtime" class="form-label">
                                     Runtime <span class="text-danger">*</span>
@@ -200,7 +200,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                        @elseif($type === 'reverse-proxy')
+                        @elseif($type === 'backend')
                             <div class="mb-3" id="run-opt-field" style="display: none;">
                                 <label for="working_directory" class="form-label">
                                     Run opt

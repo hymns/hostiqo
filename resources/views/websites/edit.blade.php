@@ -113,7 +113,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                        @elseif($website->project_type === 'reverse-proxy')
+                        @elseif($website->project_type === 'backend')
                             <div class="mb-3" id="run-opt-field" style="display: {{ $website->runtime === 'Node.js' ? 'block' : 'none' }};">
                                 <label for="working_directory" class="form-label">
                                     Run opt
@@ -135,14 +135,14 @@
                     </div>
                 </div>
 
-                @if($website->project_type === 'php' || $website->project_type === 'reverse-proxy')
+                @if($website->project_type === 'php' || $website->project_type === 'backend')
                 <div class="card">
                     <div class="card-header">
                         <i class="bi bi-code-slash me-2"></i> 
                         @if($website->project_type === 'php')
                             PHP Configuration
                         @else
-                            Reverse Proxy Configuration
+                            Backend Configuration
                         @endif
                     </div>
                     <div class="card-body">
@@ -168,7 +168,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                        @elseif($website->project_type === 'reverse-proxy')
+                        @elseif($website->project_type === 'backend')
                             <div class="mb-3">
                                 <label for="runtime" class="form-label">
                                     Runtime <span class="text-danger">*</span>
@@ -194,7 +194,7 @@
                             </div>
                         @endif
 
-                        @if($website->project_type === 'reverse-proxy')
+                        @if($website->project_type === 'backend')
 
                             <!-- Port -->
                             <div class="mb-3">

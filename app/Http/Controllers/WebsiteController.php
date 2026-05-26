@@ -64,7 +64,7 @@ class WebsiteController extends Controller
             'domain' => ['required', 'string', 'max:255', 'unique:websites,domain'],
             'root_path' => ['nullable', 'string', 'max:500'],
             'working_directory' => ['nullable', 'string', 'max:500'],
-            'project_type' => ['required', 'in:php,static,reverse-proxy'],
+            'project_type' => ['required', 'in:php,static,backend'],
             'php_version' => ['required_if:project_type,php', 'nullable', 'string', 'max:10'],
             'runtime' => ['nullable', 'string', 'max:50'],
             'php_settings' => ['nullable', 'array'],
@@ -153,7 +153,7 @@ class WebsiteController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'working_directory' => ['nullable', 'string', 'max:500'],
-            'project_type' => ['required', 'in:php,static,reverse-proxy'],
+            'project_type' => ['required', 'in:php,static,backend'],
             'php_version' => ['required_if:project_type,php', 'nullable', 'string', 'max:10'],
             'runtime' => ['nullable', 'string', 'max:50'],
             'php_settings' => ['nullable', 'array'],

@@ -19,9 +19,9 @@
            class="tab-btn text-decoration-none {{ $type === 'php' ? 'active' : '' }}">
             <i class="bi bi-code-slash me-1"></i> PHP Projects
         </a>
-        <a href="{{ route('websites.index', ['type' => 'reverse-proxy']) }}"
-           class="tab-btn text-decoration-none {{ $type === 'reverse-proxy' ? 'active' : '' }}">
-            <i class="bi bi-arrow-left-right me-1"></i> Reverse Proxy
+        <a href="{{ route('websites.index', ['type' => 'backend']) }}"
+           class="tab-btn text-decoration-none {{ $type === 'backend' ? 'active' : '' }}">
+            <i class="bi bi-server me-1"></i> Backend
         </a>
         <a href="{{ route('websites.index', ['type' => 'static']) }}"
            class="tab-btn text-decoration-none {{ $type === 'static' ? 'active' : '' }}">
@@ -167,8 +167,8 @@
                             <span class="info-value">
                                 @if($website->project_type === 'php')
                                     PHP
-                                @elseif($website->project_type === 'reverse-proxy')
-                                    Reverse Proxy
+                                @elseif($website->project_type === 'backend')
+                                    Backend
                                 @elseif($website->project_type === 'static')
                                     Static Site
                                 @else
@@ -185,7 +185,7 @@
                                 <span class="info-label"><i class="bi bi-gear"></i> PHP Pool</span>
                                 <span class="info-value">{{ $website->php_pool_name ?? str_replace('.', '_', $website->domain) }}</span>
                             </div>
-                        @elseif($website->project_type === 'reverse-proxy')
+                        @elseif($website->project_type === 'backend')
                             <div class="info-row">
                                 <span class="info-label"><i class="bi bi-cpu"></i> Runtime</span>
                                 <span class="info-value">{{ $website->runtime ?? 'Not Set' }}</span>
