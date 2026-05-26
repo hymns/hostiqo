@@ -122,8 +122,8 @@
                                         // Determine status based on service type
                                         $isRunning = false;
                                         if ($website->project_type === 'backend' && empty($website->domain)) {
-                                            // Backend without domain: check PM2/Supervisor status
-                                            $isRunning = $website->pm2_status === 'online';
+                                            // Backend without domain: check PM2/Supervisor status (pm2_status used for both)
+                                            $isRunning = $website->pm2_status === 'running';
                                         } else {
                                             // Has domain: check Nginx status
                                             $isRunning = $website->nginx_status === 'active';
@@ -256,7 +256,7 @@
                         @else
                         <div class="info-row">
                             <span class="info-label"><i class="bi bi-play-circle"></i> {{ $website->runtime === 'Node.js' ? 'PM2' : 'Supervisor' }}</span>
-                            <span class="badge badge-md badge-pastel-{{ $website->pm2_status === 'online' ? 'green' : ($website->pm2_status === 'pending' ? 'yellow' : 'red') }}">
+                            <span class="badge badge-md badge-pastel-{{ $website->pm2_status === 'running' ? 'green' : ($website->pm2_status === 'error' ? 'yellow' : 'red') }}">
                                 {{ ucfirst($website->pm2_status ?? 'unknown') }}
                             </span>
                         </div>

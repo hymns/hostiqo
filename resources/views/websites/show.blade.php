@@ -128,7 +128,7 @@
                             Service Status
                         </div>
                         <div class="col-md-8">
-                            <span class="badge badge-pastel-{{ $website->pm2_status == 'online' ? 'green' : 'red' }}">
+                            <span class="badge badge-pastel-{{ $website->pm2_status == 'running' ? 'green' : 'red' }}">
                                 {{ $website->runtime === 'Node.js' ? 'PM2' : 'Supervisor' }}: {{ ucfirst($website->pm2_status ?? 'unknown') }}
                             </span>
                         </div>
