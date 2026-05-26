@@ -80,7 +80,7 @@
 
                         <div class="mb-3">
                             <label for="branch" class="form-label">Branch <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control @error('branch') is-invalid @enderror" id="branch" name="branch" value="{{ old('branch', 'main') }}" required>
+                            <input type="text" class="form-control @error('branch') is-invalid @enderror" id="branch" name="branch" value="{{ old('branch', 'master') }}" required>
                             <div class="form-text">Git branch to deploy (e.g., main, master, develop)</div>
                             @error('branch')
                                 <div class="invalid-feedback">{{ $message }}</div>
