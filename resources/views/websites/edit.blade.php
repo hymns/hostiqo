@@ -51,20 +51,37 @@
 
                         <div class="mb-3">
                             <label for="domain" class="form-label">
-                                Domain Name
+                                Domain Name @if($website->project_type === 'backend')<span class="text-muted">(Optional)</span>@endif
                             </label>
-                            <input
-                                type="text"
-                                class="form-control font-monospace"
-                                id="domain"
-                                value="{{ $website->domain }}"
-                                readonly
-                                disabled
-                                style="background-color: #f8f9fa; cursor: not-allowed;"
-                            >
-                            <small class="form-text text-muted">
-                                <i class="bi bi-info-circle me-1"></i>Domain cannot be changed after creation. Delete and recreate if needed.
-                            </small>
+                            @if($website->project_type === 'backend')
+                                <input
+                                    type="text"
+                                    class="form-control font-monospace @error('domain') is-invalid @enderror"
+                                    id="domain"
+                                    name="domain"
+                                    value="{{ old('domain', $website->domain) }}"
+                                    placeholder="api.example.com (optional)"
+                                >
+                                <small class="form-text text-muted">
+                                    <i class="bi bi-info-circle me-1"></i>Optional: Set domain for nginx proxy. Leave empty if backend runs on port only.
+                                </small>
+                                @error('domain')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            @else
+                                <input
+                                    type="text"
+                                    class="form-control font-monospace"
+                                    id="domain"
+                                    value="{{ $website->domain }}"
+                                    readonly
+                                    disabled
+                                    style="background-color: #f8f9fa; cursor: not-allowed;"
+                                >
+                                <small class="form-text text-muted">
+                                    <i class="bi bi-info-circle me-1"></i>Domain cannot be changed after creation. Delete and recreate if needed.
+                                </small>
+                            @endif
                         </div>
                     </div>
                 </div>

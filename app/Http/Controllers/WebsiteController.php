@@ -173,9 +173,10 @@ class WebsiteController extends Controller
      */
     public function update(Request $request, Website $website)
     {
-        // Domain and root_path cannot be changed after creation
+        // Domain can be changed for backend (optional), but not for other types
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'domain' => $website->project_type === 'backend' ? ['nullable', 'string', 'max:255', 'unique:websites,domain,' . $website->id] : [],
             'working_directory' => ['nullable', 'string', 'max:500'],
             'project_type' => ['required', 'in:php,static,backend'],
             'php_version' => ['required_if:project_type,php', 'nullable', 'string', 'max:10'],
