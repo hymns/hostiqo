@@ -287,6 +287,7 @@
                         <i class="bi bi-shield-check me-2"></i> Security & Status
                     </div>
                     <div class="card-body">
+                        @if($type !== 'backend')
                         <div class="mb-3">
                             <div class="form-check form-switch">
                                 <input
@@ -357,6 +358,7 @@
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
+                        @endif
 
                         <!-- Active Status -->
                         <div class="mb-3">
