@@ -360,6 +360,73 @@
                 </div>
                 @endif
 
+                @if($website->project_type === 'static')
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-arrow-left-right me-2"></i> API Proxy (Optional)
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    id="enable_api_proxy"
+                                    name="enable_api_proxy"
+                                    value="1"
+                                    {{ old('enable_api_proxy', $website->enable_api_proxy) ? 'checked' : '' }}
+                                    onchange="document.getElementById('api-proxy-fields').style.display = this.checked ? 'block' : 'none';"
+                                >
+                                <label class="form-check-label" for="enable_api_proxy">
+                                    Enable API Proxy
+                                </label>
+                            </div>
+                            <div class="form-text">Proxy API requests to a backend service running on a different port</div>
+                        </div>
+
+                        <div id="api-proxy-fields" style="display: {{ old('enable_api_proxy', $website->enable_api_proxy) ? 'block' : 'none' }};">
+                            <div class="mb-3">
+                                <label for="api_proxy_path" class="form-label">
+                                    API Path
+                                </label>
+                                <input
+                                    type="text"
+                                    class="form-control font-monospace @error('api_proxy_path') is-invalid @enderror"
+                                    id="api_proxy_path"
+                                    name="api_proxy_path"
+                                    value="{{ old('api_proxy_path', $website->api_proxy_path ?? '/api') }}"
+                                    placeholder="/api"
+                                >
+                                <div class="form-text">Path to proxy (e.g., /api, /graphql). Requests to this path will be forwarded to the backend port.</div>
+                                @error('api_proxy_path')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="api_proxy_port" class="form-label">
+                                    Backend Port <span class="text-danger">*</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    class="form-control @error('api_proxy_port') is-invalid @enderror"
+                                    id="api_proxy_port"
+                                    name="api_proxy_port"
+                                    value="{{ old('api_proxy_port', $website->api_proxy_port ?? '3000') }}"
+                                    placeholder="3000"
+                                    min="1"
+                                    max="65535"
+                                >
+                                <div class="form-text">Port where your backend API is running (e.g., 3000 for Node.js, 8000 for Python)</div>
+                                @error('api_proxy_port')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <div class="card">
                     <div class="card-header">
                         <i class="bi bi-shield-check me-2"></i> Security & Status

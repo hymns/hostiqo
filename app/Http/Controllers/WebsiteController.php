@@ -71,6 +71,9 @@ class WebsiteController extends Controller
             'runtime' => ['nullable', 'string', 'max:50'],
             'php_settings' => ['nullable', 'array'],
             'port' => $projectType === 'backend' ? ['required', 'integer', 'min:1', 'max:65535'] : ['nullable', 'integer', 'min:1', 'max:65535'],
+            'enable_api_proxy' => ['boolean'],
+            'api_proxy_path' => ['nullable', 'string', 'max:255'],
+            'api_proxy_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'ssl_enabled' => ['boolean'],
             'www_redirect' => ['nullable', 'in:none,to_www,to_non_www'],
             'is_active' => ['boolean'],
@@ -109,6 +112,12 @@ class WebsiteController extends Controller
         $validated['ssl_enabled'] = $request->boolean('ssl_enabled', false);
         $validated['www_redirect'] = $request->input('www_redirect', 'none');
         $validated['is_active'] = $request->boolean('is_active', true);
+        
+        // Set API proxy defaults
+        $validated['enable_api_proxy'] = $request->boolean('enable_api_proxy', false);
+        if ($validated['enable_api_proxy']) {
+            $validated['api_proxy_path'] = $request->input('api_proxy_path', '/api');
+        }
 
         $website = Website::create($validated);
 
@@ -167,6 +176,9 @@ class WebsiteController extends Controller
             'runtime' => ['nullable', 'string', 'max:50'],
             'php_settings' => ['nullable', 'array'],
             'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'enable_api_proxy' => ['boolean'],
+            'api_proxy_path' => ['nullable', 'string', 'max:255'],
+            'api_proxy_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'ssl_enabled' => ['boolean'],
             'www_redirect' => ['nullable', 'in:none,to_www,to_non_www'],
             'is_active' => ['boolean'],
@@ -205,6 +217,12 @@ class WebsiteController extends Controller
         $validated['ssl_enabled'] = $request->boolean('ssl_enabled', $website->ssl_enabled);
         $validated['www_redirect'] = $request->input('www_redirect', $website->www_redirect ?? 'none');
         $validated['is_active'] = $request->boolean('is_active', $website->is_active);
+        
+        // Set API proxy defaults
+        $validated['enable_api_proxy'] = $request->boolean('enable_api_proxy', false);
+        if ($validated['enable_api_proxy']) {
+            $validated['api_proxy_path'] = $request->input('api_proxy_path', '/api');
+        }
 
         $website->update($validated);
 

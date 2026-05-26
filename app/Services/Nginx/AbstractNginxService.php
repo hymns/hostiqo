@@ -41,7 +41,7 @@ abstract class AbstractNginxService implements NginxInterface
     {
         return match($website->project_type) {
             'php' => $this->generatePhpConfig($website),
-            'reverse-proxy' => $this->generateReverseProxyConfig($website),
+            'backend' => $this->generateBackendConfig($website),
             'static' => $this->generateStaticConfig($website),
             default => $this->generateStaticConfig($website),
         };
@@ -244,12 +244,12 @@ NGINX;
     }
 
     /**
-     * Generate reverse proxy configuration.
+     * Generate backend proxy configuration.
      *
      * @param Website $website The website model
-     * @return string The reverse proxy configuration
+     * @return string The backend proxy configuration
      */
-    protected function generateReverseProxyConfig(Website $website): string
+    protected function generateBackendConfig(Website $website): string
     {
         $workingDir = $website->working_directory ?? '';
         $documentRoot = rtrim($website->root_path, '/') . ($workingDir ? '/' . $workingDir : '');
@@ -415,6 +415,54 @@ NGINX;
     }
 
     /**
+     * Get API proxy configuration block if enabled.
+     *
+     * @param Website $website The website model
+     * @return string The API proxy configuration block
+     */
+    protected function getApiProxyConfig(Website $website): string
+    {
+        if (!$website->enable_api_proxy || !$website->api_proxy_port) {
+            return '';
+        }
+
+        $apiPath = $website->api_proxy_path ?? '/api';
+        $apiPort = $website->api_proxy_port;
+
+        return <<<NGINX
+
+    # API Proxy to backend on port {$apiPort}
+    location {$apiPath} {
+        proxy_pass http://127.0.0.1:{$apiPort};
+        proxy_http_version 1.1;
+        
+        # WebSocket support
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # Proxy headers
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Forwarded-Host \$host;
+        proxy_set_header X-Forwarded-Port \$server_port;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Buffering
+        proxy_buffering on;
+        proxy_buffer_size 4k;
+        proxy_buffers 8 4k;
+        proxy_busy_buffers_size 8k;
+    }
+NGINX;
+    }
+
+    /**
      * Generate static site configuration.
      *
      * @param Website $website The website model
@@ -427,6 +475,7 @@ NGINX;
         
         $wwwRedirectConfig = $this->getWwwRedirectConfig($website);
         $securityHeaders = $this->getSecurityHeaders();
+        $apiProxyConfig = $this->getApiProxyConfig($website);
         $logDir = '/var/log/nginx';
         $serverName = $this->getServerName($website);
         
@@ -479,6 +528,7 @@ server {
         root {$documentRoot};
         try_files \$uri =404;
     }
+{$apiProxyConfig}
 
     location / {
         try_files \$uri \$uri/ =404;
@@ -522,6 +572,7 @@ server {
         root {$documentRoot};
         try_files \$uri =404;
     }
+{$apiProxyConfig}
 
     location / {
         try_files \$uri \$uri/ =404;
