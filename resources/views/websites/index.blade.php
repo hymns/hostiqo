@@ -226,6 +226,7 @@
 
                         <!-- Services Section -->
                         <div class="section-label">SERVICES</div>
+                        @if($website->project_type !== 'backend' || !empty($website->domain))
                         <div class="info-row">
                             <span class="info-label"><i class="bi bi-hexagon"></i> Nginx</span>
                             <span class="badge badge-md badge-pastel-{{ $website->nginx_status === 'active' ? 'green' : ($website->nginx_status === 'pending' ? 'yellow' : 'red') }}">
@@ -239,6 +240,14 @@
                                     {{ ucfirst($website->ssl_status) }}
                                 </span>
                             </div>
+                        @endif
+                        @else
+                        <div class="info-row">
+                            <span class="info-label"><i class="bi bi-play-circle"></i> {{ $website->runtime === 'Node.js' ? 'PM2' : 'Supervisor' }}</span>
+                            <span class="badge badge-md badge-pastel-{{ $website->pm2_status === 'online' ? 'green' : ($website->pm2_status === 'pending' ? 'yellow' : 'red') }}">
+                                {{ ucfirst($website->pm2_status ?? 'unknown') }}
+                            </span>
+                        </div>
                         @endif
                         @if(config('services.cloudflare.enabled') && $website->dns_status !== 'none')
                             <div class="info-row">
