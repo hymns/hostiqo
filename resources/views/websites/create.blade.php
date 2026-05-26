@@ -288,6 +288,7 @@
                     </div>
                     <div class="card-body">
                         @if($type !== 'backend')
+                        <div id="ssl-section">
                         <div class="mb-3">
                             <div class="form-check form-switch">
                                 <input
@@ -357,6 +358,7 @@
                             @error('www_redirect')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
+                        </div>
                         </div>
                         @endif
 
@@ -483,6 +485,31 @@ $(function() {
         // Trigger on page load if runtime is already selected
         if (runtimeSelect.value === 'Node.js') {
             runOptField.style.display = 'block';
+        }
+    }
+
+    // For backend: Show/hide SSL section based on domain input
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectType = urlParams.get('type');
+    
+    if (projectType === 'backend') {
+        const domainInput = document.getElementById('domain');
+        const sslSection = document.getElementById('ssl-section');
+        
+        function toggleSslSection() {
+            const hasDomain = domainInput && domainInput.value.trim() !== '';
+            if (sslSection) {
+                sslSection.style.display = hasDomain ? 'block' : 'none';
+            }
+        }
+        
+        if (domainInput) {
+            // Initial check
+            toggleSslSection();
+            
+            // Listen for changes
+            domainInput.addEventListener('input', toggleSslSection);
+            domainInput.addEventListener('change', toggleSslSection);
         }
     }
 });
