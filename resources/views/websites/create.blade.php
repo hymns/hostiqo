@@ -52,7 +52,7 @@
                         <!-- Domain -->
                         <div class="mb-3">
                             <label for="domain" class="form-label">
-                                Domain Name <span class="text-danger">*</span>
+                                Domain Name @if($type !== 'backend')<span class="text-danger">*</span>@endif
                             </label>
                             <input
                                 type="text"
@@ -60,10 +60,16 @@
                                 id="domain"
                                 name="domain"
                                 value="{{ old('domain') }}"
-                                required
-                                placeholder="example.com"
+                                @if($type !== 'backend') required @endif
+                                placeholder="@if($type === 'backend')api.example.com (optional)@else example.com @endif"
                             >
-                            <div class="form-text">The domain name for this website (e.g., example.com or subdomain.example.com)</div>
+                            <div class="form-text">
+                                @if($type === 'backend')
+                                    Optional: Set domain for nginx proxy (e.g., api.example.com). Leave empty if backend runs on port only.
+                                @else
+                                    The domain name for this website (e.g., example.com or subdomain.example.com)
+                                @endif
+                            </div>
                             @error('domain')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -201,23 +207,10 @@
                                 @enderror
                             </div>
                         @elseif($type === 'backend')
-                            <div class="mb-3" id="run-opt-field" style="display: none;">
-                                <label for="working_directory" class="form-label">
-                                    Run opt
-                                </label>
-                                <input
-                                    type="text"
-                                    class="form-control font-monospace @error('working_directory') is-invalid @enderror"
-                                    id="working_directory"
-                                    name="working_directory"
-                                    value="{{ old('working_directory') }}"
-                                    placeholder="start"
-                                >
-                                <div class="form-text">Startup mode in package.json (Node.js only)</div>
-                                @error('working_directory')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                            <p class="text-muted mb-0">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Backend applications don't need a webroot directory. They run on a port and nginx proxies requests to that port.
+                            </p>
                         @endif
                     </div>
                 </div>

@@ -59,37 +59,49 @@ class WebsiteController extends Controller
      */
     public function store(Request $request)
     {
+        $projectType = $request->input('project_type');
+        
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'domain' => ['required', 'string', 'max:255', 'unique:websites,domain'],
+            'domain' => $projectType === 'backend' ? ['nullable', 'string', 'max:255', 'unique:websites,domain'] : ['required', 'string', 'max:255', 'unique:websites,domain'],
             'root_path' => ['nullable', 'string', 'max:500'],
             'working_directory' => ['nullable', 'string', 'max:500'],
             'project_type' => ['required', 'in:php,static,backend'],
             'php_version' => ['required_if:project_type,php', 'nullable', 'string', 'max:10'],
             'runtime' => ['nullable', 'string', 'max:50'],
             'php_settings' => ['nullable', 'array'],
-            'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'port' => $projectType === 'backend' ? ['required', 'integer', 'min:1', 'max:65535'] : ['nullable', 'integer', 'min:1', 'max:65535'],
             'ssl_enabled' => ['boolean'],
             'www_redirect' => ['nullable', 'in:none,to_www,to_non_www'],
             'is_active' => ['boolean'],
         ]);
 
-        // Auto-generate root_path if not provided
-        if (empty($validated['root_path'])) {
-            $validated['root_path'] = $this->generateRootPath($validated['domain']);
-        }
+        // Backend type doesn't need webroot directory
+        if ($validated['project_type'] !== 'backend') {
+            // Auto-generate root_path if not provided
+            if (empty($validated['root_path'])) {
+                $validated['root_path'] = $this->generateRootPath($validated['domain']);
+            }
 
-        // Validate root_path does NOT already exist (prevent overwriting existing projects)
-        // Use Process::run with sudo since PHP may not have access to check /var/www directories
-        $pathCheckResult = Process::run("sudo /usr/bin/test -d {$validated['root_path']} && echo 'exists'");
-        if ($pathCheckResult->successful() && str_contains($pathCheckResult->output(), 'exists')) {
-            return back()
-                ->withInput()
-                ->withErrors(['root_path' => 'The root path already exists. Please choose a different path or remove the existing directory.']);
-        }
+            // Validate root_path does NOT already exist (prevent overwriting existing projects)
+            // Use Process::run with sudo since PHP may not have access to check /var/www directories
+            $pathCheckResult = Process::run("sudo /usr/bin/test -d {$validated['root_path']} && echo 'exists'");
+            if ($pathCheckResult->successful() && str_contains($pathCheckResult->output(), 'exists')) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['root_path' => 'The root path already exists. Please choose a different path or remove the existing directory.']);
+            }
 
-        // Set working_directory to '/' if not provided (relative to root_path)
-        if (empty($validated['working_directory'])) {
+            // Set working_directory to '/' if not provided (relative to root_path)
+            if (empty($validated['working_directory'])) {
+                $validated['working_directory'] = '/';
+            }
+
+            // Create directory structure and welcome page
+            $this->createWebsiteStructure($validated['root_path'], $validated['working_directory'], $validated['project_type'], $validated['domain']);
+        } else {
+            // Backend: Set placeholder values
+            $validated['root_path'] = '/var/www/backend-' . ($validated['domain'] ?? 'port-' . $validated['port']);
             $validated['working_directory'] = '/';
         }
 
@@ -97,9 +109,6 @@ class WebsiteController extends Controller
         $validated['ssl_enabled'] = $request->boolean('ssl_enabled', false);
         $validated['www_redirect'] = $request->input('www_redirect', 'none');
         $validated['is_active'] = $request->boolean('is_active', true);
-
-        // Create directory structure and welcome page
-        $this->createWebsiteStructure($validated['root_path'], $validated['working_directory'], $validated['project_type'], $validated['domain']);
 
         $website = Website::create($validated);
 

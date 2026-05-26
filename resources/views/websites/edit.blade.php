@@ -114,23 +114,10 @@
                                 @enderror
                             </div>
                         @elseif($website->project_type === 'backend')
-                            <div class="mb-3" id="run-opt-field" style="display: {{ $website->runtime === 'Node.js' ? 'block' : 'none' }};">
-                                <label for="working_directory" class="form-label">
-                                    Run opt
-                                </label>
-                                <input
-                                    type="text"
-                                    class="form-control font-monospace @error('working_directory') is-invalid @enderror"
-                                    id="working_directory"
-                                    name="working_directory"
-                                    value="{{ old('working_directory', $website->working_directory) }}"
-                                    placeholder="start"
-                                >
-                                <div class="form-text">Startup mode in package.json (Node.js only)</div>
-                                @error('working_directory')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                            <p class="text-muted mb-0">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Backend applications don't need a webroot directory. They run on a port and nginx proxies requests to that port.
+                            </p>
                         @endif
                     </div>
                 </div>
