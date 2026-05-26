@@ -61,14 +61,16 @@
                         </div>
                     </div>
 
+                    @if($website->project_type === 'php')
                     <div class="row mb-3">
                         <div class="col-md-4">
-                            Version
+                            PHP Version
                         </div>
                         <div class="col-md-8">
-                            {{ $website->version_display }}
+                            {{ $website->php_version }}
                         </div>
                     </div>
+                    @endif
 
                     <div class="row mb-3">
                         <div class="col-md-4">
@@ -184,16 +186,18 @@
                         </div>
                     </div>
 
+                    @if($website->project_type !== 'backend')
                     <div class="row mb-2 align-items-center">
                         <div class="col-md-4">
-                            {{ $website->project_type === 'php' ? 'Working Directory' : 'Run opt' }}
+                            Working Directory
                         </div>
                         <div class="col-md-8">
                             <code>{{ $website->working_directory ?? $website->root_path }}</code>
                         </div>
                     </div>
+                    @endif
 
-                    @if($website->project_type === 'node' && $website->port)
+                    @if(($website->project_type === 'backend' || $website->project_type === 'node') && $website->port)
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 Port

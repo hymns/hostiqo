@@ -122,11 +122,22 @@
                                         <span class="badge" style="background: #10b981; font-size: 0.75rem;"><i class="bi bi-lock-fill"></i> SSL</span>
                                     @endif
                                 </div>
+                                @if($website->domain)
                                 <a href="http://{{ $website->domain }}" target="_blank" class="website-domain">
                                     {{ $website->domain }}
                                     <i class="bi bi-box-arrow-up-right" style="font-size: 0.75rem;"></i>
-                                    <span class="badge badge-pastel-purple">PHP {{ $website->php_version }}</span>
+                                    @if($website->project_type === 'php')
+                                        <span class="badge badge-pastel-purple">PHP {{ $website->php_version }}</span>
+                                    @elseif($website->project_type === 'backend')
+                                        <span class="badge badge-pastel-green">{{ $website->runtime }}</span>
+                                    @endif
                                 </a>
+                                @else
+                                <div class="website-domain">
+                                    Port: {{ $website->port }}
+                                    <span class="badge badge-pastel-green">{{ $website->runtime }}</span>
+                                </div>
+                                @endif
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
