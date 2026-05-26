@@ -80,7 +80,7 @@ class DeployNginxConfig implements ShouldQueue
             }
             
             // Deploy PM2 ecosystem configuration for Node.js projects
-            if ($this->website->project_type === 'reverse-proxy' && $this->website->runtime === 'Node.js') {
+            if ($this->website->project_type === 'backend' && $this->website->runtime === 'Node.js') {
                 $pm2Result = $pm2Service->writeEcosystemConfig($this->website);
                 
                 if ($pm2Result['success']) {
@@ -94,6 +94,20 @@ class DeployNginxConfig implements ShouldQueue
                         'error' => $pm2Result['error'] ?? 'Unknown error'
                     ]);
                 }
+            }
+
+            // Skip Nginx deployment for backend without domain (port-only mode)
+            if ($this->website->project_type === 'backend' && empty($this->website->domain)) {
+                Log::info('Skipping Nginx config for backend without domain', [
+                    'website_id' => $this->website->id,
+                    'port' => $this->website->port
+                ]);
+                
+                $this->website->update([
+                    'nginx_status' => 'skipped'
+                ]);
+                
+                return;
             }
 
             // Deploy Nginx configuration

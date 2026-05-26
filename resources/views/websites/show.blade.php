@@ -81,6 +81,7 @@
                         </div>
                     </div>
 
+                    @if($website->project_type !== 'backend' || !empty($website->domain))
                     <div class="row mb-3">
                         <div class="col-md-4">
                             Nginx Status
@@ -119,6 +120,18 @@
                             </span>
                         </div>
                     </div>
+                    @else
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            Service Status
+                        </div>
+                        <div class="col-md-8">
+                            <span class="badge badge-pastel-{{ $website->pm2_status == 'online' ? 'green' : 'red' }}">
+                                {{ $website->runtime === 'Node.js' ? 'PM2' : 'Supervisor' }}: {{ ucfirst($website->pm2_status ?? 'unknown') }}
+                            </span>
+                        </div>
+                    </div>
+                    @endif
 
                     @if(config('services.cloudflare.enabled'))
                         <div class="row mb-3">
