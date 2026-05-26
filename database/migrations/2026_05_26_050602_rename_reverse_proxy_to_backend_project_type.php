@@ -10,12 +10,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Step 1: Update existing 'reverse-proxy' records to 'backend'
+        // Step 1: Add 'backend' to enum first (keep 'reverse-proxy' temporarily)
+        DB::statement("ALTER TABLE websites MODIFY COLUMN project_type ENUM('php', 'static', 'reverse-proxy', 'backend') DEFAULT 'php'");
+
+        // Step 2: Update existing 'reverse-proxy' records to 'backend'
         DB::table('websites')
             ->where('project_type', 'reverse-proxy')
             ->update(['project_type' => 'backend']);
 
-        // Step 2: Modify project_type enum to replace 'reverse-proxy' with 'backend'
+        // Step 3: Remove 'reverse-proxy' from enum
         DB::statement("ALTER TABLE websites MODIFY COLUMN project_type ENUM('php', 'static', 'backend') DEFAULT 'php'");
     }
 
