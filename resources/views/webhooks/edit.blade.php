@@ -171,7 +171,7 @@ pm2 restart app-name</code>
                     <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap; font-size: 0.7rem;">module.exports = {
   apps: [{
     name: 'app-name',
-    script: 'index.js',
+    script: 'index.js', // or 'server.js', 'app.js', 'dist/main.js'
     instances: 'max',
     exec_mode: 'cluster',
     env: {
@@ -180,7 +180,7 @@ pm2 restart app-name</code>
     }
   }]
 };</code>
-                    <p class="small text-muted">Replace <code>app-name</code> with your website's service name (shown in website details).</p>
+                    <p class="small text-muted">Replace <code>app-name</code> with service name and <code>script</code> with your entry point file.</p>
 
                     <p class="small mb-1 mt-3"><strong>Python (Supervisor):</strong></p>
                     <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">pip install -r requirements.txt
