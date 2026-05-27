@@ -43,6 +43,8 @@
                                         <strong>{{ $webhook->name }}</strong>
                                         @if($webhook->domain)
                                             <br><small class="text-muted"><i class="bi bi-globe"></i> {{ $webhook->domain }}</small>
+                                        @else
+                                            <br><small class="text-muted"><i class="bi bi-terminal"></i> {{ $webhook->website?->runtime ?? 'Backend' }}</small>
                                         @endif
                                     </td>
                                     <td>

@@ -23,7 +23,7 @@ class WebhookController extends Controller
     public function index()
     {
         $webhooks = Webhook::withCount('deployments')
-            ->with('latestDeployment')
+            ->with(['latestDeployment', 'website'])
             ->latest()
             ->paginate(15);
 

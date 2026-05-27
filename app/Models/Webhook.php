@@ -74,6 +74,16 @@ class Webhook extends Model
     }
 
     /**
+     * Get the associated website by matching local_path with root_path.
+     *
+     * @return HasOne
+     */
+    public function website(): HasOne
+    {
+        return $this->hasOne(Website::class, 'root_path', 'local_path');
+    }
+
+    /**
      * Scope a query to only include active webhooks.
      *
      * @param \Illuminate\Database\Eloquent\Builder $query The query builder
