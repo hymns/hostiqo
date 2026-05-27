@@ -478,7 +478,8 @@ JS;
                 ];
             }
 
-            $result = Process::run("pm2 jlist");
+            // Run as www-data user to access PM2 process list
+            $result = Process::run("sudo -u www-data pm2 jlist");
 
             if ($result->failed()) {
                 return [
@@ -532,7 +533,8 @@ JS;
                 ];
             }
 
-            $result = Process::run("pm2 jlist");
+            // Run as www-data user to access PM2 process list
+            $result = Process::run("sudo -u www-data pm2 jlist");
 
             if ($result->failed()) {
                 return [
