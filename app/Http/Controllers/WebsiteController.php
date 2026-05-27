@@ -29,6 +29,33 @@ class WebsiteController extends Controller
             ->latest()
             ->paginate(15);
         
+        // Sync PM2 status for Node.js backend projects
+        if ($type === 'backend') {
+            $pm2Service = app(\App\Services\Pm2Service::class);
+            
+            foreach ($websites as $website) {
+                if ($website->project_type === 'reverse-proxy' && $website->runtime === 'Node.js') {
+                    $statusResult = $pm2Service->getAppStatus($website);
+                    
+                    if ($statusResult['success'] && isset($statusResult['status'])) {
+                        $newStatus = $statusResult['status'] === 'online' ? 'running' : 
+                                    ($statusResult['status'] === 'stopped' ? 'stopped' : 
+                                    ($statusResult['status'] === 'not_running' ? 'stopped' : 'unknown'));
+                        
+                        // Update if status changed
+                        if ($website->pm2_status !== $newStatus) {
+                            $website->update(['pm2_status' => $newStatus]);
+                        }
+                    }
+                }
+            }
+            
+            // Refresh the collection to get updated statuses
+            $websites = Website::ofType($type)
+                ->latest()
+                ->paginate(15);
+        }
+        
         return view('websites.index', compact('websites', 'type'));
     }
 
@@ -144,6 +171,24 @@ class WebsiteController extends Controller
      */
     public function show(Website $website)
     {
+        // Sync PM2 status for Node.js backend projects
+        if ($website->project_type === 'reverse-proxy' && $website->runtime === 'Node.js') {
+            $pm2Service = app(\App\Services\Pm2Service::class);
+            $statusResult = $pm2Service->getAppStatus($website);
+            
+            if ($statusResult['success'] && isset($statusResult['status'])) {
+                $newStatus = $statusResult['status'] === 'online' ? 'running' : 
+                            ($statusResult['status'] === 'stopped' ? 'stopped' : 
+                            ($statusResult['status'] === 'not_running' ? 'stopped' : 'unknown'));
+                
+                // Update database if status changed
+                if ($website->pm2_status !== $newStatus) {
+                    $website->update(['pm2_status' => $newStatus]);
+                    $website->refresh();
+                }
+            }
+        }
+        
         return view('websites.show', compact('website'));
     }
 
