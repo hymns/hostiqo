@@ -74,7 +74,7 @@ class Website extends Model
     {
         return match($this->project_type) {
             'php' => 'primary',
-            'reverse-proxy' => 'success',
+            'backend' => 'success',
             'static' => 'info',
             default => 'secondary',
         };
@@ -89,7 +89,7 @@ class Website extends Model
     {
         return match($this->project_type) {
             'php' => $this->php_version ?? 'Default',
-            'reverse-proxy' => $this->runtime ?? 'Not Set',
+            'backend' => $this->runtime ?? 'Not Set',
             'static' => 'Static',
             default => 'N/A',
         };

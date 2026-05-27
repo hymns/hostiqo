@@ -34,7 +34,7 @@ class Pm2Controller extends Controller
         }
 
         // Get associated websites for each PM2 app
-        $websites = Website::where('project_type', 'reverse-proxy')
+        $websites = Website::where('project_type', 'backend')
             ->where('runtime', 'Node.js')
             ->get()
             ->keyBy(function ($website) {
@@ -68,7 +68,7 @@ class Pm2Controller extends Controller
         $error = $result['error'] ?? null;
 
         // Find associated website
-        $website = Website::where('project_type', 'reverse-proxy')
+        $website = Website::where('project_type', 'backend')
             ->where('runtime', 'Node.js')
             ->get()
             ->first(function ($site) use ($appName) {
@@ -93,7 +93,7 @@ class Pm2Controller extends Controller
     public function start(string $appName)
     {
         // Find website by app name
-        $website = Website::where('project_type', 'reverse-proxy')
+        $website = Website::where('project_type', 'backend')
             ->where('runtime', 'Node.js')
             ->get()
             ->first(function ($site) use ($appName) {
@@ -127,7 +127,7 @@ class Pm2Controller extends Controller
      */
     public function stop(string $appName)
     {
-        $website = Website::where('project_type', 'reverse-proxy')
+        $website = Website::where('project_type', 'backend')
             ->where('runtime', 'Node.js')
             ->get()
             ->first(function ($site) use ($appName) {
@@ -161,7 +161,7 @@ class Pm2Controller extends Controller
      */
     public function restart(string $appName)
     {
-        $website = Website::where('project_type', 'reverse-proxy')
+        $website = Website::where('project_type', 'backend')
             ->where('runtime', 'Node.js')
             ->get()
             ->first(function ($site) use ($appName) {

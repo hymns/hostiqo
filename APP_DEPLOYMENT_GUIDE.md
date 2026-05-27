@@ -250,7 +250,7 @@ This guide provides step-by-step instructions for deploying different types of a
 
 ## Node.js Applications
 
-### Project Type: `reverse-proxy` with Runtime: `Node.js`
+### Project Type: `backend` with Runtime: `Node.js`
 
 ### What You Need:
 - ✅ Domain name
@@ -549,7 +549,7 @@ module.exports = {
 
 ## Python Applications
 
-### Project Type: `reverse-proxy` with Runtime: `Python`
+### Project Type: `backend` with Runtime: `Python`
 
 ### What You Need:
 - ✅ Domain name
@@ -827,7 +827,7 @@ module.exports = {
 
 ## Go Applications
 
-### Project Type: `reverse-proxy` with Runtime: `Go`
+### Project Type: `backend` with Runtime: `Go`
 
 ### What You Need:
 - ✅ Domain name
@@ -1048,7 +1048,7 @@ module.exports = {
 
 ## Ruby Applications
 
-### Project Type: `reverse-proxy` with Runtime: `Ruby`
+### Project Type: `backend` with Runtime: `Ruby`
 
 ### What You Need:
 - ✅ Domain name
@@ -1305,7 +1305,7 @@ module.exports = {
 
 ## Java Applications
 
-### Project Type: `reverse-proxy` with Runtime: `Java`
+### Project Type: `backend` with Runtime: `Java`
 
 ### What You Need:
 - ✅ Domain name

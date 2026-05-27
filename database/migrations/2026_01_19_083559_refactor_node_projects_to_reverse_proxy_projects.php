@@ -17,17 +17,17 @@ return new class extends Migration
             $table->renameColumn('node_version', 'runtime');
         });
 
-        // Step 2: Update existing 'node' project_type to 'reverse-proxy'
+        // Step 2: Update existing 'node' project_type to 'backend'
         DB::table('websites')
             ->where('project_type', 'node')
             ->update([
-                'project_type' => 'reverse-proxy',
+                'project_type' => 'backend',
                 'runtime' => DB::raw("COALESCE(runtime, 'Node.js')")
             ]);
 
-        // Step 3: Modify project_type enum to include 'reverse-proxy' and remove 'node'
+        // Step 3: Modify project_type enum to include 'backend' and remove 'node'
         // Note: Laravel doesn't support modifying enums directly, so we need raw SQL
-        DB::statement("ALTER TABLE websites MODIFY COLUMN project_type ENUM('php', 'static', 'reverse-proxy') DEFAULT 'php'");
+        DB::statement("ALTER TABLE websites MODIFY COLUMN project_type ENUM('php', 'static', 'backend') DEFAULT 'php'");
     }
 
     /**
@@ -38,9 +38,9 @@ return new class extends Migration
         // Step 1: Revert project_type enum
         DB::statement("ALTER TABLE websites MODIFY COLUMN project_type ENUM('php', 'node', 'static') DEFAULT 'php'");
 
-        // Step 2: Update 'reverse-proxy' back to 'node'
+        // Step 2: Update 'backend' back to 'node'
         DB::table('websites')
-            ->where('project_type', 'reverse-proxy')
+            ->where('project_type', 'backend')
             ->update(['project_type' => 'node']);
 
         // Step 3: Rename runtime back to node_version

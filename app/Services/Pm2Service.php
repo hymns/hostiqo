@@ -33,7 +33,7 @@ class Pm2Service
      */
     public function generateEcosystemConfig(Website $website): string
     {
-        if ($website->project_type !== 'reverse-proxy' || $website->runtime !== 'Node.js') {
+        if ($website->project_type !== 'backend' || $website->runtime !== 'Node.js') {
             throw new \InvalidArgumentException('PM2 configuration is only for Node.js reverse proxy projects');
         }
 
@@ -159,7 +159,7 @@ JS;
     public function writeEcosystemConfig(Website $website): array
     {
         try {
-            if ($website->project_type !== 'reverse-proxy' || $website->runtime !== 'Node.js') {
+            if ($website->project_type !== 'backend' || $website->runtime !== 'Node.js') {
                 return [
                     'success' => true,
                     'message' => 'Not a Node.js reverse proxy project, skipping PM2 configuration'
@@ -285,7 +285,7 @@ JS;
     public function startApp(Website $website): array
     {
         try {
-            if ($website->project_type !== 'reverse-proxy' || $website->runtime !== 'Node.js') {
+            if ($website->project_type !== 'backend' || $website->runtime !== 'Node.js') {
                 return [
                     'success' => false,
                     'error' => 'Not a Node.js reverse proxy project'
@@ -347,7 +347,7 @@ JS;
     public function stopApp(Website $website): array
     {
         try {
-            if ($website->project_type !== 'reverse-proxy' || $website->runtime !== 'Node.js') {
+            if ($website->project_type !== 'backend' || $website->runtime !== 'Node.js') {
                 return [
                     'success' => false,
                     'error' => 'Not a Node.js reverse proxy project'
@@ -406,7 +406,7 @@ JS;
     public function restartApp(Website $website): array
     {
         try {
-            if ($website->project_type !== 'reverse-proxy' || $website->runtime !== 'Node.js') {
+            if ($website->project_type !== 'backend' || $website->runtime !== 'Node.js') {
                 return [
                     'success' => false,
                     'error' => 'Not a Node.js reverse proxy project'

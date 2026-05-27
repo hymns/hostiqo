@@ -34,7 +34,7 @@ class WebsiteController extends Controller
             $pm2Service = app(\App\Services\Pm2Service::class);
             
             foreach ($websites as $website) {
-                if ($website->project_type === 'reverse-proxy' && $website->runtime === 'Node.js') {
+                if ($website->project_type === 'backend' && $website->runtime === 'Node.js') {
                     $statusResult = $pm2Service->getAppStatus($website);
                     
                     if ($statusResult['success'] && isset($statusResult['status'])) {
@@ -172,7 +172,7 @@ class WebsiteController extends Controller
     public function show(Website $website)
     {
         // Sync PM2 status for Node.js backend projects
-        if ($website->project_type === 'reverse-proxy' && $website->runtime === 'Node.js') {
+        if ($website->project_type === 'backend' && $website->runtime === 'Node.js') {
             $pm2Service = app(\App\Services\Pm2Service::class);
             $statusResult = $pm2Service->getAppStatus($website);
             
@@ -444,7 +444,7 @@ class WebsiteController extends Controller
      */
     public function pm2Start(Website $website, Pm2Service $pm2Service)
     {
-        if ($website->project_type !== 'reverse-proxy' || $website->runtime !== 'Node.js') {
+        if ($website->project_type !== 'backend' || $website->runtime !== 'Node.js') {
             return redirect()
                 ->route('websites.show', $website)
                 ->with('error', 'PM2 control is only available for Node.js reverse proxy projects.');
@@ -472,7 +472,7 @@ class WebsiteController extends Controller
      */
     public function pm2Stop(Website $website, Pm2Service $pm2Service)
     {
-        if ($website->project_type !== 'reverse-proxy' || $website->runtime !== 'Node.js') {
+        if ($website->project_type !== 'backend' || $website->runtime !== 'Node.js') {
             return redirect()
                 ->route('websites.show', $website)
                 ->with('error', 'PM2 control is only available for Node.js reverse proxy projects.');
@@ -500,7 +500,7 @@ class WebsiteController extends Controller
      */
     public function pm2Restart(Website $website, Pm2Service $pm2Service)
     {
-        if ($website->project_type !== 'reverse-proxy' || $website->runtime !== 'Node.js') {
+        if ($website->project_type !== 'backend' || $website->runtime !== 'Node.js') {
             return redirect()
                 ->route('websites.show', $website)
                 ->with('error', 'PM2 control is only available for Node.js reverse proxy projects.');
