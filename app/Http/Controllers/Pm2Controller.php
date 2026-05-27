@@ -38,7 +38,7 @@ class Pm2Controller extends Controller
             ->where('runtime', 'Node.js')
             ->get()
             ->keyBy(function ($website) {
-                return str_replace('.', '-', $website->domain);
+                return $website->service_name;
             });
 
         // Enrich apps with website data
@@ -72,7 +72,7 @@ class Pm2Controller extends Controller
             ->where('runtime', 'Node.js')
             ->get()
             ->first(function ($site) use ($appName) {
-                return str_replace('.', '-', $site->domain) === $appName;
+                return $site->service_name === $appName;
             });
 
         return view('pm2.logs', [
@@ -97,7 +97,7 @@ class Pm2Controller extends Controller
             ->where('runtime', 'Node.js')
             ->get()
             ->first(function ($site) use ($appName) {
-                return str_replace('.', '-', $site->domain) === $appName;
+                return $site->service_name === $appName;
             });
 
         if (!$website) {
@@ -131,7 +131,7 @@ class Pm2Controller extends Controller
             ->where('runtime', 'Node.js')
             ->get()
             ->first(function ($site) use ($appName) {
-                return str_replace('.', '-', $site->domain) === $appName;
+                return $site->service_name === $appName;
             });
 
         if (!$website) {
@@ -165,7 +165,7 @@ class Pm2Controller extends Controller
             ->where('runtime', 'Node.js')
             ->get()
             ->first(function ($site) use ($appName) {
-                return str_replace('.', '-', $site->domain) === $appName;
+                return $site->service_name === $appName;
             });
 
         if (!$website) {

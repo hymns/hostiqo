@@ -181,7 +181,7 @@
                     <p class="small mb-1 mt-3"><strong>Node.js (PM2):</strong></p>
                     <code class="small d-block bg-white p-2 rounded mb-2" style="white-space: pre-wrap;">npm install
 npm run build
-pm2 restart app-name</code>
+pm2 restart ecosystem.config.js</code>
 
                     <h6 class="mt-3">PM2 Ecosystem Template</h6>
                     <p class="small mb-1">Create <code>ecosystem.config.js</code> in your project root:</p>

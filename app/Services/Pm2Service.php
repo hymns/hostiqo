@@ -37,7 +37,8 @@ class Pm2Service
             throw new \InvalidArgumentException('PM2 configuration is only for Node.js reverse proxy projects');
         }
 
-        $appName = str_replace('.', '-', $website->domain);
+        // Use service_name which handles both domain and backend-port naming
+        $appName = $website->service_name;
         $nodeVersion = '20'; // Default Node.js version
         $port = $website->port ?? 3000;
         $instances = 'max'; // Auto-scale based on CPU cores
@@ -166,7 +167,7 @@ JS;
             }
 
             $config = $this->generateEcosystemConfig($website);
-            $appName = str_replace('.', '-', $website->domain);
+            $appName = $website->service_name;
             $filename = "ecosystem.{$appName}.config.js";
             $filepath = "{$this->pm2ConfigPath}/{$filename}";
 
@@ -246,7 +247,7 @@ JS;
     public function deleteEcosystemConfig(Website $website): array
     {
         try {
-            $appName = str_replace('.', '-', $website->domain);
+            $appName = $website->service_name;
             $filename = "ecosystem.{$appName}.config.js";
             $filepath = "{$this->pm2ConfigPath}/{$filename}";
 
@@ -298,7 +299,7 @@ JS;
                 ];
             }
 
-            $appName = str_replace('.', '-', $website->domain);
+            $appName = $website->service_name;
             $configPath = "{$this->pm2ConfigPath}/ecosystem.{$appName}.config.js";
 
             // Try to restart first (if already exists), otherwise start
@@ -360,7 +361,7 @@ JS;
                 ];
             }
 
-            $appName = str_replace('.', '-', $website->domain);
+            $appName = $website->service_name;
             $result = Process::run("pm2 stop {$appName}");
 
             if ($result->successful()) {
@@ -419,7 +420,7 @@ JS;
                 ];
             }
 
-            $appName = str_replace('.', '-', $website->domain);
+            $appName = $website->service_name;
             $result = Process::run("pm2 restart {$appName} --update-env");
 
             if ($result->successful()) {
@@ -466,7 +467,7 @@ JS;
     public function getAppStatus(Website $website): array
     {
         try {
-            $appName = str_replace('.', '-', $website->domain);
+            $appName = $website->service_name;
 
             // This is for production mode only
             if ($this->isLocal) {
