@@ -4,6 +4,38 @@
 @section('page-title', 'Webhooks')
 @section('page-description', 'Manage your Git webhooks')
 
+@push('styles')
+<style>
+    /* Connected button group styling */
+    .btn-group > .btn:not(:first-child),
+    .btn-group > form:not(:first-child) .btn {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        margin-left: -1px;
+    }
+    
+    .btn-group > .btn:not(:last-child),
+    .btn-group > form:not(:last-child) .btn {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+    
+    /* Ensure first button has left rounded corners */
+    .btn-group > .btn:first-child,
+    .btn-group > form:first-child .btn {
+        border-top-left-radius: 0.375rem;
+        border-bottom-left-radius: 0.375rem;
+    }
+    
+    /* Ensure last button has right rounded corners */
+    .btn-group > .btn:last-child,
+    .btn-group > form:last-child .btn {
+        border-top-right-radius: 0.375rem;
+        border-bottom-right-radius: 0.375rem;
+    }
+</style>
+@endpush
+
 @section('page-actions')
     <a href="{{ route('webhooks.create') }}" class="btn btn-primary">
         <i class="bi bi-plus-circle me-1"></i> Create Webhook
