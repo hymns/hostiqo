@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Webhook;
 use App\Services\SshKeyService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -127,7 +128,29 @@ class WebhookController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active');
 
+        // Check if repository URL changed
+        $repositoryChanged = $webhook->repository_url !== $validated['repository_url'];
+
         $webhook->update($validated);
+
+        // Update git remote origin if repository URL changed
+        if ($repositoryChanged && file_exists($webhook->local_path . '/.git')) {
+            try {
+                $result = Process::path($webhook->local_path)
+                    ->run('git remote set-url origin ' . escapeshellarg($validated['repository_url']));
+
+                if ($result->successful()) {
+                    return redirect()
+                        ->route('webhooks.show', $webhook)
+                        ->with('success', 'Webhook updated successfully! Git remote origin has been updated.');
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Failed to update git remote origin', [
+                    'webhook_id' => $webhook->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
 
         return redirect()
             ->route('webhooks.show', $webhook)
