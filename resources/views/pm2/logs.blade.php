@@ -34,7 +34,7 @@
     <div class="card mb-3">
         <div class="card-body">
             <form method="GET" action="{{ route('pm2.logs', $appName) }}" class="row g-3 align-items-end">
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label for="lines" class="form-label">Number of Lines</label>
                     <select name="lines" id="lines" class="form-select" onchange="this.form.submit()">
                         <option value="50" {{ $lines == 50 ? 'selected' : '' }}>50 lines</option>
@@ -44,11 +44,11 @@
                         <option value="1000" {{ $lines == 1000 ? 'selected' : '' }}>1000 lines</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary">
+                <div class="col-md-8">
+                    <button type="submit" class="btn btn-primary me-2">
                         <i class="bi bi-arrow-clockwise me-1"></i> Refresh
                     </button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="window.location.reload()">
+                    <button type="button" class="btn btn-outline-secondary" id="autoRefreshBtn" onclick="toggleAutoRefresh(this)">
                         <i class="bi bi-arrow-repeat me-1"></i> Auto Refresh
                     </button>
                 </div>
@@ -125,20 +125,18 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div class="btn-group" role="group">
-                    <form action="{{ route('pm2.restart', $appName) }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-warning">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Restart Application
-                        </button>
-                    </form>
-                    <form action="{{ route('pm2.stop', $appName) }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-danger">
-                            <i class="bi bi-stop-circle me-1"></i> Stop Application
-                        </button>
-                    </form>
-                </div>
+                <form action="{{ route('pm2.restart', $appName) }}" method="POST" class="d-inline me-2">
+                    @csrf
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Restart Application
+                    </button>
+                </form>
+                <form action="{{ route('pm2.stop', $appName) }}" method="POST" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-stop-circle me-1"></i> Stop Application
+                    </button>
+                </form>
                 <p class="text-muted small mt-2 mb-0">
                     <i class="bi bi-info-circle me-1"></i>
                     Restart the application if you see errors or need to apply changes.
