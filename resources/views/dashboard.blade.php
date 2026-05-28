@@ -164,7 +164,7 @@
                                 <thead>
                                     <tr>
                                         <th>Name / Domain</th>
-                                        <th>Repository</th>
+                                        <th>Provider</th>
                                         <th>Branch</th>
                                         <th>Status</th>
                                         <th>Actions</th>
@@ -180,8 +180,8 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <small class="font-monospace">{{ Str::limit($webhook->repository_url, 30) }}</small>
-                                                <br><small class="text-muted"><i class="bi {{ $webhook->provider_icon }}"></i> {{ ucfirst($webhook->git_provider) }}</small>
+                                                <i class="bi {{ $webhook->provider_icon }}"></i>
+                                                {{ ucfirst($webhook->git_provider) }}
                                             </td>
                                             <td>
                                                 <code>{{ $webhook->branch }}</code>
