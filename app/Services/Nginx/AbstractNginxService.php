@@ -429,10 +429,14 @@ NGINX;
         $apiPath = $website->api_proxy_path ?? '/api';
         $apiPort = $website->api_proxy_port;
 
+        // Escape special regex characters in the path for safe regex usage
+        $escapedPath = preg_quote($apiPath, '~');
+        
         return <<<NGINX
 
     # API Proxy to backend on port {$apiPort}
-    location {$apiPath} {
+    # Matches {$apiPath}, {$apiPath}/, {$apiPath}-docs, {$apiPath}/users, etc.
+    location ~ ^{$escapedPath}(/|$|-) {
         proxy_pass http://127.0.0.1:{$apiPort};
         proxy_http_version 1.1;
         
