@@ -425,7 +425,8 @@
                 <div class="card-body">
                     <!-- Compact Icon Grid -->
                     <div class="d-flex gap-2 flex-wrap justify-content-center mb-3">
-                        <!-- SSL Button -->
+                        <!-- SSL Button (not for backend without domain) -->
+                        @if($website->project_type !== 'backend' || !empty($website->domain))
                         <form action="{{ route('websites.toggle-ssl', $website) }}" method="POST">
                             @csrf
                             @method('POST')
@@ -433,9 +434,10 @@
                                 <i class="bi bi-shield-check"></i>
                             </button>
                         </form>
+                        @endif
 
-                        @if(config('services.cloudflare.enabled'))
-                        <!-- DNS Button -->
+                        <!-- DNS Button (not for backend without domain) -->
+                        @if(config('services.cloudflare.enabled') && ($website->project_type !== 'backend' || !empty($website->domain)))
                         <form action="{{ route('websites.dns-sync', $website) }}" method="POST">
                             @csrf
                             <button type="submit" class="action-btn {{ $website->dns_status === 'active' ? 'active' : '' }}" title="{{ $website->dns_status === 'active' ? 'DNS Synced' : 'Sync DNS' }}">
@@ -487,8 +489,10 @@
                         <p class="small">This Node.js app runs on port {{ $website->port }} and is managed by PM2 for automatic restarts and monitoring.</p>
                     @endif
 
+                    @if($website->project_type !== 'backend' || !empty($website->domain))
                     <h6 class="mt-3">SSL Certificate</h6>
                     <p class="small">@if($website->ssl_enabled)SSL is enabled. Certificates auto-renew every 90 days via Let's Encrypt.@elseTo enable HTTPS, click the "Enable SSL" button. Let's Encrypt certificate will be requested automatically.@endif</p>
+                    @endif
 
                     @if(config('services.cloudflare.enabled'))
                         <h6 class="mt-3">Cloudflare DNS</h6>
