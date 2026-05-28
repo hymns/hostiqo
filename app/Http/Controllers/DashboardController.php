@@ -25,7 +25,7 @@ class DashboardController extends Controller
             ->get();
 
         $webhooks = Webhook::withCount('deployments')
-            ->with('latestDeployment')
+            ->with(['latestDeployment', 'website'])
             ->latest()
             ->get();
 
