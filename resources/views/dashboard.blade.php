@@ -163,10 +163,10 @@
                             <table class="table table-hover mb-0">
                                 <thead>
                                     <tr>
-                                        <th>Name</th>
-                                        <th>Provider</th>
+                                        <th>Name / Domain</th>
+                                        <th>Repository</th>
+                                        <th>Branch</th>
                                         <th>Status</th>
-                                        <th>Deployments</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -180,16 +180,16 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <i class="bi {{ $webhook->provider_icon }}"></i>
-                                                {{ ucfirst($webhook->git_provider) }}
+                                                <small class="font-monospace">{{ Str::limit($webhook->repository_url, 30) }}</small>
+                                                <br><small class="text-muted"><i class="bi {{ $webhook->provider_icon }}"></i> {{ ucfirst($webhook->git_provider) }}</small>
+                                            </td>
+                                            <td>
+                                                <code>{{ $webhook->branch }}</code>
                                             </td>
                                             <td>
                                                 <span class="badge bg-{{ $webhook->status_badge }}">
                                                     {{ $webhook->is_active ? 'Active' : 'Inactive' }}
                                                 </span>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-info">{{ $webhook->deployments_count }}</span>
                                             </td>
                                             <td>
                                                 <a href="{{ route('webhooks.show', $webhook) }}" class="btn btn-sm btn-outline-primary">
