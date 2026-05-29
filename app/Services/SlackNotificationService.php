@@ -40,6 +40,11 @@ class SlackNotificationService
         $text .= "*Webhook:* {$webhook->name}\n";
         $text .= "*Branch:* `{$webhook->branch}`\n";
         $text .= "*Commit:* `{$commitHash}`\n";
+        
+        if ($deployment->commit_message) {
+            $text .= "*Message:* {$deployment->commit_message}\n";
+        }
+        
         $text .= "*Duration:* {$duration}\n";
 
         if ($webhook->domain) {
