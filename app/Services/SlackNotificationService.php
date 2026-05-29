@@ -33,7 +33,7 @@ class SlackNotificationService
         $color = $status === 'success' ? 'good' : 'danger';
 
         $commitHash = $deployment->commit_hash ? substr($deployment->commit_hash, 0, 7) : 'N/A';
-        $duration = $this->formatDuration($deployment->created_at, $deployment->updated_at);
+        $duration = $this->formatDuration($deployment->started_at, $deployment->completed_at);
 
         // Build message text
         $text = "{$emoji} *Deployment {$statusText}*\n";
@@ -109,13 +109,18 @@ class SlackNotificationService
     /**
      * Format duration between two timestamps.
      *
-     * @param \Carbon\Carbon $start
-     * @param \Carbon\Carbon $end
+     * @param \Carbon\Carbon|null $start
+     * @param \Carbon\Carbon|null $end
      * @return string
      */
     private function formatDuration($start, $end): string
     {
-        $seconds = $end->diffInSeconds($start);
+        if (!$start || !$end) {
+            return 'N/A';
+        }
+
+        // Use absolute value to ensure positive duration
+        $seconds = abs($start->diffInSeconds($end));
 
         if ($seconds < 60) {
             return "{$seconds}s";
