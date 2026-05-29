@@ -28,47 +28,26 @@ class SlackNotificationService
             return false;
         }
 
-        $color = $status === 'success' ? '#36a64f' : '#ff0000';
         $emoji = $status === 'success' ? ':white_check_mark:' : ':x:';
         $statusText = $status === 'success' ? 'Success' : 'Failed';
+        $color = $status === 'success' ? 'good' : 'danger';
 
-        $fields = [
-            [
-                'title' => 'Webhook',
-                'value' => $webhook->name,
-                'short' => true
-            ],
-            [
-                'title' => 'Branch',
-                'value' => $webhook->branch,
-                'short' => true
-            ],
-            [
-                'title' => 'Commit',
-                'value' => $deployment->commit_hash ? substr($deployment->commit_hash, 0, 7) : 'N/A',
-                'short' => true
-            ],
-            [
-                'title' => 'Duration',
-                'value' => $this->formatDuration($deployment->created_at, $deployment->updated_at),
-                'short' => true
-            ]
-        ];
+        $commitHash = $deployment->commit_hash ? substr($deployment->commit_hash, 0, 7) : 'N/A';
+        $duration = $this->formatDuration($deployment->created_at, $deployment->updated_at);
+
+        // Build message text
+        $text = "{$emoji} *Deployment {$statusText}*\n";
+        $text .= "*Webhook:* {$webhook->name}\n";
+        $text .= "*Branch:* `{$webhook->branch}`\n";
+        $text .= "*Commit:* `{$commitHash}`\n";
+        $text .= "*Duration:* {$duration}\n";
 
         if ($webhook->domain) {
-            $fields[] = [
-                'title' => 'Domain',
-                'value' => $webhook->domain,
-                'short' => false
-            ];
+            $text .= "*Domain:* {$webhook->domain}\n";
         }
 
         if ($errorMessage) {
-            $fields[] = [
-                'title' => 'Error',
-                'value' => "```{$errorMessage}```",
-                'short' => false
-            ];
+            $text .= "\n*Error:*\n```{$errorMessage}```";
         }
 
         $payload = [
@@ -76,8 +55,7 @@ class SlackNotificationService
             'attachments' => [
                 [
                     'color' => $color,
-                    'title' => "Deployment #{$deployment->id} - {$statusText}",
-                    'fields' => $fields,
+                    'text' => $text,
                     'footer' => 'Hostiqo',
                     'ts' => $deployment->updated_at->timestamp
                 ]
@@ -85,6 +63,13 @@ class SlackNotificationService
         ];
 
         try {
+            Log::info('Sending Slack notification', [
+                'webhook_id' => $webhook->id,
+                'deployment_id' => $deployment->id,
+                'slack_url' => substr($webhook->slack_webhook_url, 0, 50) . '...',
+                'payload' => $payload
+            ]);
+
             $response = Http::post($webhook->slack_webhook_url, $payload);
 
             if ($response->successful()) {
@@ -108,7 +93,8 @@ class SlackNotificationService
             Log::error('Slack notification exception', [
                 'webhook_id' => $webhook->id,
                 'deployment_id' => $deployment->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return false;
