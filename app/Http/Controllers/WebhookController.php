@@ -60,6 +60,7 @@ class WebhookController extends Controller
             'is_active' => ['nullable', 'boolean'],
             'pre_deploy_script' => ['nullable', 'string'],
             'post_deploy_script' => ['nullable', 'string'],
+            'slack_webhook_url' => ['nullable', 'url', 'max:500'],
             'generate_ssh_key' => ['nullable', 'boolean'],
         ]);
 
@@ -124,6 +125,7 @@ class WebhookController extends Controller
             'is_active' => ['nullable', 'boolean'],
             'pre_deploy_script' => ['nullable', 'string'],
             'post_deploy_script' => ['nullable', 'string'],
+            'slack_webhook_url' => ['nullable', 'url', 'max:500'],
         ]);
 
         $validated['is_active'] = $request->boolean('is_active');

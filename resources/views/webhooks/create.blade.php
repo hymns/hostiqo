@@ -148,6 +148,17 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <div class="mb-3">
+                            <label for="slack_webhook_url" class="form-label">
+                                <i class="bi bi-slack me-1"></i> Slack Webhook URL (Optional)
+                            </label>
+                            <input type="url" class="form-control @error('slack_webhook_url') is-invalid @enderror" id="slack_webhook_url" name="slack_webhook_url" value="{{ old('slack_webhook_url') }}" placeholder="https://hooks.slack.com/services/YOUR/WEBHOOK/URL">
+                            <div class="form-text">Get deployment notifications in Slack. <a href="https://api.slack.com/messaging/webhooks" target="_blank">Create a webhook</a></div>
+                            @error('slack_webhook_url')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
                 </div>
 

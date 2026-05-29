@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Process;
 class DeploymentService
 {
     public function __construct(
-        protected SshKeyService $sshKeyService
+        protected SshKeyService $sshKeyService,
+        protected SlackNotificationService $slackService
     ) {
     }
 
@@ -43,6 +44,13 @@ class DeploymentService
             ]);
 
             $webhook->update(['last_deployed_at' => now()]);
+
+            // Send success notification to Slack
+            $this->slackService->sendDeploymentNotification(
+                $webhook,
+                $deployment,
+                'success'
+            );
         } catch (\Exception $e) {
             Log::error('Deployment failed: ' . $e->getMessage(), [
                 'webhook_id' => $webhook->id,
@@ -54,6 +62,14 @@ class DeploymentService
                 'error_message' => $e->getMessage(),
                 'completed_at' => now(),
             ]);
+
+            // Send failure notification to Slack
+            $this->slackService->sendDeploymentNotification(
+                $webhook,
+                $deployment,
+                'failed',
+                $e->getMessage()
+            );
         }
 
         return $deployment;

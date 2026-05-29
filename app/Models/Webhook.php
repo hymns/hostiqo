@@ -28,6 +28,7 @@ class Webhook extends Model
         'is_active',
         'pre_deploy_script',
         'post_deploy_script',
+        'slack_webhook_url',
         'last_deployed_at',
     ];
 
