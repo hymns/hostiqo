@@ -20,6 +20,7 @@ class Website extends Model
         'framework',
         'php_version',
         'runtime',
+        'node_version',
         'php_settings',
         'php_pool_name',
         'port',

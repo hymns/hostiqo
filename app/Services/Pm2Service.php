@@ -39,7 +39,7 @@ class Pm2Service
 
         // Use service_name which handles both domain and backend-port naming
         $appName = $website->service_name;
-        $nodeVersion = '20'; // Default Node.js version
+        $nodeVersion = $website->node_version ?? '20';
         $port = $website->port ?? 3000;
         $instances = 'max'; // Auto-scale based on CPU cores
 
@@ -77,10 +77,8 @@ module.exports = {
     instances: '{$instances}',
     exec_mode: 'cluster',
 
-    // Node.js interpreter
-    interpreter: 'node',
-    // For NVM users, uncomment and update path:
-    // interpreter: '/home/deploy/.nvm/versions/node/v{$nodeVersion}.0/bin/node',
+    // Node.js interpreter — uses NVM versioned symlink set up by Hostiqo installer
+    interpreter: '/usr/local/bin/node{$nodeVersion}',
 
     // Environment variables
     env: {

@@ -894,36 +894,73 @@ FPMPOOL
     done
     print_success "PHP OPcache + JIT + Tuning configured"
     
-    # Node.js version selection with whiptail
-    print_info "Select Node.js version to install..."
-    NODE_VERSION=$(whiptail --title "Node.js Version Selection" --radiolist \
-        "Select Node.js LTS version to install:" 12 60 3 \
+    # Node.js version selection with whiptail (multi-select)
+    print_info "Select Node.js versions to install..."
+    NODE_SELECTIONS=$(whiptail --title "Node.js Version Selection" --checklist \
+        "Select Node.js LTS versions to install (SPACE to select, ENTER to confirm):" 14 65 4 \
+        "18" "Node.js 18 LTS" OFF \
         "20" "Node.js 20 LTS (Recommended)" ON \
         "22" "Node.js 22 LTS" OFF \
         "24" "Node.js 24 LTS (Latest)" OFF \
         3>&1 1>&2 2>&3)
-    
-    # Default to 20 if cancelled
-    if [[ $? -ne 0 ]] || [[ -z "$NODE_VERSION" ]]; then
+
+    if [[ $? -ne 0 ]] || [[ -z "$NODE_SELECTIONS" ]]; then
         print_warning "No Node.js version selected, defaulting to Node.js 20"
-        NODE_VERSION="20"
+        NODE_SELECTIONS='"20"'
     fi
-    
-    # Install Node.js
-    print_info "Adding NodeSource repository for Node.js ${NODE_VERSION}..."
-    curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - > /dev/null 2>&1
-    print_info "Installing Node.js ${NODE_VERSION}..."
-    apt-get install -y nodejs > /dev/null 2>&1
-    print_success "Node.js $(node -v) installed"
-    
-    # Update config.json with Node.js version
+
+    NODE_VERSIONS=$(echo "$NODE_SELECTIONS" | tr -d '"')
+    NODE_DEFAULT=$(echo "$NODE_VERSIONS" | awk '{print $1}')
+
+    # Install NVM system-wide for multi-version support
+    print_info "Installing NVM (Node Version Manager) system-wide..."
+    export NVM_DIR="/usr/local/nvm"
+    mkdir -p "$NVM_DIR"
+    curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | NVM_DIR="$NVM_DIR" PROFILE=/dev/null bash > /dev/null 2>&1
+
+    # Create system-wide NVM profile
+    cat > /etc/profile.d/nvm.sh << 'NVMPROFILE'
+export NVM_DIR="/usr/local/nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+NVMPROFILE
+    chmod 755 /etc/profile.d/nvm.sh
+
+    # Source NVM for this session
+    source /usr/local/nvm/nvm.sh
+
+    # Install each selected Node.js version
+    mkdir -p /var/log/nvm
+    for version in $NODE_VERSIONS; do
+        print_info "Installing Node.js ${version}..."
+        NVM_DIR=/usr/local/nvm nvm install "${version}" > /var/log/nvm/install-${version}.log 2>&1
+        NODE_EXACT=$(ls /usr/local/nvm/versions/node/ | grep "^v${version}\." | sort -V | tail -1)
+        if [[ -n "$NODE_EXACT" ]]; then
+            ln -sf "/usr/local/nvm/versions/node/${NODE_EXACT}/bin/node" "/usr/local/bin/node${version}"
+            print_success "Node.js ${version} installed (${NODE_EXACT})"
+        else
+            print_warning "Node.js ${version} installation may have failed, check /var/log/nvm/install-${version}.log"
+        fi
+    done
+
+    # Set default Node.js version and global symlinks
+    NVM_DIR=/usr/local/nvm nvm alias default "${NODE_DEFAULT}" > /dev/null 2>&1
+    NODE_EXACT_DEFAULT=$(ls /usr/local/nvm/versions/node/ | grep "^v${NODE_DEFAULT}\." | sort -V | tail -1)
+    if [[ -n "$NODE_EXACT_DEFAULT" ]]; then
+        ln -sf "/usr/local/nvm/versions/node/${NODE_EXACT_DEFAULT}/bin/node" "/usr/local/bin/node"
+        ln -sf "/usr/local/nvm/versions/node/${NODE_EXACT_DEFAULT}/bin/npm" "/usr/local/bin/npm"
+        ln -sf "/usr/local/nvm/versions/node/${NODE_EXACT_DEFAULT}/bin/npx" "/usr/local/bin/npx"
+    fi
+    print_success "Node.js default set to ${NODE_DEFAULT} ($(node -v 2>/dev/null || echo 'check symlinks'))"
+
+    # Update config.json with node_versions array
+    NODE_JSON_ELEMS=$(echo "$NODE_VERSIONS" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd ',')
     if [[ -f /etc/hostiqo/config.json ]]; then
-        # Add node_version to existing config
         TMP_CONFIG=$(mktemp)
-        cat /etc/hostiqo/config.json | sed 's/}$/,"node_version":"'"${NODE_VERSION}"'"}/' > "$TMP_CONFIG"
+        cat /etc/hostiqo/config.json | sed 's/}$/,"node_versions":['"${NODE_JSON_ELEMS}"'],"node_version":"'"${NODE_DEFAULT}"'"}/' > "$TMP_CONFIG"
         mv "$TMP_CONFIG" /etc/hostiqo/config.json
         chmod 644 /etc/hostiqo/config.json
     fi
+    print_success "Node.js versions saved to /etc/hostiqo/config.json"
     
     # Install Redis
     print_info "Installing Redis..."
@@ -1423,36 +1460,73 @@ OPCACHE
     done
     print_success "PHP OPcache + JIT configured"
 
-    # Node.js version selection with whiptail
-    print_info "Select Node.js version to install..."
-    NODE_VERSION=$(whiptail --title "Node.js Version Selection" --radiolist \
-        "Select Node.js LTS version to install:" 12 60 3 \
+    # Node.js version selection with whiptail (multi-select)
+    print_info "Select Node.js versions to install..."
+    NODE_SELECTIONS=$(whiptail --title "Node.js Version Selection" --checklist \
+        "Select Node.js LTS versions to install (SPACE to select, ENTER to confirm):" 14 65 4 \
+        "18" "Node.js 18 LTS" OFF \
         "20" "Node.js 20 LTS (Recommended)" ON \
         "22" "Node.js 22 LTS" OFF \
         "24" "Node.js 24 LTS (Latest)" OFF \
         3>&1 1>&2 2>&3)
-    
-    # Default to 20 if cancelled
-    if [[ $? -ne 0 ]] || [[ -z "$NODE_VERSION" ]]; then
+
+    if [[ $? -ne 0 ]] || [[ -z "$NODE_SELECTIONS" ]]; then
         print_warning "No Node.js version selected, defaulting to Node.js 20"
-        NODE_VERSION="20"
+        NODE_SELECTIONS='"20"'
     fi
-    
-    # Install Node.js
-    print_info "Adding NodeSource repository for Node.js ${NODE_VERSION}..."
-    curl -fsSL https://rpm.nodesource.com/setup_${NODE_VERSION}.x | bash - > /dev/null 2>&1
-    print_info "Installing Node.js ${NODE_VERSION}..."
-    $PKG_MANAGER install -y nodejs > /dev/null 2>&1
-    print_success "Node.js $(node -v) installed"
-    
-    # Update config.json with Node.js version
+
+    NODE_VERSIONS=$(echo "$NODE_SELECTIONS" | tr -d '"')
+    NODE_DEFAULT=$(echo "$NODE_VERSIONS" | awk '{print $1}')
+
+    # Install NVM system-wide for multi-version support
+    print_info "Installing NVM (Node Version Manager) system-wide..."
+    export NVM_DIR="/usr/local/nvm"
+    mkdir -p "$NVM_DIR"
+    curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | NVM_DIR="$NVM_DIR" PROFILE=/dev/null bash > /dev/null 2>&1
+
+    # Create system-wide NVM profile
+    cat > /etc/profile.d/nvm.sh << 'NVMPROFILE'
+export NVM_DIR="/usr/local/nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+NVMPROFILE
+    chmod 755 /etc/profile.d/nvm.sh
+
+    # Source NVM for this session
+    source /usr/local/nvm/nvm.sh
+
+    # Install each selected Node.js version
+    mkdir -p /var/log/nvm
+    for version in $NODE_VERSIONS; do
+        print_info "Installing Node.js ${version}..."
+        NVM_DIR=/usr/local/nvm nvm install "${version}" > /var/log/nvm/install-${version}.log 2>&1
+        NODE_EXACT=$(ls /usr/local/nvm/versions/node/ | grep "^v${version}\." | sort -V | tail -1)
+        if [[ -n "$NODE_EXACT" ]]; then
+            ln -sf "/usr/local/nvm/versions/node/${NODE_EXACT}/bin/node" "/usr/local/bin/node${version}"
+            print_success "Node.js ${version} installed (${NODE_EXACT})"
+        else
+            print_warning "Node.js ${version} installation may have failed, check /var/log/nvm/install-${version}.log"
+        fi
+    done
+
+    # Set default Node.js version and global symlinks
+    NVM_DIR=/usr/local/nvm nvm alias default "${NODE_DEFAULT}" > /dev/null 2>&1
+    NODE_EXACT_DEFAULT=$(ls /usr/local/nvm/versions/node/ | grep "^v${NODE_DEFAULT}\." | sort -V | tail -1)
+    if [[ -n "$NODE_EXACT_DEFAULT" ]]; then
+        ln -sf "/usr/local/nvm/versions/node/${NODE_EXACT_DEFAULT}/bin/node" "/usr/local/bin/node"
+        ln -sf "/usr/local/nvm/versions/node/${NODE_EXACT_DEFAULT}/bin/npm" "/usr/local/bin/npm"
+        ln -sf "/usr/local/nvm/versions/node/${NODE_EXACT_DEFAULT}/bin/npx" "/usr/local/bin/npx"
+    fi
+    print_success "Node.js default set to ${NODE_DEFAULT} ($(node -v 2>/dev/null || echo 'check symlinks'))"
+
+    # Update config.json with node_versions array
+    NODE_JSON_ELEMS=$(echo "$NODE_VERSIONS" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd ',')
     if [[ -f /etc/hostiqo/config.json ]]; then
-        # Add node_version to existing config
         TMP_CONFIG=$(mktemp)
-        cat /etc/hostiqo/config.json | sed 's/}$/,"node_version":"'"${NODE_VERSION}"'"}/' > "$TMP_CONFIG"
+        cat /etc/hostiqo/config.json | sed 's/}$/,"node_versions":['"${NODE_JSON_ELEMS}"'],"node_version":"'"${NODE_DEFAULT}"'"}/' > "$TMP_CONFIG"
         mv "$TMP_CONFIG" /etc/hostiqo/config.json
         chmod 644 /etc/hostiqo/config.json
     fi
+    print_success "Node.js versions saved to /etc/hostiqo/config.json"
 
     # Install Redis
     print_info "Installing Redis..."
@@ -3241,7 +3315,7 @@ main() {
     # Read installed versions from config
     if [[ -f /etc/hostiqo/config.json ]]; then
         INSTALLED_PHP=$(cat /etc/hostiqo/config.json | grep -o '"php_versions":\s*\[[^]]*\]' | grep -o '\["[^"]*"' | tr -d '[]"' | tr ',' ', ' 2>/dev/null || echo "8.2, 8.3")
-        INSTALLED_NODE=$(cat /etc/hostiqo/config.json | grep -o '"node_version":\s*"[^"]*"' | grep -o '"[0-9]*"' | tr -d '"' 2>/dev/null || echo "20")
+        INSTALLED_NODE=$(cat /etc/hostiqo/config.json | grep -o '"node_versions":\s*\[[^]]*\]' | grep -oP '"[0-9]+"' | tr -d '"' | paste -sd ', ' 2>/dev/null || cat /etc/hostiqo/config.json | grep -o '"node_version":\s*"[^"]*"' | grep -o '"[0-9]*"' | tr -d '"' 2>/dev/null || echo "20")
     else
         INSTALLED_PHP="8.2, 8.3"
         INSTALLED_NODE="20"

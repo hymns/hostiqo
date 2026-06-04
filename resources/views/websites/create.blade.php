@@ -136,6 +136,29 @@
                                 @enderror
                             </div>
 
+                            <!-- Node.js Version (shown when Node.js runtime selected) -->
+                            <div class="mb-3" id="node-version-field" style="display: {{ old('runtime') === 'Node.js' ? 'block' : 'none' }};">
+                                <label for="node_version" class="form-label">
+                                    Node.js Version
+                                </label>
+                                <select
+                                    class="form-select @error('node_version') is-invalid @enderror"
+                                    id="node_version"
+                                    name="node_version"
+                                >
+                                    <option value="">-- Select Node.js Version --</option>
+                                    @foreach($nodeVersions as $version)
+                                        <option value="{{ $version }}" {{ old('node_version', $nodeVersions[0] ?? '') === $version ? 'selected' : '' }}>
+                                            Node.js {{ $version }} LTS
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">Select the Node.js version for this application</div>
+                                @error('node_version')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
                             <!-- Port -->
                             <div class="mb-3">
                                 <label for="port" class="form-label">
@@ -469,23 +492,14 @@ $(function() {
         }
     });
 
-    // Show/hide Run opt field based on runtime selection
+    // Show/hide Node.js version field based on runtime selection
     const runtimeSelect = document.getElementById('runtime');
-    const runOptField = document.getElementById('run-opt-field');
-    
-    if (runtimeSelect && runOptField) {
+    const nodeVersionField = document.getElementById('node-version-field');
+
+    if (runtimeSelect && nodeVersionField) {
         runtimeSelect.addEventListener('change', function() {
-            if (this.value === 'Node.js') {
-                runOptField.style.display = 'block';
-            } else {
-                runOptField.style.display = 'none';
-            }
+            nodeVersionField.style.display = this.value === 'Node.js' ? 'block' : 'none';
         });
-        
-        // Trigger on page load if runtime is already selected
-        if (runtimeSelect.value === 'Node.js') {
-            runOptField.style.display = 'block';
-        }
     }
 
     // For backend: Show/hide SSL section based on domain input

@@ -72,9 +72,8 @@ class WebsiteController extends Controller
         // Get installed PHP versions from system config
         $phpVersions = $this->getInstalledPhpVersions();
         
-        // Get available Node versions (you can customize this list)
-        $nodeVersions = ['16.x', '18.x', '20.x', '21.x'];
-        
+        $nodeVersions = $this->getInstalledNodeVersions();
+
         return view('websites.create', compact('type', 'phpVersions', 'nodeVersions'));
     }
 
@@ -96,6 +95,7 @@ class WebsiteController extends Controller
             'project_type' => ['required', 'in:php,static,backend'],
             'php_version' => ['required_if:project_type,php', 'nullable', 'string', 'max:10'],
             'runtime' => ['nullable', 'string', 'max:50'],
+            'node_version' => ['nullable', 'string', 'max:10'],
             'php_settings' => ['nullable', 'array'],
             'port' => $projectType === 'backend' ? ['required', 'integer', 'min:1', 'max:65535'] : ['nullable', 'integer', 'min:1', 'max:65535'],
             'enable_api_proxy' => ['boolean'],
@@ -203,9 +203,8 @@ class WebsiteController extends Controller
         // Get installed PHP versions from system config
         $phpVersions = $this->getInstalledPhpVersions();
         
-        // Get available Node versions
-        $nodeVersions = ['16.x', '18.x', '20.x', '21.x'];
-        
+        $nodeVersions = $this->getInstalledNodeVersions();
+
         return view('websites.edit', compact('website', 'phpVersions', 'nodeVersions'));
     }
 
@@ -226,6 +225,7 @@ class WebsiteController extends Controller
             'project_type' => ['required', 'in:php,static,backend'],
             'php_version' => ['required_if:project_type,php', 'nullable', 'string', 'max:10'],
             'runtime' => ['nullable', 'string', 'max:50'],
+            'node_version' => ['nullable', 'string', 'max:10'],
             'php_settings' => ['nullable', 'array'],
             'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'enable_api_proxy' => ['boolean'],
@@ -802,7 +802,7 @@ HTML;
     protected function getInstalledPhpVersions(): array
     {
         $configFile = '/etc/hostiqo/config.json';
-        
+
         // Try to read from config file
         if (file_exists($configFile)) {
             $config = json_decode(file_get_contents($configFile), true);
@@ -810,8 +810,31 @@ HTML;
                 return $config['php_versions'];
             }
         }
-        
+
         // Fallback: return default versions
         return ['8.2', '8.3'];
+    }
+
+    /**
+     * Get installed Node.js versions from system config.
+     *
+     * @return array The list of installed Node.js versions
+     */
+    protected function getInstalledNodeVersions(): array
+    {
+        $configFile = '/etc/hostiqo/config.json';
+
+        if (file_exists($configFile)) {
+            $config = json_decode(file_get_contents($configFile), true);
+            if (isset($config['node_versions']) && is_array($config['node_versions'])) {
+                return $config['node_versions'];
+            }
+            // Backward-compat: single version entry
+            if (isset($config['node_version'])) {
+                return [$config['node_version']];
+            }
+        }
+
+        return ['20', '22', '24'];
     }
 }
