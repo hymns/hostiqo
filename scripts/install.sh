@@ -588,7 +588,42 @@ limit_req_zone $limit_key zone=cloudflare_bypass:10m rate=10r/s;
 RATELIMITEOF
     
     print_success "Nginx rate limiting configured with Cloudflare IP allowlist"
-    
+
+    # Restore real visitor IP from Cloudflare proxy
+    print_info "Configuring Cloudflare real IP restoration..."
+    cat > /etc/nginx/conf.d/cloudflare-realip.conf << 'CFREALIPEOF'
+# Restore real visitor IP from Cloudflare proxy
+# Required so fail2ban and logs see the real attacker IP, not the Cloudflare proxy IP
+# Cloudflare IP ranges: https://www.cloudflare.com/ips/
+
+set_real_ip_from 103.21.244.0/22;
+set_real_ip_from 103.22.200.0/22;
+set_real_ip_from 103.31.4.0/22;
+set_real_ip_from 104.16.0.0/13;
+set_real_ip_from 104.24.0.0/14;
+set_real_ip_from 108.162.192.0/18;
+set_real_ip_from 131.0.72.0/22;
+set_real_ip_from 141.101.64.0/18;
+set_real_ip_from 162.158.0.0/15;
+set_real_ip_from 172.64.0.0/13;
+set_real_ip_from 173.245.48.0/20;
+set_real_ip_from 188.114.96.0/20;
+set_real_ip_from 190.93.240.0/20;
+set_real_ip_from 197.234.240.0/22;
+set_real_ip_from 198.41.128.0/17;
+set_real_ip_from 2400:cb00::/32;
+set_real_ip_from 2606:4700::/32;
+set_real_ip_from 2803:f800::/32;
+set_real_ip_from 2405:b500::/32;
+set_real_ip_from 2405:8100::/32;
+set_real_ip_from 2a06:98c0::/29;
+set_real_ip_from 2c0f:f248::/32;
+
+real_ip_header X-Forwarded-For;
+real_ip_recursive on;
+CFREALIPEOF
+    print_success "Cloudflare real IP restoration configured"
+
     # Add PHP repository
     print_info "Adding PHP repository..."
     add-apt-repository -y ppa:ondrej/php > /dev/null 2>&1
@@ -1315,6 +1350,41 @@ RATELIMITEOF
     
     print_success "Nginx rate limiting configured with Cloudflare IP allowlist"
 
+    # Restore real visitor IP from Cloudflare proxy
+    print_info "Configuring Cloudflare real IP restoration..."
+    cat > /etc/nginx/conf.d/cloudflare-realip.conf << 'CFREALIPEOF'
+# Restore real visitor IP from Cloudflare proxy
+# Required so fail2ban and logs see the real attacker IP, not the Cloudflare proxy IP
+# Cloudflare IP ranges: https://www.cloudflare.com/ips/
+
+set_real_ip_from 103.21.244.0/22;
+set_real_ip_from 103.22.200.0/22;
+set_real_ip_from 103.31.4.0/22;
+set_real_ip_from 104.16.0.0/13;
+set_real_ip_from 104.24.0.0/14;
+set_real_ip_from 108.162.192.0/18;
+set_real_ip_from 131.0.72.0/22;
+set_real_ip_from 141.101.64.0/18;
+set_real_ip_from 162.158.0.0/15;
+set_real_ip_from 172.64.0.0/13;
+set_real_ip_from 173.245.48.0/20;
+set_real_ip_from 188.114.96.0/20;
+set_real_ip_from 190.93.240.0/20;
+set_real_ip_from 197.234.240.0/22;
+set_real_ip_from 198.41.128.0/17;
+set_real_ip_from 2400:cb00::/32;
+set_real_ip_from 2606:4700::/32;
+set_real_ip_from 2803:f800::/32;
+set_real_ip_from 2405:b500::/32;
+set_real_ip_from 2405:8100::/32;
+set_real_ip_from 2a06:98c0::/29;
+set_real_ip_from 2c0f:f248::/32;
+
+real_ip_header X-Forwarded-For;
+real_ip_recursive on;
+CFREALIPEOF
+    print_success "Cloudflare real IP restoration configured"
+
     # Add Remi repository for PHP
     print_info "Adding Remi repository for PHP..."
     if [[ "$OS_ID" = "centos" ]] && [[ "${OS_VERSION%%.*}" = "7" ]]; then
@@ -1844,6 +1914,65 @@ failregex = ^<HOST> - .* "(GET|POST|HEAD|PUT|DELETE).*" (400|401|403|404|405|444
 ignoreregex = .*(robots\.txt|favicon\.ico).*
 FILTEREOF
         
+        # Create nginx-exploit-scan filter — ban on 1st hit for known exploit paths
+        print_info "Creating nginx-exploit-scan filter..."
+        cat > /etc/fail2ban/filter.d/nginx-exploit-scan.conf << 'EXPLOITSCANEOF'
+[Definition]
+_daemon = nginx
+
+failregex = ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) /\.env(?:\?\S*)? HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) /\.git(?:/\S*)? HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) /\.htaccess(?:\?\S*)? HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) /\.htpasswd(?:\?\S*)? HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) /wp-config\.php(?:\?\S*)? HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) \S*eval-stdin\.php(?:\?\S*)? HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) \S*invokefunction\S* HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) /containers/json HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) /boaform/\S* HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) \S*allow_url_include\S* HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) \S*auto_prepend_file\S* HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) \S*(?:\.\.\/|%%2[Ee]%%2[Ee]\/|%%%%32%%65|\.%%2[Ee]\/)\S* HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) /cgi-bin/\S*(?:%%2[Ee]|%%%%32%%65)\S* HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) /manager/(?:text|html)/\S* HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) /geoserver/\S* HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) /(?:phpmyadmin|pma|myadmin|mysqladmin|dbadmin)/\S* HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) \S*admin/config\.php(?:\?\S*)? HTTP
+            ^<HOST> \S+ \S+ \[.*?\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) \S*\.(?:bak|sql|dump|backup|old|orig|save|swp)(?:\?\S*)? HTTP
+
+ignoreregex =
+EXPLOITSCANEOF
+
+        # Create nginx-404-flood filter — threshold ban, excludes static asset 404s
+        print_info "Creating nginx-404-flood filter..."
+        cat > /etc/fail2ban/filter.d/nginx-404-flood.conf << 'FLOODEOF'
+[Definition]
+_daemon = nginx
+
+failregex = ^<HOST> \S+ \S+ \[.*?\] "\S+ \S+ HTTP/\S+" 404
+
+ignoreregex = ^<HOST> \S+ \S+ \[.*?\] "\S+ \S+\.(?:jpg|jpeg|png|gif|webp|bmp|tiff|ico|svg|css|js|mjs|woff|woff2|ttf|eot|otf|map|mp4|mp3|webm|pdf|gz|zip)(?:\?\S*)? HTTP/\S+" 404
+              ^<HOST> \S+ \S+ \[.*?\] "\S+ /favicon\.ico HTTP/\S+" 404
+              ^<HOST> \S+ \S+ \[.*?\] "\S+ /robots\.txt HTTP/\S+" 404
+              ^<HOST> \S+ \S+ \[.*?\] "\S+ /sitemap\.xml HTTP/\S+" 404
+              ^<HOST> \S+ \S+ \[.*?\] "\S+ /apple-touch-icon\S* HTTP/\S+" 404
+FLOODEOF
+
+        # Create nginx-bad-bots filter — known scanner user agents
+        print_info "Creating nginx-bad-bots filter..."
+        cat > /etc/fail2ban/filter.d/nginx-bad-bots.conf << 'BADBOTSEOF'
+[Definition]
+_daemon = nginx
+
+failregex = ^<HOST> \S+ \S+ \[.*?\] "\S+ \S+ HTTP/\S+" \d{3} \d+ "\S+" "(?:[^"]*zgrab[^"]*)"
+            ^<HOST> \S+ \S+ \[.*?\] "\S+ \S+ HTTP/\S+" \d{3} \d+ "\S+" "(?:[^"]*masscan[^"]*)"
+            ^<HOST> \S+ \S+ \[.*?\] "\S+ \S+ HTTP/\S+" \d{3} \d+ "\S+" "(?:[^"]*libredtail[^"]*)"
+            ^<HOST> \S+ \S+ \[.*?\] "\S+ \S+ HTTP/\S+" \d{3} \d+ "\S+" "(?:[^"]*HTTP Banner Detection[^"]*)"
+            ^<HOST> \S+ \S+ \[.*?\] "\S+ \S+ HTTP/\S+" \d{3} \d+ "\S+" "(?:[^"]*GenomeCrawlerd[^"]*)"
+            ^<HOST> \S+ \S+ \[.*?\] "\S+ \S+ HTTP/\S+" \d{3} \d+ "\S+" "-"$
+
+ignoreregex =
+BADBOTSEOF
+
         # Enable recommended jails for web hosting
         ensure_jail 10 sshd
         ensure_jail 20 nginx-botsearch
@@ -1854,6 +1983,21 @@ FILTEREOF
 maxretry = 20
 findtime = 60
 bantime = 1d"
+        ensure_jail 25 nginx-exploit-scan "port = http,https
+logpath = /var/log/nginx/*access.log
+maxretry = 1
+findtime = 60
+bantime = 604800"
+        ensure_jail 26 nginx-404-flood "port = http,https
+logpath = /var/log/nginx/*access.log
+maxretry = 10
+findtime = 60
+bantime = 86400"
+        ensure_jail 27 nginx-bad-bots "port = http,https
+logpath = /var/log/nginx/*access.log
+maxretry = 2
+findtime = 300
+bantime = 604800"
         ensure_jail 30 mysqld-auth
         ensure_jail 40 recidive "bantime = 1m
 findtime = 1d"
