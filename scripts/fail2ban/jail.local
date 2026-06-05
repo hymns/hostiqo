@@ -1,0 +1,61 @@
+# fail2ban jail configuration for nginx — hostiqo
+#
+# Installation:
+#   sudo cp filter.d/*.conf /etc/fail2ban/filter.d/
+#   sudo cp jail.local /etc/fail2ban/jail.d/nginx-hostiqo.conf
+#   sudo systemctl reload fail2ban
+#
+# Verify filters work before enabling:
+#   sudo fail2ban-regex /var/log/nginx/access.log /etc/fail2ban/filter.d/nginx-exploit-scan.conf
+#   sudo fail2ban-regex /var/log/nginx/access.log /etc/fail2ban/filter.d/nginx-404-flood.conf
+#   sudo fail2ban-regex /var/log/nginx/access.log /etc/fail2ban/filter.d/nginx-bad-bots.conf
+
+[DEFAULT]
+# Whitelist your own IPs — change as needed
+ignoreip = 127.0.0.1/8 ::1
+
+banaction = iptables-multiport
+protocol = tcp
+
+
+# -----------------------------------------------------------------------
+# FILTER 1: Exploit & sensitive file scanner
+# One hit = permanent ban (1 week). These paths are never legitimate.
+# -----------------------------------------------------------------------
+[nginx-exploit-scan]
+enabled  = true
+port     = http,https
+filter   = nginx-exploit-scan
+logpath  = /var/log/nginx/access.log
+maxretry = 1
+findtime = 60
+bantime  = 604800
+
+
+# -----------------------------------------------------------------------
+# FILTER 2: Generic 404 flood (scanner brute-forcing random paths)
+# 10 unique 404s within 60 seconds = ban for 24 hours.
+# Static asset 404s are ignored (see filter ignoreregex).
+# -----------------------------------------------------------------------
+[nginx-404-flood]
+enabled  = true
+port     = http,https
+filter   = nginx-404-flood
+logpath  = /var/log/nginx/access.log
+maxretry = 10
+findtime = 60
+bantime  = 86400
+
+
+# -----------------------------------------------------------------------
+# FILTER 3: Known malicious user agents
+# 2 requests = ban for 1 week (small threshold for false-positive safety).
+# -----------------------------------------------------------------------
+[nginx-bad-bots]
+enabled  = true
+port     = http,https
+filter   = nginx-bad-bots
+logpath  = /var/log/nginx/access.log
+maxretry = 2
+findtime = 300
+bantime  = 604800
