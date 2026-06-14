@@ -55,12 +55,12 @@ abstract class AbstractNginxService implements NginxInterface
      */
     protected function generatePhpConfig(Website $website): string
     {
-        $workingDir = $website->working_directory ?? '';
+        $workingDir = trim($website->working_directory ?? '', '/');
         $documentRoot = rtrim($website->root_path, '/') . ($workingDir ? '/' . $workingDir : '');
-        
+
         $wwwRedirectConfig = $this->getWwwRedirectConfig($website);
         $securityHeaders = $this->getSecurityHeaders();
-        
+
         $poolName = $website->php_pool_name ?? str_replace('.', '_', $website->domain);
         $socketPath = $this->getPhpFpmSocketPath($website->php_version, $poolName, $website->php_pool_name);
         $logDir = '/var/log/nginx';
@@ -251,7 +251,7 @@ NGINX;
      */
     protected function generateBackendConfig(Website $website): string
     {
-        $workingDir = $website->working_directory ?? '';
+        $workingDir = trim($website->working_directory ?? '', '/');
         $documentRoot = rtrim($website->root_path, '/') . ($workingDir ? '/' . $workingDir : '');
         
         $wwwRedirectConfig = $this->getWwwRedirectConfig($website);
@@ -474,7 +474,7 @@ NGINX;
      */
     protected function generateStaticConfig(Website $website): string
     {
-        $workingDir = $website->working_directory ?? '';
+        $workingDir = trim($website->working_directory ?? '', '/');
         $documentRoot = rtrim($website->root_path, '/') . ($workingDir ? '/' . $workingDir : '');
         
         $wwwRedirectConfig = $this->getWwwRedirectConfig($website);
