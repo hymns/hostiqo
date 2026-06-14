@@ -130,12 +130,14 @@ class WebsiteController extends Controller
             // Create directory structure and welcome page
             $this->createWebsiteStructure($validated['root_path'], $validated['working_directory'], $validated['project_type'], $validated['domain']);
         } else {
-            // Backend: Generate snake_case root_path and create directory
-            if (!empty($validated['domain'])) {
-                $validated['root_path'] = $this->generateRootPath($validated['domain']);
-            } else {
-                $namePath = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', '_', $validated['name']), '_'));
-                $validated['root_path'] = '/var/www/' . $namePath . '_' . $validated['port'];
+            // Backend: Auto-generate snake_case root_path only if not provided
+            if (empty($validated['root_path'])) {
+                if (!empty($validated['domain'])) {
+                    $validated['root_path'] = $this->generateRootPath($validated['domain']);
+                } else {
+                    $namePath = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', '_', $validated['name']), '_'));
+                    $validated['root_path'] = '/var/www/' . $namePath . '_' . $validated['port'];
+                }
             }
             $validated['working_directory'] = '/';
 
