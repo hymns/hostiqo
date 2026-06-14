@@ -130,9 +130,18 @@ class WebsiteController extends Controller
             // Create directory structure and welcome page
             $this->createWebsiteStructure($validated['root_path'], $validated['working_directory'], $validated['project_type'], $validated['domain']);
         } else {
-            // Backend: Set placeholder values
-            $validated['root_path'] = '/var/www/backend-' . ($validated['domain'] ?? 'port-' . $validated['port']);
+            // Backend: Generate snake_case root_path and create directory
+            if (!empty($validated['domain'])) {
+                $validated['root_path'] = $this->generateRootPath($validated['domain']);
+            } else {
+                $namePath = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', '_', $validated['name']), '_'));
+                $validated['root_path'] = '/var/www/' . $namePath . '_' . $validated['port'];
+            }
             $validated['working_directory'] = '/';
+
+            Process::run("sudo /bin/mkdir -p {$validated['root_path']}");
+            Process::run("sudo /bin/chown -R www-data:www-data {$validated['root_path']}");
+            Process::run("sudo /bin/chmod -R 755 {$validated['root_path']}");
         }
 
         // Set SSL and WWW redirect (not applicable for backend without domain)
