@@ -113,18 +113,19 @@ class WebsiteController extends Controller
                 $validated['root_path'] = $this->generateRootPath($validated['domain']);
             }
 
-            // Validate root_path does NOT already exist (prevent overwriting existing projects)
-            // Use Process::run with sudo since PHP may not have access to check /var/www directories
-            $pathCheckResult = Process::run("sudo /usr/bin/test -d {$validated['root_path']} && echo 'exists'");
-            if ($pathCheckResult->successful() && str_contains($pathCheckResult->output(), 'exists')) {
-                return back()
-                    ->withInput()
-                    ->withErrors(['root_path' => 'The root path already exists. Please choose a different path or remove the existing directory.']);
-            }
-
             // Set working_directory to '/' if not provided (relative to root_path)
             if (empty($validated['working_directory'])) {
                 $validated['working_directory'] = '/';
+            }
+
+            // Validate the effective full path (root_path + working_directory) does not already exist
+            $workingDirTrimmed = trim($validated['working_directory'], '/');
+            $fullPath = rtrim($validated['root_path'], '/') . ($workingDirTrimmed ? '/' . $workingDirTrimmed : '');
+            $pathCheckResult = Process::run("sudo /usr/bin/test -d {$fullPath} && echo 'exists'");
+            if ($pathCheckResult->successful() && str_contains($pathCheckResult->output(), 'exists')) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['root_path' => 'The directory already exists. Please choose a different path or remove the existing directory.']);
             }
 
             // Create directory structure and welcome page
