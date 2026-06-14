@@ -139,9 +139,12 @@ class WebsiteController extends Controller
             }
             $validated['working_directory'] = '/';
 
-            Process::run("sudo /bin/mkdir -p {$validated['root_path']}");
-            Process::run("sudo /bin/chown -R www-data:www-data {$validated['root_path']}");
-            Process::run("sudo /bin/chmod -R 755 {$validated['root_path']}");
+            $pathExists = Process::run("sudo /usr/bin/test -d {$validated['root_path']} && echo 'exists'");
+            if (!($pathExists->successful() && str_contains($pathExists->output(), 'exists'))) {
+                Process::run("sudo /bin/mkdir -p {$validated['root_path']}");
+                Process::run("sudo /bin/chown -R www-data:www-data {$validated['root_path']}");
+                Process::run("sudo /bin/chmod -R 755 {$validated['root_path']}");
+            }
         }
 
         // Set SSL and WWW redirect (not applicable for backend without domain)
