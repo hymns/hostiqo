@@ -33,7 +33,6 @@
                             <th>Schedule</th>
                             <th>User</th>
                             <th>Status</th>
-                            <th>Last Run</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -53,13 +52,6 @@
                                             <span class="badge bg-secondary">Inactive</span>
                                         @endif
                                     </form>
-                                </td>
-                                <td>
-                                    @if($job->last_run_at)
-                                        {{ $job->last_run_at->diffForHumans() }}
-                                    @else
-                                        <span class="text-muted">Never</span>
-                                    @endif
                                 </td>
                                 <td>
                                     <a href="{{ route('cron-jobs.edit', $job) }}" class="btn btn-sm btn-primary">
