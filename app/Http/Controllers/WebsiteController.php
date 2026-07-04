@@ -101,6 +101,7 @@ class WebsiteController extends Controller
             'enable_api_proxy' => ['boolean'],
             'api_proxy_path' => ['nullable', 'string', 'max:255'],
             'api_proxy_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'spa_fallback' => ['boolean'],
             'ssl_enabled' => ['boolean'],
             'www_redirect' => ['nullable', 'in:none,to_www,to_non_www'],
             'is_active' => ['boolean'],
@@ -166,6 +167,8 @@ class WebsiteController extends Controller
         if ($validated['enable_api_proxy']) {
             $validated['api_proxy_path'] = $request->input('api_proxy_path', '/api');
         }
+
+        $validated['spa_fallback'] = $request->boolean('spa_fallback', false);
 
         $website = Website::create($validated);
 
@@ -246,6 +249,7 @@ class WebsiteController extends Controller
             'enable_api_proxy' => ['boolean'],
             'api_proxy_path' => ['nullable', 'string', 'max:255'],
             'api_proxy_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'spa_fallback' => ['boolean'],
             'ssl_enabled' => ['boolean'],
             'www_redirect' => ['nullable', 'in:none,to_www,to_non_www'],
             'is_active' => ['boolean'],
@@ -297,6 +301,8 @@ class WebsiteController extends Controller
         if ($validated['enable_api_proxy']) {
             $validated['api_proxy_path'] = $request->input('api_proxy_path', '/api');
         }
+
+        $validated['spa_fallback'] = $request->boolean('spa_fallback', false);
 
         $website->update($validated);
 

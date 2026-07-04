@@ -465,6 +465,30 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-signpost-split me-2"></i> SPA Fallback (Optional)
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    id="spa_fallback"
+                                    name="spa_fallback"
+                                    value="1"
+                                    {{ old('spa_fallback', $website->spa_fallback) ? 'checked' : '' }}
+                                >
+                                <label class="form-check-label" for="spa_fallback">
+                                    Enable SPA Fallback
+                                </label>
+                            </div>
+                            <div class="form-text">For single-page apps (React, Vue, Angular). Unknown routes fall back to index.html instead of returning 404.</div>
+                        </div>
+                    </div>
+                </div>
                 @endif
 
                 <div class="card">

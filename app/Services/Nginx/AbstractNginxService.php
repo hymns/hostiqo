@@ -482,6 +482,9 @@ NGINX;
         $apiProxyConfig = $this->getApiProxyConfig($website);
         $logDir = '/var/log/nginx';
         $serverName = $this->getServerName($website);
+        $tryFiles = $website->spa_fallback
+            ? 'try_files $uri $uri/ /index.html;'
+            : 'try_files $uri $uri/ =404;';
         
         // Check if SSL certificate actually exists (need sudo to access /etc/letsencrypt)
         $sslCertExists = $this->sslCertificateExists($website->domain);
@@ -535,7 +538,7 @@ server {
 {$apiProxyConfig}
 
     location / {
-        try_files \$uri \$uri/ =404;
+        {$tryFiles}
     }
 
     # Security: Deny access to hidden files (except .well-known)
@@ -579,7 +582,7 @@ server {
 {$apiProxyConfig}
 
     location / {
-        try_files \$uri \$uri/ =404;
+        {$tryFiles}
     }
 
     # Security: Deny access to hidden files (except .well-known)
