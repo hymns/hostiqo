@@ -187,7 +187,12 @@ class DeploymentService
             }
 
             if ($webhook->pre_deploy_script) {
-                array_push($output, ...$this->runDeployScript($webhook->pre_deploy_script, $localPath, $deployUser, 'pre-deploy'));
+                if (File::isDirectory($localPath)) {
+                    array_push($output, ...$this->runDeployScript($webhook->pre_deploy_script, $localPath, $deployUser, 'pre-deploy'));
+                } else {
+                    // Fresh clone: nothing to prepare yet, and Process can't use a missing cwd
+                    $output[] = "Skipping pre-deploy script: {$localPath} does not exist yet (fresh clone).";
+                }
             }
 
             if (!File::isDirectory($localPath)) {
