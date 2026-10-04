@@ -60,6 +60,10 @@ abstract class AbstractNginxService implements NginxInterface
 
         $wwwRedirectConfig = $this->getWwwRedirectConfig($website);
         $securityHeaders = $this->getSecurityHeaders();
+        $sslSecurityHeaders = $this->getSecurityHeaders(true);
+        // add_header inside a location drops the server-level headers, so repeat them there
+        $locationHeaders = $this->getSecurityHeaders(false, '        ');
+        $sslLocationHeaders = $this->getSecurityHeaders(true, '        ');
 
         $poolName = $website->php_pool_name ?? str_replace('.', '_', $website->domain);
         $socketPath = $this->getPhpFpmSocketPath($website->php_version, $poolName, $website->php_pool_name);
@@ -119,7 +123,7 @@ server {
     keepalive_timeout 15;
     send_timeout 10;
 
-{$securityHeaders}
+{$sslSecurityHeaders}
 
     # Allow Let's Encrypt ACME challenge
     location ^~ /.well-known/acme-challenge/ {
@@ -162,6 +166,7 @@ server {
     location ~* \.(jpg|jpeg|png|gif|ico|css|js|pdf|txt|tar|gz|woff|woff2|ttf|svg|eot)$ {
         expires 30d;
         add_header Cache-Control "public, immutable";
+{$sslLocationHeaders}
         access_log off;
     }
 }
@@ -237,6 +242,7 @@ server {
     location ~* \.(jpg|jpeg|png|gif|ico|css|js|pdf|txt|tar|gz|woff|woff2|ttf|svg|eot)$ {
         expires 30d;
         add_header Cache-Control "public, immutable";
+{$locationHeaders}
         access_log off;
     }
 }
@@ -256,6 +262,7 @@ NGINX;
         
         $wwwRedirectConfig = $this->getWwwRedirectConfig($website);
         $securityHeaders = $this->getSecurityHeaders();
+        $sslSecurityHeaders = $this->getSecurityHeaders(true);
         $logDir = '/var/log/nginx';
         $port = $website->port ?? 3000;
         $runtime = $website->runtime ?? 'Unknown';
@@ -299,7 +306,7 @@ server {
     access_log {$logDir}/{$website->domain}-access.log;
     error_log {$logDir}/{$website->domain}-error.log;
 
-{$securityHeaders}
+{$sslSecurityHeaders}
 
     # Allow Let's Encrypt ACME challenge
     location ^~ /.well-known/acme-challenge/ {
@@ -479,6 +486,10 @@ NGINX;
         
         $wwwRedirectConfig = $this->getWwwRedirectConfig($website);
         $securityHeaders = $this->getSecurityHeaders();
+        $sslSecurityHeaders = $this->getSecurityHeaders(true);
+        // add_header inside a location drops the server-level headers, so repeat them there
+        $locationHeaders = $this->getSecurityHeaders(false, '        ');
+        $sslLocationHeaders = $this->getSecurityHeaders(true, '        ');
         $apiProxyConfig = $this->getApiProxyConfig($website);
         $logDir = '/var/log/nginx';
         $serverName = $this->getServerName($website);
@@ -527,7 +538,7 @@ server {
     access_log {$logDir}/{$website->domain}-access.log;
     error_log {$logDir}/{$website->domain}-error.log;
 
-{$securityHeaders}
+{$sslSecurityHeaders}
 
     # Allow Let's Encrypt ACME challenge
     location ^~ /.well-known/acme-challenge/ {
@@ -550,6 +561,7 @@ server {
     location ~* \.(jpg|jpeg|png|gif|ico|css|js|pdf|txt|tar|gz|woff|woff2|ttf|svg|eot)$ {
         expires 30d;
         add_header Cache-Control "public, immutable";
+{$sslLocationHeaders}
     }
 }
 NGINX;
@@ -594,6 +606,7 @@ server {
     location ~* \.(jpg|jpeg|png|gif|ico|css|js|pdf|txt|tar|gz|woff|woff2|ttf|svg|eot)$ {
         expires 30d;
         add_header Cache-Control "public, immutable";
+{$locationHeaders}
     }
 }
 NGINX;
@@ -988,15 +1001,26 @@ REDIRECT;
      *
      * @return string The security headers configuration
      */
-    protected function getSecurityHeaders(): string
+    protected function getSecurityHeaders(bool $https = false, string $indent = '    '): string
     {
-        return <<<HEADERS
-    # Security Headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-HEADERS;
+        $headers = [
+            '# Security Headers',
+            'add_header X-Frame-Options "SAMEORIGIN" always;',
+            'add_header X-Content-Type-Options "nosniff" always;',
+            'add_header X-XSS-Protection "1; mode=block" always;',
+            'add_header Referrer-Policy "strict-origin-when-cross-origin" always;',
+            'add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;',
+        ];
+
+        if ($https) {
+            // No includeSubDomains: sibling subdomains on this server may still be HTTP-only.
+            // The CSP is a baseline that doesn't restrict script sources, so it can't break
+            // existing apps; apps can send a stricter policy of their own.
+            $headers[] = 'add_header Strict-Transport-Security "max-age=31536000" always;';
+            $headers[] = "add_header Content-Security-Policy \"upgrade-insecure-requests; frame-ancestors 'self'; base-uri 'self'; object-src 'none'\" always;";
+        }
+
+        return implode("\n", array_map(fn ($line) => $indent . $line, $headers));
     }
 
     /**
