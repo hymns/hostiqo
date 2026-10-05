@@ -28,6 +28,7 @@ class Website extends Model
         'api_proxy_path',
         'api_proxy_port',
         'spa_fallback',
+        'frame_ancestors',
         'ssl_enabled',
         'www_redirect',
         'is_active',

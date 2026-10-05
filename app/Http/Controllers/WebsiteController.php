@@ -102,6 +102,7 @@ class WebsiteController extends Controller
             'api_proxy_path' => ['nullable', 'string', 'max:255'],
             'api_proxy_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'spa_fallback' => ['boolean'],
+            'frame_ancestors' => ['nullable', 'string', 'max:1000'],
             'ssl_enabled' => ['boolean'],
             'www_redirect' => ['nullable', 'in:none,to_www,to_non_www'],
             'is_active' => ['boolean'],
@@ -169,6 +170,7 @@ class WebsiteController extends Controller
         }
 
         $validated['spa_fallback'] = $request->boolean('spa_fallback', false);
+        $validated['frame_ancestors'] = $this->normalizeFrameAncestors($validated['frame_ancestors'] ?? null);
 
         $website = Website::create($validated);
 
@@ -250,6 +252,7 @@ class WebsiteController extends Controller
             'api_proxy_path' => ['nullable', 'string', 'max:255'],
             'api_proxy_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'spa_fallback' => ['boolean'],
+            'frame_ancestors' => ['nullable', 'string', 'max:1000'],
             'ssl_enabled' => ['boolean'],
             'www_redirect' => ['nullable', 'in:none,to_www,to_non_www'],
             'is_active' => ['boolean'],
@@ -303,6 +306,7 @@ class WebsiteController extends Controller
         }
 
         $validated['spa_fallback'] = $request->boolean('spa_fallback', false);
+        $validated['frame_ancestors'] = $this->normalizeFrameAncestors($validated['frame_ancestors'] ?? null);
 
         $website->update($validated);
 
@@ -538,6 +542,34 @@ class WebsiteController extends Controller
         return redirect()
             ->route('websites.show', $website)
             ->with('error', $result['error']);
+    }
+
+    /**
+     * Validate and normalize the origins allowed to embed the site in an iframe.
+     *
+     * The value is written into the nginx config, so only plain origins are accepted.
+     *
+     * @param string|null $value Origins separated by spaces, commas or new lines
+     * @return string|null Space-separated origins, or null when empty
+     * @throws \Illuminate\Validation\ValidationException If an origin is invalid
+     */
+    protected function normalizeFrameAncestors(?string $value): ?string
+    {
+        $origins = array_filter(preg_split('/[\s,]+/', strtolower((string) $value)));
+
+        foreach ($origins as $i => $origin) {
+            $origin = rtrim($origin, '/');
+
+            if (!preg_match('~^https?://(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+(:\d{1,5})?$~', $origin)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'frame_ancestors' => "Invalid origin \"{$origin}\". Use the form https://example.com",
+                ]);
+            }
+
+            $origins[$i] = $origin;
+        }
+
+        return $origins ? implode(' ', array_unique($origins)) : null;
     }
 
     /**

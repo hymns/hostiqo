@@ -493,6 +493,31 @@
 
                 <div class="card">
                     <div class="card-header">
+                        <i class="bi bi-window-stack me-2"></i> Iframe Embedding (Optional)
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="frame_ancestors" class="form-label">
+                                Allowed Parent Origins
+                            </label>
+                            <input
+                                type="text"
+                                class="form-control font-monospace @error('frame_ancestors') is-invalid @enderror"
+                                id="frame_ancestors"
+                                name="frame_ancestors"
+                                value="{{ old('frame_ancestors', $website->frame_ancestors) }}"
+                                placeholder="https://example.com https://www.example.com"
+                            >
+                            <div class="form-text">Other sites allowed to show this site in an iframe, separated by spaces. Leave empty to only allow this site itself.</div>
+                            @error('frame_ancestors')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
                         <i class="bi bi-shield-check me-2"></i> Security & Status
                     </div>
                     <div class="card-body">
