@@ -25,7 +25,7 @@ A simple self-managed server panel built with Laravel for automating Git deploym
 - 🔒 **SSL/TLS Support** - Automated Let's Encrypt SSL certificate management with TLS 1.2/1.3
 - 🔄 **Auto SSL Renewal** - Daily automatic certificate renewal (runs at 2:30 AM)
 - 🛡️ **Security Hardened** - Auto-applied security headers, HSTS, file protection, and hardened SSL
-- 🔄 **Version Management** - Support for multiple PHP (7.4-8.4) and Node.js (16.x-21.x) versions
+- 🔄 **Version Management** - Support for multiple PHP (7.4-8.6, depending on the OS release) and Node.js (16.x-21.x) versions
 - 🎯 **Background Processing** - Queue-based Nginx deployment and SSL requests
 - 📊 **Status Tracking** - Real-time Nginx and SSL status monitoring
 - 🔧 **Easy Configuration** - Simple web interface for website management
@@ -95,7 +95,7 @@ A simple self-managed server panel built with Laravel for automating Git deploym
 
 ## 📋 Requirements
 
-- **Ubuntu 20.04+** / **Debian 11+**
+- **Ubuntu 20.04+** / **Debian 11+** (including Ubuntu 26.04 and Debian 13)
 - **Rocky Linux 8+** / **AlmaLinux 8+** / **CentOS Stream 8+**
 - Root access or sudo privileges
 - Domain name pointed to your server
@@ -126,11 +126,12 @@ sudo bash install.sh --phase1   # System prerequisites
 sudo bash install.sh --phase2   # Sudoers configuration
 sudo bash install.sh --phase3   # Laravel application setup
 sudo bash install.sh --phase4   # Nginx + SSL configuration
+sudo bash install.sh --php-install "8.4 8.5"   # Install and tune PHP versions (Debian/Ubuntu)
 ```
 
 **The installer will:**
 1. Clone Hostiqo to `/var/www/hostiqo`
-2. Install all system prerequisites (Nginx, PHP 8.2, MySQL, Redis, Node.js, Supervisor, etc.)
+2. Install all system prerequisites (Nginx, the PHP versions you pick, MySQL, Redis, Node.js, Supervisor, etc.)
 3. Configure sudo permissions for www-data
 4. Setup Laravel application (database, migrations, admin user)
 5. Configure Nginx with SSL and security hardening
@@ -141,7 +142,7 @@ sudo bash install.sh --phase4   # Nginx + SSL configuration
 
 | Component | Details |
 |-----------|---------|
-| PHP | 7.4 - 8.4 (with OPcache + JIT auto-tuning) |
+| PHP | 7.4 - 8.6 on Debian/Ubuntu, 7.4 - 8.4 on RHEL (with OPcache + JIT auto-tuning) |
 | MySQL/MariaDB | MySQL 8.0 (Debian) / MariaDB (RHEL) |
 | Nginx | Latest |
 | Redis | Latest |
@@ -178,6 +179,29 @@ sudo php artisan hostiqo:update --sudoers
 ```
 
 > Note: The `--sudoers` flag executes `sudo bash scripts/install.sh --phase2` to update `/etc/sudoers.d/hostiqo-manager`.
+
+## 🐘 Managing PHP Versions
+
+The installer only offers PHP versions that the server's OS release can actually install. It picks the PHP repository based on what publishes for that release:
+
+| Source | Used when |
+|--------|-----------|
+| `ppa:ondrej/php` | Ubuntu releases the PPA supports (e.g. 22.04, 24.04) |
+| `packages.sury.org` | Releases the PPA doesn't cover yet (e.g. Ubuntu 26.04) and Debian |
+| Distro packages only | Neither repository publishes for the release (e.g. Ubuntu 26.04 ships PHP 8.5 only) |
+
+Pre-release versions (such as PHP 8.6 beta) are marked and not selected by default.
+
+To add PHP versions after installation (Debian/Ubuntu):
+
+```bash
+cd /var/www/hostiqo
+sudo php artisan hostiqo:php              # List versions, tick new ones to install
+sudo php artisan hostiqo:php --list       # Only list versions and their status
+sudo php artisan hostiqo:php 8.4 8.5      # Install these versions without prompting
+```
+
+New versions get the same OPcache, JIT and PHP-FPM tuning as the installer, and become selectable when creating or editing a PHP website. Unticking an installed version does not remove it, because websites may still use it.
 
 ## 📖 Usage Guide
 
