@@ -316,6 +316,348 @@ install_prerequisites() {
 #########################################################
 # DEBIAN/UBUNTU Prerequisites
 #########################################################
+#########################################################
+# PHP REPOSITORY HELPERS (Debian/Ubuntu)
+#########################################################
+# Versions the installer knows how to set up. What is offered is whatever apt
+# can actually install on this release, so new Ubuntu/Debian releases (e.g.
+# Ubuntu 26.04 ships PHP 8.5 only) work without editing a version table.
+PHP_SUPPORTED_VERSIONS="7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6"
+
+php_candidate() {
+    apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ {print $2; exit}'
+}
+
+package_installable() {
+    local candidate
+    candidate=$(php_candidate "$1")
+    [[ -n "$candidate" && "$candidate" != "(none)" ]]
+}
+
+php_is_prerelease() {
+    [[ "$(php_candidate "php$1-fpm")" =~ ~(alpha|beta|rc|RC) ]]
+}
+
+# Add a third-party PHP repository only if one publishes for this release.
+# Adding a source that 404s makes apt-get update fail, and then every later
+# apt-get install in the installer (nginx, mysql, ...) fails with it.
+setup_php_repo_debian() {
+    local codename="${VERSION_CODENAME:-$(lsb_release -cs 2>/dev/null)}"
+    local repo=""
+
+    if ls /etc/apt/sources.list.d/ 2>/dev/null | grep -qE '^(php-sury\.list|ondrej-ubuntu-php-)'; then
+        apt-get update -y > /dev/null 2>&1
+        return
+    fi
+
+    print_info "Adding PHP repository..."
+
+    if [[ "$OS_ID" = "ubuntu" ]] && curl -fs --max-time 20 -o /dev/null \
+        "https://ppa.launchpadcontent.net/ondrej/php/ubuntu/dists/${codename}/Release"; then
+        add-apt-repository -y ppa:ondrej/php > /dev/null 2>&1 && repo="ondrej PPA"
+    elif curl -fs --max-time 20 -o /dev/null "https://packages.sury.org/php/dists/${codename}/Release"; then
+        # Same maintainer as the PPA; also publishes Ubuntu releases the PPA doesn't have yet
+        if curl -fsSL --max-time 60 -o /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb \
+            && dpkg -i /tmp/debsuryorg-archive-keyring.deb > /dev/null 2>&1; then
+            echo "deb [signed-by=/usr/share/keyrings/debsuryorg-archive-keyring.gpg] https://packages.sury.org/php/ ${codename} main" \
+                > /etc/apt/sources.list.d/php-sury.list
+            repo="packages.sury.org"
+        fi
+        rm -f /tmp/debsuryorg-archive-keyring.deb
+    fi
+
+    if [[ -z "$repo" ]]; then
+        print_warning "No third-party PHP repository for ${OS_ID} ${codename}, using the distro's PHP packages only"
+        apt-get update -y > /dev/null 2>&1
+        return
+    fi
+
+    if apt-get update -y > /dev/null 2>&1; then
+        print_success "PHP repository added (${repo})"
+    else
+        print_warning "apt-get update failed after adding ${repo}, removing it and using the distro's PHP packages only"
+        rm -f /etc/apt/sources.list.d/php-sury.list /etc/apt/sources.list.d/ondrej-ubuntu-php-*
+        apt-get update -y > /dev/null 2>&1
+    fi
+}
+
+# Install the PHP versions in $PHP_VERSIONS (space separated) with tuning applied.
+# On return, $PHP_VERSIONS holds only the versions that actually installed.
+install_php_versions_debian() {
+    # Install selected PHP versions
+    print_info "Installing PHP versions: $PHP_VERSIONS"
+    PHP_INSTALLED=""
+    for version in $PHP_VERSIONS; do
+        print_info "Installing PHP $version..."
+        PHP_PACKAGES=()
+        for ext in fpm cli common mysql pgsql sqlite3 zip gd mbstring curl xml bcmath intl redis; do
+            if package_installable "php${version}-${ext}"; then
+                PHP_PACKAGES+=("php${version}-${ext}")
+            else
+                print_warning "php${version}-${ext} not available, skipping"
+            fi
+        done
+        
+        if apt-get install -y "${PHP_PACKAGES[@]}" > /dev/null 2>&1; then
+            systemctl enable php${version}-fpm > /dev/null 2>&1
+            systemctl start php${version}-fpm > /dev/null 2>&1
+            PHP_INSTALLED="$PHP_INSTALLED $version"
+            print_success "PHP $version installed"
+        else
+            print_error "PHP $version failed to install"
+        fi
+    done
+    
+    PHP_VERSIONS=$(echo $PHP_INSTALLED)
+    if [[ -z "$PHP_VERSIONS" ]]; then
+        print_error "No PHP version could be installed"
+        exit 1
+    fi
+    
+    
+    # Configure PHP
+    print_info "Configuring PHP..."
+    TOTAL_RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
+    CPU_CORES=$(nproc)
+    
+    # ==============================================
+    # Dynamic PHP Settings based on RAM
+    # ==============================================
+    
+    # OPcache memory (12.5% of RAM, min 128M, max 512M)
+    OPCACHE_MEM=$((TOTAL_RAM_MB / 8))
+    [[ $OPCACHE_MEM -lt 128 ]] && OPCACHE_MEM=128
+    [[ $OPCACHE_MEM -gt 512 ]] && OPCACHE_MEM=512
+    
+    # JIT buffer (25% of OPcache, min 32M)
+    JIT_BUFFER=$((OPCACHE_MEM / 4))
+    [[ $JIT_BUFFER -lt 32 ]] && JIT_BUFFER=32
+    
+    # Interned strings buffer
+    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
+        INTERNED_STRINGS=64
+    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
+        INTERNED_STRINGS=32
+    else
+        INTERNED_STRINGS=16
+    fi
+    
+    # Memory limit per script
+    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
+        PHP_MEMORY_LIMIT=512
+    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
+        PHP_MEMORY_LIMIT=256
+    elif [[ $TOTAL_RAM_MB -ge 2048 ]]; then
+        PHP_MEMORY_LIMIT=192
+    else
+        PHP_MEMORY_LIMIT=128
+    fi
+    
+    # Execution time
+    if [[ $TOTAL_RAM_MB -ge 4096 ]]; then
+        MAX_EXECUTION_TIME=300
+        MAX_INPUT_TIME=300
+    else
+        MAX_EXECUTION_TIME=120
+        MAX_INPUT_TIME=120
+    fi
+    
+    # Upload/POST size
+    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
+        UPLOAD_MAX=512
+        POST_MAX=512
+    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
+        UPLOAD_MAX=256
+        POST_MAX=256
+    elif [[ $TOTAL_RAM_MB -ge 2048 ]]; then
+        UPLOAD_MAX=128
+        POST_MAX=128
+    else
+        UPLOAD_MAX=64
+        POST_MAX=64
+    fi
+    
+    # Max input vars
+    if [[ $TOTAL_RAM_MB -ge 4096 ]]; then
+        MAX_INPUT_VARS=5000
+    else
+        MAX_INPUT_VARS=3000
+    fi
+    
+    # Realpath cache
+    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
+        REALPATH_CACHE_SIZE=16M
+    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
+        REALPATH_CACHE_SIZE=8M
+    else
+        REALPATH_CACHE_SIZE=4M
+    fi
+    
+    # PHP-FPM pool settings (for default www pool)
+    # max_children = Available RAM / ~50MB per process (conservative)
+    PHP_FPM_MAX_CHILDREN=$((TOTAL_RAM_MB / 100))
+    [[ $PHP_FPM_MAX_CHILDREN -lt 5 ]] && PHP_FPM_MAX_CHILDREN=5
+    [[ $PHP_FPM_MAX_CHILDREN -gt 100 ]] && PHP_FPM_MAX_CHILDREN=100
+    
+    PHP_FPM_START_SERVERS=$((PHP_FPM_MAX_CHILDREN / 4))
+    [[ $PHP_FPM_START_SERVERS -lt 2 ]] && PHP_FPM_START_SERVERS=2
+    
+    PHP_FPM_MIN_SPARE=$((PHP_FPM_MAX_CHILDREN / 10))
+    [[ $PHP_FPM_MIN_SPARE -lt 1 ]] && PHP_FPM_MIN_SPARE=1
+    
+    PHP_FPM_MAX_SPARE=$((PHP_FPM_MAX_CHILDREN / 4))
+    [[ $PHP_FPM_MAX_SPARE -lt 3 ]] && PHP_FPM_MAX_SPARE=3
+    
+    print_info "PHP tuning: ${PHP_MEMORY_LIMIT}M memory, ${UPLOAD_MAX}M upload, ${PHP_FPM_MAX_CHILDREN} max workers"
+    
+    # Create PHP error log directory
+    mkdir -p /var/log/php
+    chown www-data:www-data /var/log/php
+    
+    for version in $PHP_VERSIONS; do
+        if [[ -d "/etc/php/$version" ]]; then
+            # ==============================================
+            # OPcache + JIT Configuration
+            # ==============================================
+            cat > "/etc/php/$version/mods-available/opcache-hostiqo.ini" << OPCACHE
+[opcache]
+; Hostiqo PHP OPcache + JIT Tuning
+; Auto-calculated based on ${TOTAL_RAM_MB}MB total RAM, ${CPU_CORES} CPU cores
+; Generated on: $(date)
+
+; Enable OPcache
+opcache.enable=1
+opcache.enable_cli=0
+
+; Memory settings
+opcache.memory_consumption=${OPCACHE_MEM}
+opcache.interned_strings_buffer=${INTERNED_STRINGS}
+opcache.max_accelerated_files=20000
+
+; Revalidation (production-ready)
+opcache.validate_timestamps=1
+opcache.revalidate_freq=60
+
+; Performance optimizations
+opcache.enable_file_override=1
+opcache.save_comments=1
+opcache.max_wasted_percentage=10
+opcache.fast_shutdown=1
+OPCACHE
+            # Add JIT for PHP 8.0+
+            if [[ "$version" =~ ^8\. ]]; then
+                cat >> "/etc/php/$version/mods-available/opcache-hostiqo.ini" << OPCACHE
+
+; JIT (PHP 8.0+) - significant performance boost
+opcache.jit=1255
+opcache.jit_buffer_size=${JIT_BUFFER}M
+OPCACHE
+            fi
+            
+            # ==============================================
+            # PHP.ini Tuning Configuration
+            # ==============================================
+            cat > "/etc/php/$version/mods-available/hostiqo-tuning.ini" << PHPINI
+; Hostiqo PHP Tuning
+; Auto-calculated based on ${TOTAL_RAM_MB}MB total RAM
+; Generated on: $(date)
+
+; ==============================================
+; Memory
+; ==============================================
+memory_limit = ${PHP_MEMORY_LIMIT}M
+
+; ==============================================
+; Execution & Timeout
+; ==============================================
+max_execution_time = ${MAX_EXECUTION_TIME}
+max_input_time = ${MAX_INPUT_TIME}
+default_socket_timeout = 60
+
+; ==============================================
+; Upload & POST
+; ==============================================
+upload_max_filesize = ${UPLOAD_MAX}M
+post_max_size = ${POST_MAX}M
+max_file_uploads = 20
+max_input_vars = ${MAX_INPUT_VARS}
+
+; ==============================================
+; Path & Realpath Cache
+; ==============================================
+realpath_cache_size = ${REALPATH_CACHE_SIZE}
+realpath_cache_ttl = 600
+
+; ==============================================
+; Session
+; ==============================================
+session.gc_maxlifetime = 1440
+session.save_handler = files
+session.save_path = /var/lib/php/sessions
+
+; ==============================================
+; Security (Production)
+; ==============================================
+expose_php = Off
+display_errors = Off
+display_startup_errors = Off
+log_errors = On
+error_log = /var/log/php/php${version}-error.log
+error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT
+allow_url_fopen = On
+allow_url_include = Off
+enable_dl = Off
+
+; ==============================================
+; Misc
+; ==============================================
+date.timezone = UTC
+PHPINI
+
+            # ==============================================
+            # PHP-FPM Default Pool Tuning
+            # ==============================================
+            cat > "/etc/php/$version/fpm/pool.d/www-hostiqo.conf" << FPMPOOL
+; Hostiqo PHP-FPM Pool Tuning (overrides www.conf defaults)
+; Auto-calculated based on ${TOTAL_RAM_MB}MB total RAM
+; Generated on: $(date)
+
+[www]
+; Process manager
+pm = dynamic
+pm.max_children = ${PHP_FPM_MAX_CHILDREN}
+pm.start_servers = ${PHP_FPM_START_SERVERS}
+pm.min_spare_servers = ${PHP_FPM_MIN_SPARE}
+pm.max_spare_servers = ${PHP_FPM_MAX_SPARE}
+pm.max_requests = 500
+
+; Timeouts
+request_terminate_timeout = ${MAX_EXECUTION_TIME}s
+request_slowlog_timeout = 5s
+
+; Logging
+slowlog = /var/log/php/php${version}-fpm-slow.log
+catch_workers_output = yes
+decorate_workers_output = no
+
+; Security
+php_admin_flag[log_errors] = on
+php_admin_value[error_log] = /var/log/php/php${version}-fpm-error.log
+FPMPOOL
+
+            # Enable the configs
+            ln -sf "/etc/php/$version/mods-available/opcache-hostiqo.ini" "/etc/php/$version/fpm/conf.d/99-opcache-hostiqo.ini" 2>/dev/null || true
+            ln -sf "/etc/php/$version/mods-available/opcache-hostiqo.ini" "/etc/php/$version/cli/conf.d/99-opcache-hostiqo.ini" 2>/dev/null || true
+            ln -sf "/etc/php/$version/mods-available/hostiqo-tuning.ini" "/etc/php/$version/fpm/conf.d/99-hostiqo-tuning.ini" 2>/dev/null || true
+            ln -sf "/etc/php/$version/mods-available/hostiqo-tuning.ini" "/etc/php/$version/cli/conf.d/99-hostiqo-tuning.ini" 2>/dev/null || true
+            
+            # Restart PHP-FPM to apply changes
+            systemctl restart php${version}-fpm > /dev/null 2>&1 || true
+        fi
+    done
+    print_success "PHP OPcache + JIT + Tuning configured"
+}
+
 install_prerequisites_debian() {
     # Set non-interactive mode to avoid prompts
     export DEBIAN_FRONTEND=noninteractive
@@ -328,14 +670,18 @@ install_prerequisites_debian() {
     
     # Install basic dependencies
     print_info "Installing basic dependencies..."
-    apt-get install -y software-properties-common apt-transport-https ca-certificates \
+    apt-get install -y apt-transport-https ca-certificates \
         curl wget git net-tools unzip build-essential gnupg2 lsb-release > /dev/null 2>&1
+    # Only needed for add-apt-repository (PPAs); Debian 13 no longer ships it
+    if [[ "$OS_ID" = "ubuntu" ]]; then
+        apt-get install -y software-properties-common > /dev/null 2>&1
+    fi
     print_success "Basic dependencies installed"
     
     # Add official Nginx repository
     print_info "Adding official Nginx repository..."
     curl -fsSL https://nginx.org/keys/nginx_signing.key | gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg > /dev/null 2>&1
-    echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/ubuntu $(lsb_release -cs) nginx" > /etc/apt/sources.list.d/nginx.list
+    echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/${OS_ID} $(lsb_release -cs) nginx" > /etc/apt/sources.list.d/nginx.list
     apt-get update -y > /dev/null 2>&1
     print_success "Nginx repository added"
     
@@ -625,60 +971,54 @@ CFREALIPEOF
     print_success "Cloudflare real IP restoration configured"
 
     # Add PHP repository
-    print_info "Adding PHP repository..."
-    add-apt-repository -y ppa:ondrej/php > /dev/null 2>&1
-    apt-get update -y > /dev/null 2>&1
-    print_success "PHP repository added"
+    setup_php_repo_debian
     
     # Install whiptail if not available
     if ! command -v whiptail &> /dev/null; then
         apt-get install -y whiptail > /dev/null 2>&1
     fi
     
+    # Offer only the PHP versions apt can install on this release
+    PHP_AVAILABLE=()
+    for version in $PHP_SUPPORTED_VERSIONS; do
+        package_installable "php${version}-fpm" && PHP_AVAILABLE+=("$version")
+    done
+    
+    if [[ ${#PHP_AVAILABLE[@]} -eq 0 ]]; then
+        print_error "No installable PHP version found for ${OS_ID} ${OS_VERSION}"
+        exit 1
+    fi
+    
+    # Default to the two newest stable versions
+    PHP_DEFAULT=$(for v in "${PHP_AVAILABLE[@]}"; do php_is_prerelease "$v" || echo "$v"; done | sort -V | tail -2 | xargs)
+    [[ -z "$PHP_DEFAULT" ]] && PHP_DEFAULT="${PHP_AVAILABLE[-1]}"
+    
+    PHP_CHOICES=()
+    for version in "${PHP_AVAILABLE[@]}"; do
+        label="PHP $version"
+        php_is_prerelease "$version" && label="$label (Pre-release)"
+        state=OFF
+        [[ " $PHP_DEFAULT " == *" $version "* ]] && state=ON
+        PHP_CHOICES+=("$version" "$label" "$state")
+    done
+    
     # PHP version selection with whiptail
     print_info "Select PHP versions to install..."
     PHP_SELECTIONS=$(whiptail --title "PHP Version Selection" --checklist \
-        "Select PHP versions to install (use SPACE to select, ENTER to confirm):" 18 60 6 \
-        "7.4" "PHP 7.4 (Legacy)" OFF \
-        "8.0" "PHP 8.0" OFF \
-        "8.1" "PHP 8.1" OFF \
-        "8.2" "PHP 8.2 (Recommended)" ON \
-        "8.3" "PHP 8.3 (Latest Stable)" ON \
-        "8.4" "PHP 8.4 (Cutting Edge)" OFF \
+        "Select PHP versions to install (use SPACE to select, ENTER to confirm):" 20 60 ${#PHP_AVAILABLE[@]} \
+        "${PHP_CHOICES[@]}" \
         3>&1 1>&2 2>&3)
     
     # Check if user cancelled
     if [[ $? -ne 0 ]] || [[ -z "$PHP_SELECTIONS" ]]; then
-        print_warning "No PHP version selected, defaulting to PHP 8.2 and 8.3"
-        PHP_SELECTIONS='"8.2" "8.3"'
+        print_warning "No PHP version selected, defaulting to PHP ${PHP_DEFAULT}"
+        PHP_SELECTIONS="$PHP_DEFAULT"
     fi
     
     # Convert selections to array (remove quotes)
     PHP_VERSIONS=$(echo "$PHP_SELECTIONS" | tr -d '"')
     
-    # Install selected PHP versions
-    print_info "Installing PHP versions: $PHP_VERSIONS"
-    for version in $PHP_VERSIONS; do
-        print_info "Installing PHP $version..."
-        apt-get install -y \
-            php${version}-fpm \
-            php${version}-cli \
-            php${version}-common \
-            php${version}-mysql \
-            php${version}-pgsql \
-            php${version}-sqlite3 \
-            php${version}-zip \
-            php${version}-gd \
-            php${version}-mbstring \
-            php${version}-curl \
-            php${version}-xml \
-            php${version}-bcmath \
-            php${version}-intl \
-            php${version}-redis > /dev/null 2>&1
-        systemctl enable php${version}-fpm > /dev/null 2>&1
-        systemctl start php${version}-fpm > /dev/null 2>&1
-        print_success "PHP $version installed"
-    done
+    install_php_versions_debian
     
     # Save installed PHP versions to config
     mkdir -p /etc/hostiqo
@@ -686,248 +1026,6 @@ CFREALIPEOF
     echo "{\"php_versions\": $PHP_JSON_ARRAY}" > /etc/hostiqo/config.json
     chmod 644 /etc/hostiqo/config.json
     print_success "PHP versions saved to /etc/hostiqo/config.json"
-    
-    # Configure PHP
-    print_info "Configuring PHP..."
-    TOTAL_RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
-    CPU_CORES=$(nproc)
-    
-    # ==============================================
-    # Dynamic PHP Settings based on RAM
-    # ==============================================
-    
-    # OPcache memory (12.5% of RAM, min 128M, max 512M)
-    OPCACHE_MEM=$((TOTAL_RAM_MB / 8))
-    [[ $OPCACHE_MEM -lt 128 ]] && OPCACHE_MEM=128
-    [[ $OPCACHE_MEM -gt 512 ]] && OPCACHE_MEM=512
-    
-    # JIT buffer (25% of OPcache, min 32M)
-    JIT_BUFFER=$((OPCACHE_MEM / 4))
-    [[ $JIT_BUFFER -lt 32 ]] && JIT_BUFFER=32
-    
-    # Interned strings buffer
-    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
-        INTERNED_STRINGS=64
-    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
-        INTERNED_STRINGS=32
-    else
-        INTERNED_STRINGS=16
-    fi
-    
-    # Memory limit per script
-    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
-        PHP_MEMORY_LIMIT=512
-    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
-        PHP_MEMORY_LIMIT=256
-    elif [[ $TOTAL_RAM_MB -ge 2048 ]]; then
-        PHP_MEMORY_LIMIT=192
-    else
-        PHP_MEMORY_LIMIT=128
-    fi
-    
-    # Execution time
-    if [[ $TOTAL_RAM_MB -ge 4096 ]]; then
-        MAX_EXECUTION_TIME=300
-        MAX_INPUT_TIME=300
-    else
-        MAX_EXECUTION_TIME=120
-        MAX_INPUT_TIME=120
-    fi
-    
-    # Upload/POST size
-    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
-        UPLOAD_MAX=512
-        POST_MAX=512
-    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
-        UPLOAD_MAX=256
-        POST_MAX=256
-    elif [[ $TOTAL_RAM_MB -ge 2048 ]]; then
-        UPLOAD_MAX=128
-        POST_MAX=128
-    else
-        UPLOAD_MAX=64
-        POST_MAX=64
-    fi
-    
-    # Max input vars
-    if [[ $TOTAL_RAM_MB -ge 4096 ]]; then
-        MAX_INPUT_VARS=5000
-    else
-        MAX_INPUT_VARS=3000
-    fi
-    
-    # Realpath cache
-    if [[ $TOTAL_RAM_MB -ge 8192 ]]; then
-        REALPATH_CACHE_SIZE=16M
-    elif [[ $TOTAL_RAM_MB -ge 4096 ]]; then
-        REALPATH_CACHE_SIZE=8M
-    else
-        REALPATH_CACHE_SIZE=4M
-    fi
-    
-    # PHP-FPM pool settings (for default www pool)
-    # max_children = Available RAM / ~50MB per process (conservative)
-    PHP_FPM_MAX_CHILDREN=$((TOTAL_RAM_MB / 100))
-    [[ $PHP_FPM_MAX_CHILDREN -lt 5 ]] && PHP_FPM_MAX_CHILDREN=5
-    [[ $PHP_FPM_MAX_CHILDREN -gt 100 ]] && PHP_FPM_MAX_CHILDREN=100
-    
-    PHP_FPM_START_SERVERS=$((PHP_FPM_MAX_CHILDREN / 4))
-    [[ $PHP_FPM_START_SERVERS -lt 2 ]] && PHP_FPM_START_SERVERS=2
-    
-    PHP_FPM_MIN_SPARE=$((PHP_FPM_MAX_CHILDREN / 10))
-    [[ $PHP_FPM_MIN_SPARE -lt 1 ]] && PHP_FPM_MIN_SPARE=1
-    
-    PHP_FPM_MAX_SPARE=$((PHP_FPM_MAX_CHILDREN / 4))
-    [[ $PHP_FPM_MAX_SPARE -lt 3 ]] && PHP_FPM_MAX_SPARE=3
-    
-    print_info "PHP tuning: ${PHP_MEMORY_LIMIT}M memory, ${UPLOAD_MAX}M upload, ${PHP_FPM_MAX_CHILDREN} max workers"
-    
-    # Create PHP error log directory
-    mkdir -p /var/log/php
-    chown www-data:www-data /var/log/php
-    
-    for version in $PHP_VERSIONS; do
-        if [[ -d "/etc/php/$version" ]]; then
-            # ==============================================
-            # OPcache + JIT Configuration
-            # ==============================================
-            cat > "/etc/php/$version/mods-available/opcache-hostiqo.ini" << OPCACHE
-[opcache]
-; Hostiqo PHP OPcache + JIT Tuning
-; Auto-calculated based on ${TOTAL_RAM_MB}MB total RAM, ${CPU_CORES} CPU cores
-; Generated on: $(date)
-
-; Enable OPcache
-opcache.enable=1
-opcache.enable_cli=0
-
-; Memory settings
-opcache.memory_consumption=${OPCACHE_MEM}
-opcache.interned_strings_buffer=${INTERNED_STRINGS}
-opcache.max_accelerated_files=20000
-
-; Revalidation (production-ready)
-opcache.validate_timestamps=1
-opcache.revalidate_freq=60
-
-; Performance optimizations
-opcache.enable_file_override=1
-opcache.save_comments=1
-opcache.max_wasted_percentage=10
-opcache.fast_shutdown=1
-OPCACHE
-            # Add JIT for PHP 8.0+
-            if [[ "$version" =~ ^8\. ]]; then
-                cat >> "/etc/php/$version/mods-available/opcache-hostiqo.ini" << OPCACHE
-
-; JIT (PHP 8.0+) - significant performance boost
-opcache.jit=1255
-opcache.jit_buffer_size=${JIT_BUFFER}M
-OPCACHE
-            fi
-            
-            # ==============================================
-            # PHP.ini Tuning Configuration
-            # ==============================================
-            cat > "/etc/php/$version/mods-available/hostiqo-tuning.ini" << PHPINI
-; Hostiqo PHP Tuning
-; Auto-calculated based on ${TOTAL_RAM_MB}MB total RAM
-; Generated on: $(date)
-
-; ==============================================
-; Memory
-; ==============================================
-memory_limit = ${PHP_MEMORY_LIMIT}M
-
-; ==============================================
-; Execution & Timeout
-; ==============================================
-max_execution_time = ${MAX_EXECUTION_TIME}
-max_input_time = ${MAX_INPUT_TIME}
-default_socket_timeout = 60
-
-; ==============================================
-; Upload & POST
-; ==============================================
-upload_max_filesize = ${UPLOAD_MAX}M
-post_max_size = ${POST_MAX}M
-max_file_uploads = 20
-max_input_vars = ${MAX_INPUT_VARS}
-
-; ==============================================
-; Path & Realpath Cache
-; ==============================================
-realpath_cache_size = ${REALPATH_CACHE_SIZE}
-realpath_cache_ttl = 600
-
-; ==============================================
-; Session
-; ==============================================
-session.gc_maxlifetime = 1440
-session.save_handler = files
-session.save_path = /var/lib/php/sessions
-
-; ==============================================
-; Security (Production)
-; ==============================================
-expose_php = Off
-display_errors = Off
-display_startup_errors = Off
-log_errors = On
-error_log = /var/log/php/php${version}-error.log
-error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT
-allow_url_fopen = On
-allow_url_include = Off
-enable_dl = Off
-
-; ==============================================
-; Misc
-; ==============================================
-date.timezone = UTC
-PHPINI
-
-            # ==============================================
-            # PHP-FPM Default Pool Tuning
-            # ==============================================
-            cat > "/etc/php/$version/fpm/pool.d/www-hostiqo.conf" << FPMPOOL
-; Hostiqo PHP-FPM Pool Tuning (overrides www.conf defaults)
-; Auto-calculated based on ${TOTAL_RAM_MB}MB total RAM
-; Generated on: $(date)
-
-[www]
-; Process manager
-pm = dynamic
-pm.max_children = ${PHP_FPM_MAX_CHILDREN}
-pm.start_servers = ${PHP_FPM_START_SERVERS}
-pm.min_spare_servers = ${PHP_FPM_MIN_SPARE}
-pm.max_spare_servers = ${PHP_FPM_MAX_SPARE}
-pm.max_requests = 500
-
-; Timeouts
-request_terminate_timeout = ${MAX_EXECUTION_TIME}s
-request_slowlog_timeout = 5s
-
-; Logging
-slowlog = /var/log/php/php${version}-fpm-slow.log
-catch_workers_output = yes
-decorate_workers_output = no
-
-; Security
-php_admin_flag[log_errors] = on
-php_admin_value[error_log] = /var/log/php/php${version}-fpm-error.log
-FPMPOOL
-
-            # Enable the configs
-            ln -sf "/etc/php/$version/mods-available/opcache-hostiqo.ini" "/etc/php/$version/fpm/conf.d/99-opcache-hostiqo.ini" 2>/dev/null || true
-            ln -sf "/etc/php/$version/mods-available/opcache-hostiqo.ini" "/etc/php/$version/cli/conf.d/99-opcache-hostiqo.ini" 2>/dev/null || true
-            ln -sf "/etc/php/$version/mods-available/hostiqo-tuning.ini" "/etc/php/$version/fpm/conf.d/99-hostiqo-tuning.ini" 2>/dev/null || true
-            ln -sf "/etc/php/$version/mods-available/hostiqo-tuning.ini" "/etc/php/$version/cli/conf.d/99-hostiqo-tuning.ini" 2>/dev/null || true
-            
-            # Restart PHP-FPM to apply changes
-            systemctl restart php${version}-fpm > /dev/null 2>&1 || true
-        fi
-    done
-    print_success "PHP OPcache + JIT + Tuning configured"
     
     # Node.js version selection with whiptail (multi-select)
     print_info "Select Node.js versions to install..."
@@ -3544,6 +3642,25 @@ case "${1:-}" in
         detect_os
         tune_database
         ;;
+    --php-repo)
+        # Used by "php artisan hostiqo:php"
+        check_root
+        detect_os
+        [[ "$OS_FAMILY" = "debian" ]] || { print_error "Only supported on Debian/Ubuntu"; exit 1; }
+        export DEBIAN_FRONTEND=noninteractive
+        setup_php_repo_debian
+        ;;
+    --php-install)
+        # Used by "php artisan hostiqo:php"; e.g. --php-install "8.4 8.5"
+        check_root
+        detect_os
+        [[ "$OS_FAMILY" = "debian" ]] || { print_error "Only supported on Debian/Ubuntu"; exit 1; }
+        export DEBIAN_FRONTEND=noninteractive
+        PHP_VERSIONS="${2:-}"
+        [[ -n "$PHP_VERSIONS" ]] || { print_error "No PHP version given"; exit 1; }
+        setup_php_repo_debian
+        install_php_versions_debian
+        ;;
     --help|-h)
         echo "Hostiqo Installer"
         echo ""
@@ -3561,6 +3678,7 @@ case "${1:-}" in
         echo "  --phase3 [path]  Setup Laravel application only"
         echo "  --phase4 [path]  Configure web server only"
         echo "  --phase5         Tune MySQL/MariaDB based on server RAM/CPU"
+        echo "  --php-install \"8.4 8.5\"  Install and tune PHP versions (Debian/Ubuntu)"
         echo "  --help           Show this help"
         echo ""
         ;;

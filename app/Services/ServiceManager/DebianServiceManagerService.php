@@ -37,6 +37,18 @@ class DebianServiceManagerService extends AbstractServiceManagerService
             ],
             
             // PHP-FPM versions
+            'php86-fpm' => [
+                'name' => 'PHP 8.6 FPM',
+                'service' => 'php8.6-fpm',
+                'supports_reload' => true,
+                'icon' => 'code'
+            ],
+            'php85-fpm' => [
+                'name' => 'PHP 8.5 FPM',
+                'service' => 'php8.5-fpm',
+                'supports_reload' => true,
+                'icon' => 'code'
+            ],
             'php84-fpm' => [
                 'name' => 'PHP 8.4 FPM',
                 'service' => 'php8.4-fpm',
