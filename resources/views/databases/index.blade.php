@@ -36,6 +36,9 @@
                 @foreach($permissions['missing_privileges'] ?? [] as $privilege)
                     <span class="badge bg-danger">{{ $privilege }}</span>
                 @endforeach
+                @foreach($permissions['errors'] ?? [] as $check => $error)
+                    <span class="d-block mt-1"><strong>{{ $check }} error:</strong> <code>{{ $error }}</code></span>
+                @endforeach
             </small>
             @if(!empty($permissions['grants']))
                 <details class="mt-2" open>

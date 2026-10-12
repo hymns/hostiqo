@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Database;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class DatabaseService
@@ -64,55 +65,47 @@ class DatabaseService
             }
             
             // Test actual permissions by trying to create/drop a test database
-            $testDbName = '_test_permission_check_' . time();
+            $suffix = time() . '_' . bin2hex(random_bytes(3));
+            $testDbName = '_test_permission_check_' . $suffix;
+            $testUser = '_test_user_' . $suffix;
             $hasCreateDb = false;
             $hasCreateUser = false;
             $hasGrant = false;
-            
+            $errors = [];
+
             try {
-                // Test CREATE DATABASE
                 DB::statement("CREATE DATABASE `{$testDbName}`");
                 $hasCreateDb = true;
-                // Clean up immediately
-                DB::statement("DROP DATABASE `{$testDbName}`");
             } catch (Exception $e) {
-                $hasCreateDb = false;
+                $errors['CREATE DATABASE'] = $e->getMessage();
+            } finally {
+                $this->dropQuietly("DROP DATABASE IF EXISTS `{$testDbName}`");
             }
-            
+
             try {
-                // Test CREATE USER (create temporary user)
-                $testUser = '_test_user_' . time();
-                DB::statement("CREATE USER IF NOT EXISTS '{$testUser}'@'localhost' IDENTIFIED BY 'test123'");
+                // Random password: the user only lives for this check, but must never be guessable
+                $password = bin2hex(random_bytes(16));
+                DB::statement("CREATE USER '{$testUser}'@'localhost' IDENTIFIED BY '{$password}'");
                 $hasCreateUser = true;
-                
-                // Test GRANT OPTION (try to grant privilege)
+
                 DB::statement("GRANT SELECT ON mysql.user TO '{$testUser}'@'localhost'");
                 $hasGrant = true;
-                
-                // Clean up
-                DB::statement("DROP USER '{$testUser}'@'localhost'");
             } catch (Exception $e) {
-                // If CREATE USER failed, we don't have that permission
-                if (stripos($e->getMessage(), 'CREATE USER') !== false) {
-                    $hasCreateUser = false;
-                    $hasGrant = false;
-                } elseif (stripos($e->getMessage(), 'Access denied') !== false) {
-                    // If CREATE USER worked but GRANT failed
-                    $hasGrant = false;
-                    // Try to clean up the test user
-                    try {
-                        DB::statement("DROP USER IF EXISTS '{$testUser}'@'localhost'");
-                    } catch (Exception $cleanup) {
-                        // Ignore cleanup errors
-                    }
-                }
+                $errors[$hasCreateUser ? 'GRANT OPTION' : 'CREATE USER'] = $e->getMessage();
+            } finally {
+                // Always remove the test user, whichever step failed
+                $this->dropQuietly("DROP USER IF EXISTS '{$testUser}'@'localhost'");
             }
-            
+
             $missingPrivileges = [];
             if (!$hasCreateDb) $missingPrivileges[] = 'CREATE DATABASE';
             if (!$hasCreateUser) $missingPrivileges[] = 'CREATE USER';
             if (!$hasGrant) $missingPrivileges[] = 'GRANT OPTION';
-            
+
+            if ($errors) {
+                Log::warning('Database permission check failed', ['user' => $currentUser, 'errors' => $errors]);
+            }
+
             return [
                 'can_create' => $hasCreateDb && $hasCreateUser && $hasGrant,
                 'has_create_db' => $hasCreateDb,
@@ -121,6 +114,7 @@ class DatabaseService
                 'current_user' => $currentUser,
                 'grants' => $grantDetails,
                 'missing_privileges' => $missingPrivileges,
+                'errors' => $errors,
                 'message' => $hasCreateDb && $hasCreateUser && $hasGrant 
                     ? 'You have permission to create databases and users.' 
                     : 'Missing privileges: ' . implode(', ', $missingPrivileges),
@@ -138,6 +132,21 @@ class DatabaseService
                 'message' => 'Failed to test permissions: ' . $e->getMessage(),
                 'cached' => false,
             ];
+        }
+    }
+
+    /**
+     * Run a cleanup statement, ignoring failures.
+     *
+     * @param string $sql The DROP statement
+     * @return void
+     */
+    protected function dropQuietly(string $sql): void
+    {
+        try {
+            DB::statement($sql);
+        } catch (Exception $e) {
+            Log::warning('Database permission check cleanup failed', ['sql' => $sql, 'error' => $e->getMessage()]);
         }
     }
 
