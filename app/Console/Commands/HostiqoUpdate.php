@@ -175,6 +175,10 @@ class HostiqoUpdate extends Command
         $this->runAsWebUser('php artisan view:cache');
         $this->info('✓ Application optimized');
 
+        // Queue workers keep the old code in memory until they restart
+        $this->runAsWebUser('php artisan queue:restart');
+        $this->info('✓ Queue workers restarted');
+
         // Disable maintenance mode
         Artisan::call('up');
         
