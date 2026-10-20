@@ -12,8 +12,19 @@ class RequestSslCertificate implements ShouldQueue
 {
     use Queueable;
 
-    public $tries = 2;
+    public $tries = 3;
     public $timeout = 300; // SSL can take a while
+
+    /**
+     * Seconds to wait before retrying a failed challenge.
+     *
+     * A new site often fails its first challenge while DNS or a CDN in front of
+     * it (e.g. Cloudflare) has not reached this server yet, so retrying at once
+     * rarely helps.
+     *
+     * @var array<int, int>
+     */
+    protected const RETRY_DELAYS = [60, 180];
 
     /**
      * Create a new job instance.
@@ -88,22 +99,30 @@ class RequestSslCertificate implements ShouldQueue
                 
                 dispatch(new DeployNginxConfig($this->website));
             } else {
-                throw new \Exception($result['error'] ?? 'Unknown error');
+                $error = $result['error'] ?? 'Unknown error';
+
+                // Retry later instead of throwing, so a challenge that only fails
+                // until DNS settles does not leave stack traces in the log
+                if ($this->attempts() < $this->tries) {
+                    $delay = self::RETRY_DELAYS[$this->attempts() - 1] ?? self::RETRY_DELAYS[count(self::RETRY_DELAYS) - 1];
+
+                    Log::warning('SSL challenge failed, retrying', [
+                        'website_id' => $this->website->id,
+                        'domain' => $this->website->domain,
+                        'attempt' => $this->attempts(),
+                        'retry_in' => $delay,
+                        'error' => $error,
+                    ]);
+
+                    $this->release($delay);
+                    return;
+                }
+
+                $this->fail(new \Exception("SSL certificate request failed for {$this->website->domain}:\n{$error}"));
             }
         } catch (\Exception $e) {
-            Log::error('Failed to request SSL certificate', [
-                'website_id' => $this->website->id,
-                'domain' => $this->website->domain,
-                'error' => $e->getMessage()
-            ]);
-
-            // Update website status
-            $this->website->update([
-                'ssl_status' => 'failed',
-                'ssl_enabled' => false
-            ]);
-
-            throw $e;
+            // Missing directories or files: retrying will not help
+            $this->fail($e);
         }
     }
 

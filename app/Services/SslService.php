@@ -74,7 +74,7 @@ class SslService
 
             return [
                 'success' => false,
-                'error' => $result->errorOutput(),
+                'error' => $this->certbotError($result->output(), $result->errorOutput()),
             ];
         } catch (\Exception $e) {
             Log::error('Failed to request SSL certificate', [
@@ -87,6 +87,43 @@ class SslService
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Build a readable error from certbot output.
+     *
+     * Certbot prints the reason a challenge failed (Domain/Type/Detail) on stdout,
+     * while stderr only says "Some challenges have failed".
+     *
+     * @param string $output Certbot stdout
+     * @param string $errorOutput Certbot stderr
+     * @return string The error message
+     */
+    protected function certbotError(string $output, string $errorOutput): string
+    {
+        preg_match_all('/^\s*(Domain|Type|Detail):\s*(.+)$/m', $output, $matches, PREG_SET_ORDER);
+
+        $problems = [];
+        $current = null;
+        foreach ($matches as [, $key, $value]) {
+            if ($key === 'Domain') {
+                $current = trim($value);
+                $problems[$current] = [];
+            } elseif ($current !== null) {
+                $problems[$current][$key] = trim($value);
+            }
+        }
+
+        if (!$problems) {
+            return trim($errorOutput) ?: trim($output) ?: 'Unknown certbot error';
+        }
+
+        $lines = [];
+        foreach ($problems as $domain => $problem) {
+            $lines[] = "{$domain}: " . ($problem['Detail'] ?? $problem['Type'] ?? 'challenge failed');
+        }
+
+        return implode("\n", $lines);
     }
 
     /**

@@ -310,13 +310,9 @@ class WebsiteController extends Controller
 
         $website->update($validated);
 
-        // Redeploy Nginx configuration with updated settings
-        dispatch(new DeployNginxConfig($website));
-
-        // If SSL was enabled, request certificate
-        if ($sslChanged && $website->ssl_enabled) {
-            dispatch(new RequestSslCertificate($website));
-        }
+        // Redeploy Nginx configuration with updated settings.
+        // If SSL was just enabled, the certificate is requested once nginx is reloaded.
+        dispatch(new DeployNginxConfig($website, $sslChanged && $website->ssl_enabled));
 
         return redirect()
             ->route('websites.index', ['type' => $website->project_type])
@@ -447,13 +443,9 @@ class WebsiteController extends Controller
             'nginx_status' => 'pending',
         ]);
 
-        // Dispatch job to redeploy Nginx configuration
-        dispatch(new DeployNginxConfig($website));
-
-        // If SSL is enabled, also request SSL certificate
-        if ($website->ssl_enabled) {
-            dispatch(new RequestSslCertificate($website));
-        }
+        // Dispatch job to redeploy Nginx configuration.
+        // If SSL is enabled, the certificate is requested once nginx is reloaded.
+        dispatch(new DeployNginxConfig($website, $website->ssl_enabled));
 
         return redirect()
             ->route('websites.show', $website)
