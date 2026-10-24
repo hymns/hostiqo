@@ -1030,20 +1030,21 @@ CFREALIPEOF
     # Node.js version selection with whiptail (multi-select)
     print_info "Select Node.js versions to install..."
     NODE_SELECTIONS=$(whiptail --title "Node.js Version Selection" --checklist \
-        "Select Node.js LTS versions to install (SPACE to select, ENTER to confirm):" 14 65 4 \
-        "18" "Node.js 18 LTS" OFF \
-        "20" "Node.js 20 LTS (Recommended)" ON \
-        "22" "Node.js 22 LTS" OFF \
-        "24" "Node.js 24 LTS (Latest)" OFF \
+        "Select Node.js versions to install (SPACE to select, ENTER to confirm):" 14 70 4 \
+        "20" "Node.js 20 (EOL, no security fixes)" OFF \
+        "22" "Node.js 22 LTS (Maintenance)" OFF \
+        "24" "Node.js 24 LTS (Recommended)" ON \
+        "26" "Node.js 26" OFF \
         3>&1 1>&2 2>&3)
 
     if [[ $? -ne 0 ]] || [[ -z "$NODE_SELECTIONS" ]]; then
-        print_warning "No Node.js version selected, defaulting to Node.js 20"
-        NODE_SELECTIONS='"20"'
+        print_warning "No Node.js version selected, defaulting to Node.js 24"
+        NODE_SELECTIONS='"24"'
     fi
 
     NODE_VERSIONS=$(echo "$NODE_SELECTIONS" | tr -d '"')
-    NODE_DEFAULT=$(echo "$NODE_VERSIONS" | awk '{print $1}')
+    # Default to the recommended LTS when selected, otherwise the newest selected
+    if [[ " $NODE_VERSIONS " == *" 24 "* ]]; then NODE_DEFAULT=24; else NODE_DEFAULT=$(echo "$NODE_VERSIONS" | tr ' ' '\n' | sort -n | tail -1); fi
 
     # Install NVM system-wide for multi-version support
     print_info "Installing NVM (Node Version Manager) system-wide..."
@@ -1631,20 +1632,21 @@ OPCACHE
     # Node.js version selection with whiptail (multi-select)
     print_info "Select Node.js versions to install..."
     NODE_SELECTIONS=$(whiptail --title "Node.js Version Selection" --checklist \
-        "Select Node.js LTS versions to install (SPACE to select, ENTER to confirm):" 14 65 4 \
-        "18" "Node.js 18 LTS" OFF \
-        "20" "Node.js 20 LTS (Recommended)" ON \
-        "22" "Node.js 22 LTS" OFF \
-        "24" "Node.js 24 LTS (Latest)" OFF \
+        "Select Node.js versions to install (SPACE to select, ENTER to confirm):" 14 70 4 \
+        "20" "Node.js 20 (EOL, no security fixes)" OFF \
+        "22" "Node.js 22 LTS (Maintenance)" OFF \
+        "24" "Node.js 24 LTS (Recommended)" ON \
+        "26" "Node.js 26" OFF \
         3>&1 1>&2 2>&3)
 
     if [[ $? -ne 0 ]] || [[ -z "$NODE_SELECTIONS" ]]; then
-        print_warning "No Node.js version selected, defaulting to Node.js 20"
-        NODE_SELECTIONS='"20"'
+        print_warning "No Node.js version selected, defaulting to Node.js 24"
+        NODE_SELECTIONS='"24"'
     fi
 
     NODE_VERSIONS=$(echo "$NODE_SELECTIONS" | tr -d '"')
-    NODE_DEFAULT=$(echo "$NODE_VERSIONS" | awk '{print $1}')
+    # Default to the recommended LTS when selected, otherwise the newest selected
+    if [[ " $NODE_VERSIONS " == *" 24 "* ]]; then NODE_DEFAULT=24; else NODE_DEFAULT=$(echo "$NODE_VERSIONS" | tr ' ' '\n' | sort -n | tail -1); fi
 
     # Install NVM system-wide for multi-version support
     print_info "Installing NVM (Node Version Manager) system-wide..."
@@ -3557,10 +3559,10 @@ main() {
     # Read installed versions from config
     if [[ -f /etc/hostiqo/config.json ]]; then
         INSTALLED_PHP=$(cat /etc/hostiqo/config.json | grep -o '"php_versions":\s*\[[^]]*\]' | grep -o '\["[^"]*"' | tr -d '[]"' | tr ',' ', ' 2>/dev/null || echo "8.2, 8.3")
-        INSTALLED_NODE=$(cat /etc/hostiqo/config.json | grep -o '"node_versions":\s*\[[^]]*\]' | grep -oP '"[0-9]+"' | tr -d '"' | paste -sd ', ' 2>/dev/null || cat /etc/hostiqo/config.json | grep -o '"node_version":\s*"[^"]*"' | grep -o '"[0-9]*"' | tr -d '"' 2>/dev/null || echo "20")
+        INSTALLED_NODE=$(cat /etc/hostiqo/config.json | grep -o '"node_versions":\s*\[[^]]*\]' | grep -oP '"[0-9]+"' | tr -d '"' | paste -sd ', ' 2>/dev/null || cat /etc/hostiqo/config.json | grep -o '"node_version":\s*"[^"]*"' | grep -o '"[0-9]*"' | tr -d '"' 2>/dev/null || echo "24")
     else
         INSTALLED_PHP="8.2, 8.3"
-        INSTALLED_NODE="20"
+        INSTALLED_NODE="24"
     fi
     
     if [[ "$OS_FAMILY" = "debian" ]]; then
